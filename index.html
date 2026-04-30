@@ -5519,9 +5519,30 @@ function togglePause(){
   if(!GS||!GS.running)return;
   if(gamePaused)resumeGame();
   else pauseGame();
-}document.getElementById('resumeGameBtn').addEventListener('click',resumeGame);
-document.getElementById('pauseSettingsBtn').addEventListener('click',()=>{
+}function addTouchAndClick(id, fn){
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.addEventListener('click', fn);
+  el.addEventListener('touchend', e=>{
+    e.preventDefault();
+    e.stopPropagation();
+    fn();
+  }, {passive:false});
+}
+
+addTouchAndClick('resumeGameBtn', resumeGame);
+addTouchAndClick('pauseSettingsBtn', ()=>{
   document.getElementById('settingsPanel').style.display='block';
+});
+addTouchAndClick('pauseMenuBtn', async()=>{
+  gamePaused = false;
+  document.getElementById('pauseScreen').style.display='none';
+  if(GS&&GS.running){ GS.running=false; saveProgress(); }
+  if(loopId){cancelAnimationFrame(loopId);loopId=null;}
+  stopMusic();
+  await mpCleanup();
+  document.getElementById('loginScreen').style.display='flex';
+  setTimeout(refreshResumeBtn,200);
 });
 document.getElementById('pauseMenuBtn').addEventListener('click',async()=>{
   gamePaused=false;
@@ -5685,8 +5706,76 @@ document.addEventListener('touchmove',e=>{
     initAudio();if(AC&&AC.state==='suspended')AC.resume();
   },{passive:false});
 
-})(); // end initMobile
-</script>
+// ── JOYSTICK IMPLEMENTATION ──────────────────────────
+(()=>{
+  const zone = document.getElementById('joystickZone');
+  const base = document.getElementById('joystickBase');
+  const knob = document.getElementById('joystickKnob');
+  if(!zone||!base||!knob) return;
+
+  let active = false;
+  let startX = 0, startY = 0;
+  const maxDist = 42;
+
+  function getCenter(){
+    const r = base.getBoundingClientRect();
+    return { x: r.left + r.width/2, y: r.top + r.height/2 };
+  }
+
+  function updateJoystick(tx, ty){
+    const c = getCenter();
+    let dx = tx - c.x;
+    let dy = ty - c.y;
+    const dist2 = Math.sqrt(dx*dx + dy*dy);
+    if(dist2 > maxDist){ dx = dx/dist2*maxDist; dy = dy/dist2*maxDist; }
+
+    knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+
+    const threshold = 10;
+    keys['w'] = dy < -threshold;
+    keys['s'] = dy >  threshold;
+    keys['a'] = dx < -threshold;
+    keys['d'] = dx >  threshold;
+  }
+
+  function resetJoystick(){
+    active = false;
+    knob.style.transform = 'translate(-50%, -50%)';
+    keys['w']=false; keys['s']=false;
+    keys['a']=false; keys['d']=false;
+  }
+
+  zone.addEventListener('touchstart', e=>{
+    e.preventDefault();
+    e.stopPropagation();
+    initAudio();
+    if(AC&&AC.state==='suspended') AC.resume();
+    active = true;
+    const t = e.touches[0];
+    updateJoystick(t.clientX, t.clientY);
+  }, {passive:false});
+
+  zone.addEventListener('touchmove', e=>{
+    e.preventDefault();
+    e.stopPropagation();
+    if(!active) return;
+    const t = e.touches[0];
+    updateJoystick(t.clientX, t.clientY);
+  }, {passive:false});
+
+  zone.addEventListener('touchend', e=>{
+    e.preventDefault();
+    e.stopPropagation();
+    resetJoystick();
+  }, {passive:false});
+
+zone.addEventListener('touchcancel', e=>{
+    e.preventDefault();
+    resetJoystick();
+  }, {passive:false});
+})();
+
+})();  // ← ADD THIS LINE — closes the outer mobile controls IIFE</script>
  
 <!-- GLOBAL LEADERBOARD PANEL -->
 <div id="leaderboardPanel" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.97);z-index:600;flex-direction:column;align-items:center;padding-top:28px;overflow-y:auto;">
