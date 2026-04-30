@@ -316,8 +316,12 @@ body{background:var(--bg);color:#fff;font-family:'Share Tech Mono','Courier New'
 .rRank{font-size:26px;width:38px;}.rName{flex:1;font-size:12px;text-align:left;}.rScore{font-size:11px;color:var(--gold);}.rMedals{font-size:13px;}
 
 
-#pauseTitle{font-size:52px;font-weight:900;color:#ffd700;letter-spacing:6px;text-shadow:0 0 40px #ffd700;}
-#pauseSub{font-size:11px;color:#555;letter-spacing:3px;}
+#pauseScreen{position:fixed;inset:0;background:rgba(0,0,0,.93);z-index:9999!important;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;pointer-events:all!important;touch-action:auto!important;}
+.pauseBtn{background:#0a1a0a;border:2px solid var(--green);color:var(--green);font-family:'Courier New',monospace;font-size:13px;letter-spacing:2px;padding:12px 28px;border-radius:8px;cursor:pointer;transition:all .2s;width:220px;text-align:center;pointer-events:all!important;touch-action:manipulation!important;-webkit-tap-highlight-color:rgba(57,255,138,0.2);}
+.pauseBtn:hover,.pauseBtn:active{background:#1a3a1a;transform:scale(1.04);}
+.pauseBtn.red{border-color:var(--red);color:var(--red);}
+.pauseBtn.red:active{background:#1a0a0a;}
+#pauseTitle{font-size:52px;font-weight:900;color:#ffd700;letter-spacing:6px;text-shadow:0 0 40px #ffd700;}#pauseSub{font-size:11px;color:#555;letter-spacing:3px;}
 #pauseStats{font-size:11px;color:#888;letter-spacing:1px;text-align:center;line-height:1.8;background:rgba(0,20,0,.6);border:1px solid #1a3a1a;border-radius:8px;padding:10px 20px;}
 .pauseBtn{background:#0a1a0a;border:2px solid var(--green);color:var(--green);font-family:'Courier New',monospace;font-size:13px;letter-spacing:2px;padding:12px 28px;border-radius:8px;cursor:pointer;transition:all .2s;width:220px;text-align:center;}
 .pauseBtn:hover,.pauseBtn:active{background:#1a3a1a;transform:scale(1.04);}
@@ -434,13 +438,17 @@ body{background:var(--bg);color:#fff;font-family:'Share Tech Mono','Courier New'
   font-size:10px;font-weight:700;
   font-family:'Share Tech Mono','Courier New',monospace;
   text-align:center;line-height:1.1;
-  cursor:pointer;pointer-events:all;
+  cursor:pointer;pointer-events:all!important;
   user-select:none;-webkit-user-select:none;
   -webkit-tap-highlight-color:transparent;
   backdrop-filter:blur(4px);
   transition:transform .08s,opacity .1s;
+  touch-action:manipulation!important;
+  -webkit-touch-callout:none;
+  position:relative;
+  z-index:420;
 }
-.mBtn:active{transform:scale(0.8);opacity:0.7;}
+.mBtn:active{transform:scale(0.82);opacity:0.65;}
 
 #mBtnFire{
   width:84px;height:84px;
@@ -458,16 +466,50 @@ body{background:var(--bg);color:#fff;font-family:'Share Tech Mono','Courier New'
 #mBtnPause{background:rgba(68,136,255,0.12);border-color:#4488ff;color:#4488ff;box-shadow:0 0 10px rgba(68,136,255,0.2);}
 
 /* ── LANDSCAPE COMPACT MODE ── */
-@media screen and (orientation:landscape) and (max-height:450px){
-  #joystickZone{width:105px!important;height:105px!important;bottom:8px!important;left:10px!important;}
-  #joystickBase{width:105px!important;height:105px!important;}
-  #joystickKnob{width:42px!important;height:42px!important;}
-  #mobileRightPanel{bottom:8px!important;right:8px!important;gap:6px!important;}
-  .mBtn{width:42px!important;height:42px!important;font-size:7px!important;}
-  #mBtnFire{width:64px!important;height:64px!important;font-size:11px!important;}
+@media screen and (orientation:landscape) and (max-height:500px){
+  /* Joystick — left side, compact */
+  #joystickZone{width:110px!important;height:110px!important;bottom:10px!important;left:10px!important;}
+  #joystickBase{width:110px!important;height:110px!important;}
+  #joystickKnob{width:44px!important;height:44px!important;}
+
+  /* Right panel — compact stacked */
+  #mobileRightPanel{bottom:8px!important;right:8px!important;gap:6px!important;align-items:flex-end!important;}
+  #mobileRow1{gap:7px!important;}
+  #mobileRow2{gap:7px!important;}
+  .mBtn{width:44px!important;height:44px!important;font-size:7px!important;gap:0px!important;}
+  #mBtnFire{width:68px!important;height:68px!important;font-size:12px!important;}
+
+  /* Shoot zone — between joystick and right buttons */
+  #mobileShootZone{left:130px!important;right:180px!important;top:0!important;bottom:0!important;}
+
+  /* Hide overlays that crowd landscape */
   #minimap{display:none!important;}
-  #cmdPanel{bottom:115px!important;}
-  #mobileShootZone{left:125px!important;right:170px!important;}
+  #sqPanel{display:none!important;}
+  #powerBars{display:none!important;}
+  #killFeed{top:40px!important;bottom:auto!important;left:130px!important;max-width:220px!important;}
+  .km{font-size:7px!important;padding:2px 4px!important;}
+  #bossBar{width:200px!important;top:36px!important;}
+
+  /* Top HUD — smaller */
+  #topBar{padding:3px 6px!important;}
+  .hv{font-size:10px!important;}
+  .bar{width:65px!important;height:7px!important;}
+  #hpNum{font-size:9px!important;}
+  #livesHUD{font-size:9px!important;}
+
+  /* Command strip — float above joystick */
+  #cmdPanel{position:fixed!important;bottom:125px!important;left:125px!important;right:185px!important;transform:none!important;width:auto!important;max-width:none!important;}
+
+  /* Y-hint — hide on mobile */
+  #cmdHint{display:none!important;}
+
+  /* Combo box — reposition */
+  #comboBox{bottom:120px!important;left:130px!important;}
+}
+
+/* Hide Y command hint on ALL mobile/touch devices */
+@media(max-width:900px),(pointer:coarse){
+  #cmdHint{display:none!important;}
 }
 .cbtn{background:rgba(10,40,10,0.95);border:1px solid #39ff8a;color:#39ff8a;  font-family:'Share Tech Mono','Courier New',monospace;font-size:9px;padding:5px 10px;border-radius:4px;cursor:pointer;letter-spacing:1px;white-space:nowrap;-webkit-tap-highlight-color:transparent;transition:opacity .1s;}
 .cbtn:active{opacity:0.5;transform:scale(0.93);}
@@ -5624,9 +5666,18 @@ setInterval(()=>{
   },400);
 
   // ── PREVENT BROWSER GESTURES ──────────────────────
-  document.addEventListener('touchmove',e=>{
-    if(e.cancelable)e.preventDefault();
-  },{passive:false});
+document.addEventListener('touchmove',e=>{
+  const tgt=e.target;
+  const isUI=tgt.closest&&(
+    tgt.closest('#pauseScreen')||tgt.closest('#mobileRightPanel')||
+    tgt.closest('#cmdStrip')||tgt.closest('#cmdPanel')||
+    tgt.closest('#settingsPanel')||tgt.closest('#deathScreen')||
+    tgt.closest('#perkScreen')||tgt.closest('#lobbyScreen')||
+    tgt.closest('#loginScreen')||tgt.closest('#resultsScreen')||
+    tgt.closest('.pauseBtn')||tgt.closest('.mBtn')||tgt.closest('.btn')
+  );
+  if(!isUI&&e.cancelable)e.preventDefault();
+},{passive:false});
 
   // ── SHOW COMMAND INPUT ON TAP OF CMD AREA ─────────
   document.getElementById('cmdPanel')?.addEventListener('touchstart',e=>{
@@ -5745,6 +5796,8 @@ function calcRating(sess, prev){
     outcome = 2200 + stylePts;
   } else if(sess.kills === 0 && sess.wavesSurvived === 0){
     // Instant quit doing nothing — small sting
+
+
     outcome = -80;
   } else {
     // LOSS: deduct based on how badly you played
