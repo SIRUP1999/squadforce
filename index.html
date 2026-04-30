@@ -4785,6 +4785,8 @@ document.getElementById('bossBar').style.display='none';document.getElementById(
   const _cp=document.getElementById('cmdPanel');if(_cp){_cp.style.display='none';}  document.getElementById('berserkLabel').style.display='none';document.getElementById('berserkBar').style.display='none';
   document.getElementById('spectateBar').style.display='none';document.getElementById('noLivesMsg').style.display='none';
   speechBubbles.forEach(b=>b.parentNode&&b.remove());speechBubbles=[];
+document.getElementById('mobileControls').style.display='block';
+document.getElementById('mobileControls').style.display='block';
   genCovers();initPlayer();initSquad();
   gameSpeed=gameSpeedSetting;
   const w=curWeapon();document.getElementById('gunLabel').textContent=w.gun;
@@ -5461,6 +5463,7 @@ document.getElementById('respawnBtn').addEventListener('click',()=>{if(stageLive
 document.getElementById('restartStageBtn').addEventListener('click',doRestartStage);
 document.getElementById('mainMenuDeathBtn').addEventListener('click',async()=>{
   document.getElementById('deathScreen').style.display='none';
+  document.getElementById('mobileControls').style.display='none';
   if(loopId){cancelAnimationFrame(loopId);loopId=null;}
   if(GS){GS.running=false;saveProgress();}// save before checking
   _sess.won=false;
@@ -5599,6 +5602,7 @@ addTouchAndClick('pauseMenuBtn', async()=>{
   if(loopId){cancelAnimationFrame(loopId);loopId=null;}
   stopMusic();
   await mpCleanup();
+  document.getElementById('mobileControls').style.display='none';
   document.getElementById('loginScreen').style.display='flex';
   setTimeout(refreshResumeBtn,200);
 });
@@ -5671,7 +5675,8 @@ if(window.visualViewport){
     const t=e.touches[0];const r=CV.getBoundingClientRect();
     mouse.x=t.clientX-r.left;mouse.y=t.clientY-r.top;
   },{passive:false});
-  sz2.addEventListener('touchstart',e=>{
+sz2.addEventListener('touchstart',e=>{
+    if(!GS||!GS.running)return;
     e.preventDefault();initAudio();if(AC&&AC.state==='suspended')AC.resume();
     const t=e.touches[0];const r=CV.getBoundingClientRect();
     mouse.x=t.clientX-r.left;mouse.y=t.clientY-r.top;
@@ -5803,7 +5808,8 @@ document.addEventListener('touchmove',e=>{
     keys['a']=false; keys['d']=false;
   }
 
-  zone.addEventListener('touchstart', e=>{
+ zone.addEventListener('touchstart', e=>{
+    if(!GS||!GS.running)return;
     e.preventDefault();
     e.stopPropagation();
     initAudio();
