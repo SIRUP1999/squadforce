@@ -183,8 +183,9 @@ body{background:var(--bg);color:#fff;font-family:'Share Tech Mono','Courier New'
 .color-row{display:flex;gap:8px;flex-wrap:wrap;}
 .cchip{width:30px;height:30px;border-radius:6px;cursor:pointer;border:2px solid transparent;transition:all .15s;}
 .cchip.sel{border-color:#fff;transform:scale(1.2);box-shadow:0 0 12px currentColor;}
-.btn{background:#0a1a0a;border:2px solid var(--green);color:var(--green);font-family:'Courier New',monospace;font-size:12px;letter-spacing:2px;padding:10px 20px;border-radius:7px;cursor:pointer;transition:all .2s;text-align:center;}
-.btn:hover{background:#1a3a1a;transform:scale(1.03);}
+@keyframes rotate90{0%{transform:rotate(0deg);}50%{transform:rotate(90deg);}100%{transform:rotate(0deg);}}
+.btn{background:#0a1a0a;border:2px solid var(--green);color:var(--green);font-family:'Courier New',monospace;font-size:12px;letter-spacing:2px;padding:10px 20px;border-radius:7px;cursor:pointer;transition:all .2s;text-align:center;touch-action:manipulation!important;-webkit-tap-highlight-color:rgba(57,255,138,0.25);pointer-events:all!important;-webkit-touch-callout:none;user-select:none;position:relative;z-index:10;}
+.btn:hover,.btn:active{background:#1a3a1a;transform:scale(1.03);}
 .btn.red{border-color:var(--red);color:var(--red);}.btn.red:hover{background:#1a0a0a;}
 .btn.gold{border-color:var(--gold);color:var(--gold);}.btn.gold:hover{background:#1a1400;}
 .btn.blue{border-color:#4488ff;color:#4488ff;}.btn.blue:hover{background:#0a1a3a;}
@@ -511,6 +512,38 @@ body{background:var(--bg);color:#fff;font-family:'Share Tech Mono','Courier New'
 @media(max-width:900px),(pointer:coarse){
   #cmdHint{display:none!important;}
 }
+/* ── LOGIN SCREEN LANDSCAPE ── */
+@media screen and (orientation:landscape) and (max-height:500px){
+  #loginScreen{
+    justify-content:flex-start!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    padding:6px 0 24px!important;
+    -webkit-overflow-scrolling:touch;
+    align-items:center!important;
+  }
+  .logo{font-size:22px!important;margin-bottom:0!important;letter-spacing:3px!important;}
+  .tagline{display:none!important;}
+  .form-box{
+    padding:10px 14px!important;
+    gap:6px!important;
+    width:min(96vw,540px)!important;
+    max-width:96vw!important;
+    border-radius:8px!important;
+    margin:0!important;
+  }
+  .form-box h2{font-size:9px!important;margin-bottom:0!important;}
+  .fl label{font-size:8px!important;}
+  .fi{padding:5px 8px!important;font-size:11px!important;}
+  .color-row{gap:4px!important;flex-wrap:wrap!important;}
+  .cchip{width:22px!important;height:22px!important;}
+  .btn{padding:7px 12px!important;font-size:10px!important;}
+  #dEasy,#dMed,#dHard{font-size:9px!important;padding:5px 8px!important;}
+  .row{gap:5px!important;flex-wrap:wrap!important;}
+  .medals-stored{font-size:8px!important;}
+  #returningMsg{font-size:7px!important;}
+  #soloBtn{font-size:12px!important;}
+}
 .cbtn{background:rgba(10,40,10,0.95);border:1px solid #39ff8a;color:#39ff8a;  font-family:'Share Tech Mono','Courier New',monospace;font-size:9px;padding:5px 10px;border-radius:4px;cursor:pointer;letter-spacing:1px;white-space:nowrap;-webkit-tap-highlight-color:transparent;transition:opacity .1s;}
 .cbtn:active{opacity:0.5;transform:scale(0.93);}
 #liveScoreboard{position:fixed;top:68px;right:14px;background:rgba(0,0,0,0.92);border:1px solid #1a3a1a;border-radius:8px;padding:9px 12px;min-width:200px;max-width:260px;pointer-events:none;z-index:25;font-family:'Share Tech Mono',monospace;display:none;}
@@ -561,8 +594,12 @@ body{background:var(--bg);color:#fff;font-family:'Share Tech Mono','Courier New'
   </div>
 </div>
 
-<div id="loginScreen" class="screen">
-  <div class="logo"><span class="r">SQUAD</span><span style="color:#fff">FORCE</span> <span class="g">V9</span></div>
+<div id="portraitWarning" style="display:none;position:fixed;inset:0;background:#050608;z-index:9999;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;font-family:'Share Tech Mono',monospace;">
+  <div style="font-size:64px;animation:rotate90 1.5s infinite ease-in-out;">📱</div>
+  <div style="font-size:20px;color:#39ff8a;letter-spacing:4px;font-weight:900;">ROTATE DEVICE</div>
+  <div style="font-size:11px;color:#555;letter-spacing:2px;max-width:260px;line-height:1.8;">Squad Force requires<br>LANDSCAPE mode to play</div>
+</div>
+<div id="loginScreen" class="screen">  <div class="logo"><span class="r">SQUAD</span><span style="color:#fff">FORCE</span> <span class="g">V9</span></div>
   <div class="tagline">AI COMMANDS · WALKING ANIMATION · AGGRESSIVE BOSS · LIVE MULTIPLAYER</div>
   <div class="form-box">
     <h2>⬢ ENLIST SOLDIER</h2>
@@ -4732,6 +4769,8 @@ function resumeGame(){
 }
 function startGame(round=1,stage=1,savedScore=0){
   initAudio();DC=DIFF[difficulty];
+  // Re-attempt landscape lock when game starts
+  (async()=>{try{if(screen.orientation&&screen.orientation.lock)await screen.orientation.lock('landscape');}catch(e){}})(  );
 GS={running:true,round,stage,wave:1,waveKills:0,waveTarget:0,score:savedScore,spawnQ:[],spawnTick:0,bossSpawned:false,bossAlive:false,betweenWaves:false,upgradeLevel:Math.min(stage-1,2),stageAdvancing:false};enemies=[];bullets=[];eBullets=[];parts=[];pickups=[];fireBombs=[];shockwaves=[];supplyDrops=[];boss=null;  ownedPerks=[];sosPings=[];pvpKills=0;shootCD=0;meleeCD=0;powerCD=0;frameN=0;
 
   comboCount=0;comboTimer=0;quickKills=0;quickKillTimer=0;reviving=false;reviveTarget=null;reviveProg=0;
@@ -5473,8 +5512,27 @@ function refreshResumeBtn(){
   }
 }
 
-window.addEventListener('load',()=>{  const saved=loadProgress();
-  const resumeBtn=document.getElementById('resumeBtn');
+// ── ORIENTATION GUARD ─────────────────────────────────
+(function(){
+  const warn=document.getElementById('portraitWarning');
+  function checkOrientation(){
+    const isPortrait=window.innerHeight>window.innerWidth;
+    if(warn)warn.style.display=isPortrait?'flex':'none';
+  }
+  checkOrientation();
+  window.addEventListener('resize',checkOrientation);
+  if(screen.orientation)screen.orientation.addEventListener('change',checkOrientation);
+  // Try to lock landscape (works on Android Chrome — silently fails on iOS)
+  (async()=>{
+    try{
+      if(screen.orientation&&screen.orientation.lock){
+        await screen.orientation.lock('landscape');
+      }
+    }catch(e){/* iOS doesn't support lock — portrait overlay handles it */}
+  })();
+})();
+
+window.addEventListener('load',()=>{  const saved=loadProgress();  const resumeBtn=document.getElementById('resumeBtn');
   if(saved&&Date.now()-saved.ts<86400000*5){
     if(resumeBtn){
       resumeBtn.style.display='block';
