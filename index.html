@@ -35,6 +35,67 @@ function _loadIdentity(){
   try{const d=localStorage.getItem(_IDENTITY_KEY);if(d){_playerIdentity=JSON.parse(d);return _playerIdentity;}}catch(e){}
   return null;
 }
+function saveProfile(){
+  const ni=document.getElementById('nameInput');
+  const ci=document.getElementById('countryInput');
+  const name=(ni?ni.value.trim():'');
+  const country=(ci?ci.value:'');
+  if(!name){alert('Please enter your callsign first!');return;}
+  if(!country){alert('Please select your country!');return;}
+  _saveIdentity(name,country);
+  myPlayerName=name;
+  myPlayerColor=selectedColor;
+  refreshProfileUI();
+  // Flash confirmation
+  const btn=event.target;
+  const orig=btn.textContent;
+  btn.textContent='✓ SAVED!';
+  btn.style.borderColor='#ffd700';btn.style.color='#ffd700';
+  setTimeout(()=>{btn.textContent=orig;btn.style.borderColor='';btn.style.color='';},1800);
+}
+function showEditProfile(){
+  document.getElementById('profileSavedBanner').style.display='none';
+  document.getElementById('profileEditForm').style.display='flex';
+  if(_playerIdentity){
+    const ni=document.getElementById('nameInput');
+    const ci=document.getElementById('countryInput');
+    if(ni)ni.value=_playerIdentity.name||'';
+    if(ci)ci.value=_playerIdentity.country||'';
+  }
+}
+function refreshProfileUI(){
+  const banner=document.getElementById('profileSavedBanner');
+  const form=document.getElementById('profileEditForm');
+  if(_playerIdentity&&_playerIdentity.name){
+    if(banner){
+      banner.style.display='block';
+      const rn=document.getElementById('returningName');
+      const rc=document.getElementById('returningCountryLine');
+      if(rn)rn.textContent=_playerIdentity.name;
+      if(rc)rc.textContent=(_playerIdentity.country&&_playerIdentity.country!=='Unknown')?
+        'Country: '+_playerIdentity.country:
+        'No country set — click Edit to add';
+    }
+    if(form)form.style.display='none';
+    // Update hidden values used by game
+    myPlayerName=_playerIdentity.name;
+    const m=loadMedals(_playerIdentity.name);
+    const medEl=document.getElementById('storedMedals');
+    if(medEl)medEl.textContent=m.gold||m.silver||m.bronze?
+      `${_playerIdentity.name}: 🥇${m.gold} 🥈${m.silver} 🥉${m.bronze}`:'';
+  }else{
+    if(banner)banner.style.display='none';
+    if(form)form.style.display='flex';
+  }
+}
+function resetIdentity(){
+  if(!confirm('Clear your saved profile? You will need to set your name again.'))return;
+  localStorage.removeItem(_IDENTITY_KEY);_playerIdentity=null;
+  const ni=document.getElementById('nameInput');
+  const ci=document.getElementById('countryInput');
+  if(ni)ni.value='';if(ci)ci.value='';
+  refreshProfileUI();
+}
 function _saveIdentity(name,country){
   _playerIdentity={
     name:(name||'').trim()||_playerIdentity?.name||'SOLDIER',
@@ -168,7 +229,7 @@ console.log('✅ JSONBin storage ready — leaderboard + multiplayer');
 *{margin:0;padding:0;box-sizing:border-box;}
 :root{--green:#39ff8a;--red:#ff3a3a;--gold:#ffd700;--blue:#4af;--bg:#050608;--border:#1a2a1a;}
 body{background:var(--bg);color:#fff;font-family:'Share Tech Mono','Courier New',monospace;overflow:hidden;user-select:none;}
-.logo,.form-box h2,.fl label,.btn,.hv,.hl,.hb,.smr,.sn,.ss,.pn,.pd,.rEntry,.ply-name,.ply-status,.rEntry *{font-family:'Share Tech Mono','Courier New',monospace!important;}canvas{display:block;cursor:none;}
+.logo,.form-box h2,.fl label,.btn,.hv,.hl,.hb,.smr,.sn,.ss,.pn,.pd,.rEntry,.ply-name,.ply-status,.rEntry *{font-family:'Share Tech Mono','Courier New',monospace!important;}canvas{display:block;cursor:none;position:relative;z-index:1;}
 .screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;}
 #loginScreen{background:radial-gradient(ellipse at 50% 30%,#0a1a0a 0%,#000 70%);}
 #lobbyScreen,#resultsScreen,#onlineScreen{background:rgba(0,0,0,0.97);display:none;}
@@ -191,7 +252,7 @@ body{background:var(--bg);color:#fff;font-family:'Share Tech Mono','Courier New'
 .btn.blue{border-color:#4488ff;color:#4488ff;}.btn.blue:hover{background:#0a1a3a;}
 .row{display:flex;gap:8px;flex-wrap:wrap;}
 .medals-stored{font-size:9px;color:#888;text-align:center;letter-spacing:1px;margin-top:2px;}
-#lobbyBox{background:rgba(0,15,0,.95);border:1px solid #1a2a1a;border-radius:12px;padding:24px;width:580px;max-width:96vw;}
+.profile-saved-badge{display:inline-block;background:rgba(57,255,138,0.1);border:1px solid #39ff8a44;border-radius:4px;padding:3px 10px;font-size:8px;color:#39ff8a;letter-spacing:2px;margin-top:4px;}#lobbyBox{background:rgba(0,15,0,.95);border:1px solid #1a2a1a;border-radius:12px;padding:24px;width:580px;max-width:96vw;}
 #lobbyBox h2{font-size:13px;color:var(--green);letter-spacing:3px;text-align:center;margin-bottom:14px;}
 #playerList{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;max-height:240px;overflow-y:auto;}
 .ply{display:flex;align-items:center;gap:10px;padding:7px 10px;background:rgba(255,255,255,.03);border-radius:5px;}
@@ -274,9 +335,52 @@ body{background:var(--bg);color:#fff;font-family:'Share Tech Mono','Courier New'
 #cmdResponse{position:absolute;bottom:56px;left:50%;transform:translateX(-50%);background:rgba(0,20,5,.92);border:1px solid var(--green);border-radius:8px;padding:8px 16px;font-size:11px;color:var(--green);letter-spacing:1px;pointer-events:none;opacity:0;transition:opacity .3s;white-space:nowrap;max-width:500px;text-align:center;}
 #perkTray{position:absolute;top:228px;right:14px;display:flex;flex-direction:column;gap:2px;pointer-events:none;}
 .pb{background:rgba(0,0,0,.8);border:1px solid #1a2a1a;border-radius:3px;padding:2px 6px;font-size:7px;color:var(--green);letter-spacing:1px;}
-#cmdPanel{position:fixed;bottom:0;left:0;right:0;pointer-events:all;background:rgba(2,14,4,0.98);border-top:2px solid #39ff8a;z-index:450;height:52px;overflow:hidden;display:none;}
-#cmdPanel::after{content:'← scroll →';position:absolute;right:8px;top:5px;font-size:7px;color:#39ff8a55;letter-spacing:1px;pointer-events:none;}
-#cmdHint{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);font-family:'Share Tech Mono',monospace;font-size:11px;color:rgba(57,255,138,0.75);letter-spacing:3px;pointer-events:all;z-index:448;background:rgba(0,10,0,0.88);padding:7px 22px;border-radius:22px;border:1px solid rgba(57,255,138,0.45);cursor:pointer;animation:blink 2s infinite;display:none;}
+#cmdPanel{
+  position:fixed;
+  top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  pointer-events:all;
+  background:rgba(2,14,4,0.97);
+  border:2px solid #39ff8a;
+  border-radius:14px;
+  z-index:850;
+  width:min(680px,94vw);
+  max-height:72vh;
+  overflow:hidden;
+  display:none;
+  flex-direction:column;
+  box-shadow:0 0 40px rgba(57,255,138,0.25);
+}
+#cmdPanelHeader{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:10px 14px 6px;border-bottom:1px solid #1a3a1a;flex-shrink:0;
+}
+#cmdPanelTitle{font-size:11px;color:#39ff8a;letter-spacing:3px;font-family:'Share Tech Mono',monospace;}
+#cmdPanelClose{color:#ff4444;font-size:14px;cursor:pointer;padding:2px 8px;pointer-events:all;}
+#cmdHint{
+  position:fixed;bottom:22px;left:50%;transform:translateX(-50%);
+  font-family:'Share Tech Mono',monospace;font-size:10px;
+  color:rgba(57,255,138,0.8);letter-spacing:3px;
+  pointer-events:all;z-index:448;
+  background:rgba(0,10,0,0.88);
+  padding:6px 18px;border-radius:22px;
+  border:1px solid rgba(57,255,138,0.4);
+  cursor:pointer;animation:blink 2s infinite;display:none;
+}
+#cmdStrip{
+  display:flex;flex-direction:row;flex-wrap:wrap;
+  overflow-y:auto;overflow-x:hidden;
+  padding:10px 12px;gap:7px;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:thin;
+  scrollbar-color:#39ff8a66 #0a0a0a;
+  align-content:flex-start;
+  max-height:calc(72vh - 52px);
+}
+#cmdStrip::-webkit-scrollbar{width:4px;}
+#cmdStrip::-webkit-scrollbar-track{background:#0a0a0a;}
+#cmdStrip::-webkit-scrollbar-thumb{background:#39ff8a66;border-radius:2px;}
+#cmdStrip .cbtn{flex-shrink:0;}
 #cmdStrip{
   display:flex;
   flex-direction:row;
@@ -560,7 +664,37 @@ body{background:var(--bg);color:#fff;font-family:'Share Tech Mono','Courier New'
 .cbtn-y{border-color:#ffd700!important;color:#ffd700!important;}
 .cbtn-o{border-color:#ff8c00!important;color:#ff8c00!important;}
 .cbtn-p{border-color:#cc44ff!important;color:#cc44ff!important;}
-.clbl{font-size:8px;color:#39ff8a;letter-spacing:2px;margin:6px 0 4px;text-transform:uppercase;border-bottom:1px solid #1a3a1a;padding-bottom:3px;}</style>
+.clbl{font-size:8px;color:#39ff8a;letter-spacing:2px;margin:6px 0 4px;text-transform:uppercase;border-bottom:1px solid #1a3a1a;padding-bottom:3px;}/* ── FLOATING QUICK COMMANDS (always visible during game) ── */
+#quickCmds{
+  position:fixed;
+  left:50%;
+  bottom:185px;
+  transform:translateX(-50%);
+  display:none;
+  gap:4px;
+  z-index:440;
+  flex-wrap:nowrap;
+  pointer-events:all;
+}
+#quickCmds .qc{
+  background:rgba(0,20,0,0.92);
+  border:1.5px solid #39ff8a55;
+  color:#39ff8a;
+  font-family:'Share Tech Mono',monospace;
+  font-size:9px;
+  padding:5px 9px;
+  border-radius:20px;
+  cursor:pointer;
+  white-space:nowrap;
+  letter-spacing:1px;
+  pointer-events:all;
+  touch-action:manipulation;
+  transition:all .12s;
+}
+#quickCmds .qc:active{background:rgba(57,255,138,0.25);transform:scale(0.9);}
+#quickCmds .qc.red{border-color:#ff444466;color:#ff8888;}
+#quickCmds .qc.gold{border-color:#ffd70066;color:#ffd700;}
+</style>
 </head>
 <body>
 
@@ -568,6 +702,20 @@ body{background:var(--bg);color:#fff;font-family:'Share Tech Mono','Courier New'
 <div id="deathVig"></div><div id="berserkOverlay"></div>
 
 <div id="mobileControls">
+  <div id="mobileShootZone"></div>
+
+<!-- FLOATING QUICK COMMANDS — always accessible mid-combat -->
+<div id="quickCmds">
+  <div class="qc" onclick="qCmd('attack')">⚔ALL</div>
+  <div class="qc" onclick="qCmd('follow')">👥FOLLOW</div>
+  <div class="qc" onclick="qCmd('hide')">🛡HIDE</div>
+  <div class="qc" onclick="qCmd('surround')">⭕SURR</div>
+  <div class="qc red" onclick="qCmd('everyone attack the boss')">⚠BOSS</div>
+  <div class="qc gold" onclick="qCmd('retreat')">⬅RUN</div>
+  <div class="qc" onclick="qCmd('zara heal me')">✚HEAL</div>
+  <div class="qc" onclick="qCmd('spread out')">↔SPREAD</div>
+</div>
+
   <div id="mobileShootZone"></div>
   <div id="joystickZone">
     <div id="joystickBase">
@@ -601,40 +749,51 @@ body{background:var(--bg);color:#fff;font-family:'Share Tech Mono','Courier New'
   <div class="tagline">AI COMMANDS · WALKING ANIMATION · AGGRESSIVE BOSS · LIVE MULTIPLAYER</div>
   <div class="form-box">
     <h2>⬢ ENLIST SOLDIER</h2>
-   <div class="fl" id="callsignRow"><label>CALLSIGN</label>
-      <input class="fi" id="nameInput" placeholder="Enter your name" maxlength="18">
-      <div id="returningMsg" style="display:none;font-size:8px;color:#39ff8a;letter-spacing:2px;margin-top:4px;">
-        ✓ Welcome back, <span id="returningName" style="color:#ffd700;font-weight:bold"></span>!
-        &nbsp;—&nbsp;<span onclick="resetIdentity()" style="color:#444;cursor:pointer;text-decoration:underline;font-size:7px;">not you?</span>
-      </div>
+<div class="fl" id="callsignRow">
+  <label>CALLSIGN</label>
+  <div id="profileSavedBanner" style="display:none;background:rgba(57,255,138,0.08);border:1px solid #1a3a1a;border-radius:8px;padding:10px 14px;margin-bottom:4px;">
+    <div style="font-size:11px;color:#39ff8a;letter-spacing:2px;margin-bottom:3px;">✓ WELCOME BACK, <span id="returningName" style="color:#ffd700;font-weight:900;font-size:13px;"></span>!</div>
+    <div style="font-size:8px;color:#555;letter-spacing:1px;" id="returningCountryLine"></div>
+    <div style="margin-top:6px;display:flex;gap:6px;">
+      <span class="profile-saved-badge">Profile Saved ✓</span>
+      <span onclick="showEditProfile()" style="color:#444;cursor:pointer;font-size:8px;letter-spacing:1px;text-decoration:underline;line-height:2;">✏ Edit</span>
+      <span onclick="resetIdentity()" style="color:#333;cursor:pointer;font-size:8px;letter-spacing:1px;text-decoration:underline;line-height:2;">✕ Reset</span>
     </div>
-    <div class="fl" id="countryRow"><label>YOUR COUNTRY</label>
-      <select class="fi" id="countryInput" style="cursor:pointer;font-size:12px;padding:7px 10px;">
-        <option value="">🌍 Select your country...</option>
-        <option value="Ghana 🇬🇭">Ghana 🇬🇭</option>
-        <option value="Nigeria 🇳🇬">Nigeria 🇳🇬</option>
-        <option value="USA 🇺🇸">USA 🇺🇸</option>
-        <option value="UK 🇬🇧">UK 🇬🇧</option>
-        <option value="Canada 🇨🇦">Canada 🇨🇦</option>
-        <option value="South Africa 🇿🇦">South Africa 🇿🇦</option>
-        <option value="Kenya 🇰🇪">Kenya 🇰🇪</option>
-        <option value="Tanzania 🇹🇿">Tanzania 🇹🇿</option>
-        <option value="Uganda 🇺🇬">Uganda 🇺🇬</option>
-        <option value="Ivory Coast 🇨🇮">Ivory Coast 🇨🇮</option>
-        <option value="Senegal 🇸🇳">Senegal 🇸🇳</option>
-        <option value="Cameroon 🇨🇲">Cameroon 🇨🇲</option>
-        <option value="Egypt 🇪🇬">Egypt 🇪🇬</option>
-        <option value="France 🇫🇷">France 🇫🇷</option>
-        <option value="Germany 🇩🇪">Germany 🇩🇪</option>
-        <option value="Brazil 🇧🇷">Brazil 🇧🇷</option>
-        <option value="India 🇮🇳">India 🇮🇳</option>
-        <option value="Australia 🇦🇺">Australia 🇦🇺</option>
-        <option value="Japan 🇯🇵">Japan 🇯🇵</option>
-        <option value="China 🇨🇳">China 🇨🇳</option>
-        <option value="Russia 🇷🇺">Russia 🇷🇺</option>
-        <option value="Other 🌍">Other 🌍</option>
-      </select>
-    </div>
+  </div>
+  <div id="profileEditForm" style="display:none;flex-direction:column;gap:8px;">
+    <input class="fi" id="nameInput" placeholder="Your callsign / name" maxlength="18">
+    <select class="fi" id="countryInput" style="cursor:pointer;font-size:12px;padding:7px 10px;">
+      <option value="">🌍 Select your country...</option>
+      <option value="Ghana 🇬🇭">Ghana 🇬🇭</option>
+      <option value="Nigeria 🇳🇬">Nigeria 🇳🇬</option>
+      <option value="USA 🇺🇸">USA 🇺🇸</option>
+      <option value="UK 🇬🇧">UK 🇬🇧</option>
+      <option value="Canada 🇨🇦">Canada 🇨🇦</option>
+      <option value="South Africa 🇿🇦">South Africa 🇿🇦</option>
+      <option value="Kenya 🇰🇪">Kenya 🇰🇪</option>
+      <option value="Tanzania 🇹🇿">Tanzania 🇹🇿</option>
+      <option value="Uganda 🇺🇬">Uganda 🇺🇬</option>
+      <option value="Ivory Coast 🇨🇮">Ivory Coast 🇨🇮</option>
+      <option value="Senegal 🇸🇳">Senegal 🇸🇳</option>
+      <option value="Cameroon 🇨🇲">Cameroon 🇨🇲</option>
+      <option value="Egypt 🇪🇬">Egypt 🇪🇬</option>
+      <option value="France 🇫🇷">France 🇫🇷</option>
+      <option value="Germany 🇩🇪">Germany 🇩🇪</option>
+      <option value="Brazil 🇧🇷">Brazil 🇧🇷</option>
+      <option value="India 🇮🇳">India 🇮🇳</option>
+      <option value="Australia 🇦🇺">Australia 🇦🇺</option>
+      <option value="Japan 🇯🇵">Japan 🇯🇵</option>
+      <option value="China 🇨🇳">China 🇨🇳</option>
+      <option value="Russia 🇷🇺">Russia 🇷🇺</option>
+      <option value="Other 🌍">Other 🌍</option>
+    </select>
+    <button class="btn" onclick="saveProfile()" style="font-size:12px;border-color:#39ff8a;color:#39ff8a;">💾 SAVE PROFILE</button>
+  </div>
+  <!-- Hidden inputs for returning users (values auto-filled) -->
+  <input type="hidden" id="nameInputHidden">
+  <div id="returningMsg" style="display:none"></div><!-- kept for backward compat -->
+</div>
+  
     <div class="fl"><label>SQUAD COLOR</label><div class="color-row" id="colorPicker"></div></div>
     <div class="fl"><label>DIFFICULTY</label>
       <div class="row">
@@ -649,8 +808,14 @@ body{background:var(--bg);color:#fff;font-family:'Share Tech Mono','Courier New'
     <button class="btn" id="browseRoomsBtn" style="border-color:#9944ff;color:#9944ff;">👥 BROWSE ONLINE</button>
 <div class="medals-stored" id="storedMedals"></div>
     <!-- FIX: leaderboard button hardcoded, no JS injection needed -->
-    <button class="btn gold" id="lbOpenBtn" style="font-size:12px;">🏆 WORLD LEADERBOARD</button>
-    <div class="row" style="justify-content:center;margin-top:2px;">
+<div id="onlineNowBadge" style="text-align:center;margin-bottom:2px;">
+  <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(57,255,138,0.06);border:1px solid #1a3a1a;border-radius:20px;padding:5px 16px;">
+    <div id="onlinePulse" style="width:8px;height:8px;border-radius:50%;background:#39ff8a;box-shadow:0 0 8px #39ff8a;animation:blink 1s infinite;"></div>
+    <span id="onlineNowCount" style="font-size:10px;color:#39ff8a;letter-spacing:2px;font-family:'Share Tech Mono',monospace;">Checking online players...</span>
+  </div>
+</div>
+<div id="onlineNowList" style="display:flex;flex-direction:column;gap:3px;max-height:90px;overflow-y:auto;margin-bottom:4px;"></div>
+<button class="btn gold" id="lbOpenBtn" style="font-size:12px;">🏆 WORLD LEADERBOARD</button>    <div class="row" style="justify-content:center;margin-top:2px;">
       <button class="btn" style="font-size:9px;border-color:#2a4a2a;color:#4a8a4a;" id="openSettingsLogin">⚙ SETTINGS</button>
     </div>
   </div>
@@ -729,9 +894,9 @@ body{background:var(--bg);color:#fff;font-family:'Share Tech Mono','Courier New'
   <div id="pauseTitle">⏸ PAUSED</div>
   <div id="pauseSub">GAME SUSPENDED · SQUAD HOLDING</div>
   <div id="pauseStats">SCORE: 0</div>
-  <button class="pauseBtn" id="resumeGameBtn">▶ RESUME GAME</button>
-  <button class="pauseBtn" id="pauseSettingsBtn">⚙ SETTINGS</button>
-  <button class="pauseBtn red" id="pauseMenuBtn" style="border-color:#ff3a3a;color:#ff3a3a;background:#1a0000;">⌂ MAIN MENU</button>
+<button class="pauseBtn" id="resumeGameBtn" onclick="resumeGame()" style="pointer-events:all!important;z-index:99999;position:relative;">▶ RESUME GAME</button>
+  <button class="pauseBtn" id="pauseSettingsBtn" onclick="document.getElementById('settingsPanel').style.display='block'" style="pointer-events:all!important;z-index:99999;position:relative;">⚙ SETTINGS</button>
+  <button class="pauseBtn red" id="pauseMenuBtn" onclick="forceMainMenu()" style="border-color:#ff3a3a;color:#ff3a3a;background:#1a0000;pointer-events:all!important;z-index:99999;position:relative;">⌂ MAIN MENU</button>
   <div style="font-size:9px;color:#333;letter-spacing:1px;margin-top:4px;font-family:monospace;">Progress is auto-saved before returning to menu</div>
 </div>
 <!-- DEATH — Respawn System -->
@@ -769,8 +934,8 @@ body{background:var(--bg);color:#fff;font-family:'Share Tech Mono','Courier New'
       <span class="hl">Score</span><span class="hv" id="scoreNum" style="color:var(--green)">0</span>
     </div>
     <div class="hb" style="align-items:flex-end">
-      <span class="hl">Ammo</span><span class="hv" id="ammoNum" style="color:var(--gold)">30/120</span>
-      <span class="hl" id="gunLabel" style="color:#666">RIFLE</span>
+   <span class="hl">MAG | RESERVE</span><span class="hv" id="ammoNum" style="color:var(--gold)">30 | 9999</span>
+<span class="hl" id="gunLabel" style="color:#666">RIFLE</span>
     </div>
   </div>
 </div>
@@ -850,53 +1015,47 @@ K=Knife | L=Blade | C=Combat | J=Kick | U=Punch | N=SlowMo | M=FastFwd<br>   1-4
   </div>
   <div style="font-size:8px;color:#333;margin-bottom:8px;text-align:center;">Hides chat, kill feed, squad panel — keeps HP/ammo/boss bar</div>
   <button class="btn" id="closeSettings" style="width:100%;font-size:10px;">CLOSE</button></div>
-<div id="cmdHint">⬡ PRESS Y — SQUAD COMMANDS</div><div id="cmdPanel">
+<div id="cmdHint">[ Y ] SQUAD COMMANDS</div>
+<div id="cmdPanel">
+  <div id="cmdPanelHeader">
+    <span id="cmdPanelTitle">⬡ SQUAD COMMANDS</span>
+    <span id="cmdPanelClose" onclick="toggleCmdPanel()">✕ CLOSE</span>
+  </div>
   <div id="cmdStrip">
-    <span style="font-size:8px;color:#39ff8a;letter-spacing:1px;flex-shrink:0;padding:0 8px 0 4px;border-right:1px solid #1a3a1a;">⬡</span>
-    <button class="cbtn" onclick="qCmd('attack')">⚔ ATTACK</button>
-    <button class="cbtn" onclick="qCmd('charge')">🏃 CHARGE</button>
-    <button class="cbtn" onclick="qCmd('flank')">↩ FLANK</button>
-    <button class="cbtn" onclick="qCmd('retreat')">⬅ RETREAT</button>
-    <button class="cbtn" onclick="qCmd('hold')">✋ HOLD</button>
-    <button class="cbtn" onclick="qCmd('follow')">👥 FOLLOW</button>
-    <button class="cbtn" onclick="qCmd('spread out')">↔ SPREAD</button>
-    <button class="cbtn" onclick="qCmd('hide')">🛡 HIDE</button>
-    <button class="cbtn" onclick="qCmd('surround')">⭕ SURROUND</button>
-    <button class="cbtn" onclick="qCmd('defend')">🔰 DEFEND</button>
-    <button class="cbtn" onclick="qCmd('patrol')">🕵 PATROL</button>
-    <span style="width:1px;height:24px;background:#1a3a1a;flex-shrink:0;margin:0 2px;display:inline-block;"></span>
-    <button class="cbtn cbtn-r" onclick="qCmd('kill the sniper')">🎯 SNIPER</button>
-    <button class="cbtn cbtn-r" onclick="qCmd('kill the heavy')">💢 HEAVY</button>
-    <button class="cbtn cbtn-r" onclick="qCmd('everyone attack the boss')">⚠ BOSS</button>
-    <span style="width:1px;height:24px;background:#1a3a1a;flex-shrink:0;margin:0 2px;display:inline-block;"></span>
-    <button class="cbtn cbtn-b" onclick="qCmd('rex attack')">REX⚔</button>
-    <button class="cbtn cbtn-b" onclick="qCmd('rex hide')">REX🛡</button>
-    <button class="cbtn cbtn-b" onclick="qCmd('rex attack the boss')">REX→BOSS</button>
-    <button class="cbtn" onclick="qCmd('zara heal me')">ZARA✚</button>
-    <button class="cbtn" onclick="qCmd('zara attack')">ZARA⚔</button>
-    <button class="cbtn cbtn-y" onclick="qCmd('bolt charge')">BOLT⚡</button>
-    <button class="cbtn cbtn-y" onclick="qCmd('bolt kill the sniper')">BOLT→SNP</button>
-    <button class="cbtn cbtn-o" onclick="qCmd('nova heal')">NOVA✚</button>
-    <button class="cbtn cbtn-o" onclick="qCmd('nova bomb them')">NOVA🔥</button>
-    <button class="cbtn cbtn-o" onclick="qCmd('nova attack')">NOVA⚔</button>
-    <span style="width:1px;height:24px;background:#1a3a1a;flex-shrink:0;margin:0 2px;display:inline-block;"></span>
-    <button class="cbtn cbtn-r" onclick="if(GS&&GS.running)activateBerserk();">🔴 BERSERK</button>
-    <button class="cbtn cbtn-r" onclick="if(GS&&GS.running)activateRage();">⚡ RAGE</button>
-    <button class="cbtn cbtn-y" onclick="if(GS&&GS.running)activateCombatMode();">👊 COMBAT</button>
-    <button class="cbtn cbtn-b" onclick="if(GS&&GS.running)toggleKnifeMode();">🔪 KNIFE</button>
-    <button class="cbtn cbtn-b" onclick="if(GS&&GS.running)toggleBladeMode();">⚔ BLADE</button>
-    <button class="cbtn cbtn-p" onclick="if(GS&&GS.running)throwSleepBomb();">💤 SLEEP</button>
-    <button class="cbtn cbtn-p" onclick="if(GS&&GS.running)activatePower();">✨ POWER</button>
-    <button class="cbtn cbtn-p" onclick="qCmd('merge')">⚡ MERGE</button>
-    <button class="cbtn cbtn-p" onclick="qCmd('release')">🔓 RELEASE</button>
-    <span style="width:1px;height:24px;background:#1a3a1a;flex-shrink:0;margin:0 2px;display:inline-block;"></span>
-    <button class="cbtn" onclick="qCmd('go to base')">🏠 BASE</button>
-    <button class="cbtn" onclick="qCmd('protect me')">🛡 PROTECT</button>
-    <button class="cbtn cbtn-y" onclick="if(GS&&GS.running)activateSquadSuper(0);">REX★</button>
-    <button class="cbtn cbtn-y" onclick="if(GS&&GS.running)activateSquadSuper(1);">ZARA★</button>
-    <button class="cbtn cbtn-y" onclick="if(GS&&GS.running)activateSquadSuper(2);">BOLT★</button>
-    <button class="cbtn cbtn-y" onclick="if(GS&&GS.running)activateSquadSuper(3);">NOVA★</button>
-    <span style="width:40px;flex-shrink:0;"></span>
+    <div class="clbl" style="width:100%;margin:0 0 2px;">— SQUAD ORDERS —</div>
+    <button class="cbtn" onclick="qCmd('attack');toggleCmdPanel()">⚔ ATTACK ALL</button>
+    <button class="cbtn" onclick="qCmd('charge');toggleCmdPanel()">🏃 CHARGE</button>
+    <button class="cbtn" onclick="qCmd('flank');toggleCmdPanel()">↩ FLANK</button>
+    <button class="cbtn" onclick="qCmd('surround');toggleCmdPanel()">⭕ SURROUND</button>
+    <button class="cbtn" onclick="qCmd('retreat');toggleCmdPanel()">⬅ RETREAT</button>
+    <button class="cbtn" onclick="qCmd('hold');toggleCmdPanel()">✋ HOLD</button>
+    <button class="cbtn" onclick="qCmd('follow');toggleCmdPanel()">👥 FOLLOW ME</button>
+    <button class="cbtn" onclick="qCmd('spread out');toggleCmdPanel()">↔ SPREAD</button>
+    <button class="cbtn" onclick="qCmd('hide');toggleCmdPanel()">🛡 HIDE</button>
+    <button class="cbtn" onclick="qCmd('defend');toggleCmdPanel()">🔰 DEFEND</button>
+    <button class="cbtn" onclick="qCmd('protect me');toggleCmdPanel()">🛡 PROTECT ME</button>
+    <button class="cbtn" onclick="qCmd('go to base');toggleCmdPanel()">🏠 BASE</button>
+    <div class="clbl" style="width:100%;margin:4px 0 2px;">— TARGET ORDERS —</div>
+    <button class="cbtn cbtn-r" onclick="qCmd('kill the sniper');toggleCmdPanel()">🎯 KILL SNIPER</button>
+    <button class="cbtn cbtn-r" onclick="qCmd('kill the heavy');toggleCmdPanel()">💢 KILL HEAVY</button>
+    <button class="cbtn cbtn-r" onclick="qCmd('everyone attack the boss');toggleCmdPanel()">⚠ ALL → BOSS</button>
+    <button class="cbtn cbtn-r" onclick="qCmd('hunt all');toggleCmdPanel()">🔍 HUNT ALL</button>
+    <div class="clbl" style="width:100%;margin:4px 0 2px;">— PLAYER POWERS —</div>
+    <button class="cbtn cbtn-p" onclick="activatePower();toggleCmdPanel()">🥷 SHADOW</button>
+    <button class="cbtn cbtn-r" onclick="activateBerserk();toggleCmdPanel()">🔴 BERSERK</button>
+    <button class="cbtn cbtn-r" onclick="activateRage();toggleCmdPanel()">⚡ RAGE</button>
+    <button class="cbtn cbtn-y" onclick="activateCombatMode();toggleCmdPanel()">👊 COMBAT</button>
+    <button class="cbtn cbtn-b" onclick="toggleKnifeMode();toggleCmdPanel()">🔪 KNIFE</button>
+    <button class="cbtn cbtn-b" onclick="toggleBladeMode();toggleCmdPanel()">⚔ BLADE</button>
+    <button class="cbtn cbtn-p" onclick="throwSleepBomb();toggleCmdPanel()">💤 SLEEP BOMB</button>
+    <div class="clbl" style="width:100%;margin:4px 0 2px;">— SQUAD SUPERS —</div>
+    <button class="cbtn cbtn-b" onclick="activateSquadSuper(0);toggleCmdPanel()">REX ★ BASH</button>
+    <button class="cbtn" onclick="activateSquadSuper(1);toggleCmdPanel()">ZARA ★ HEAL</button>
+    <button class="cbtn cbtn-y" onclick="activateSquadSuper(2);toggleCmdPanel()">BOLT ★ DASH</button>
+    <button class="cbtn cbtn-o" onclick="activateSquadSuper(3);toggleCmdPanel()">NOVA ★ NAPALM</button>
+    <div class="clbl" style="width:100%;margin:4px 0 2px;">— MERGE —</div>
+    <button class="cbtn cbtn-p" onclick="doSquadMerge();toggleCmdPanel()">⚡ MERGE SQUAD</button>
+    <button class="cbtn cbtn-p" onclick="releaseSquad();toggleCmdPanel()">🔓 RELEASE</button>
   </div>
 </div>
 
@@ -1312,20 +1471,37 @@ let mpSyncT=0,mpReadT=0,mpLobbyInt=null;
 async function mpWrite(){
   if(!myPid||!isOnline)return;
   try{
-    await window.storage.set('sqfv9_'+myPid,JSON.stringify({
-      x:GS&&GS.running?Math.round(P.x):0,y:GS&&GS.running?Math.round(P.y):0,
+    const payload={
+      x:GS&&GS.running?Math.round(P.x):0,
+      y:GS&&GS.running?Math.round(P.y):0,
       angle:GS&&GS.running?+(P.angle||0).toFixed(2):0,
       name:myPlayerName,color:myPlayerColor,
       score:GS?GS.score||0:0,
       kills:pvpKills||0,
+      hp:GS&&GS.running?Math.round(P.hp):0,
+      maxHp:GS&&GS.running?Math.round(P.maxHp||1):1,
       wave:GS?GS.wave||1:0,round:GS?GS.round||1:0,stage:GS?GS.stage||1:0,
-      alive:GS&&GS.running?!P.dead:false,hp:GS&&GS.running?Math.round(P.hp):0,
-      room:roomId||'open',crouching:GS&&GS.running?!!(P.crouching):false,
+      alive:GS&&GS.running?!P.dead:false,
+      dead:GS&&GS.running?!!P.dead:false,
+      stageLives:stageLives||0,
+      room:roomId||'open',
+      crouching:GS&&GS.running?!!(P.crouching):false,
       stepPhase:GS&&GS.running?+(P.stepPhase||0).toFixed(2):0,
       isMoving:GS&&GS.running?!!(P.isMoving):false,
-      ts:Date.now(),inLobby:!GS||!GS.running,
+      bossAlive:GS?!!GS.bossAlive:false,
+      ts:Date.now(),
+      inLobby:!GS||!GS.running,
       country:_playerIdentity?.country||'Unknown',
-    }),true);
+      // Event flags (cleared after next write)
+      evtDied:!!P._mpDiedFlag,
+      evtRespawned:!!P._mpRespawnedFlag,
+      evtKilled:P._mpLastKillMsg||'',
+    };
+    // Clear one-shot event flags
+    if(P._mpDiedFlag)P._mpDiedFlag=false;
+    if(P._mpRespawnedFlag)P._mpRespawnedFlag=false;
+    if(P._mpLastKillMsg)P._mpLastKillMsg='';
+    await window.storage.set('sqfv9_'+myPid,JSON.stringify(payload),true);
   }catch(e){}
 }
 
@@ -1334,10 +1510,27 @@ async function mpRead(){
   try{
     const kk=await window.storage.list('sqfv9_',true);
     const fresh={};const now=Date.now();
-    if(kk&&kk.keys){for(const k of kk.keys){if(k.includes(myPid))continue;try{const r=await window.storage.get(k,true);if(r){const op=JSON.parse(r.value);if(now-op.ts<12000)fresh[k]=op;}}catch{}}}
-    onlinePlayers=fresh;updateMPSidePanel();updateMPHUD();
-    if(!GS||!GS.running)updateLobbyPlayers();
-  }catch(e){}
+    if(kk&&kk.keys){
+      for(const k of kk.keys){
+        if(k.includes(myPid))continue;
+        try{
+          const r=await window.storage.get(k,true);
+          if(r){
+            const op=JSON.parse(r.value);
+            if(now-op.ts<35000){
+              fresh[k]=op;
+              if(op.evtDied)addKillFeed(`💀 ${op.name} was eliminated!`,'mp');
+              if(op.evtRespawned)addKillFeed(`⚡ ${op.name} respawned!`,'h');
+              if(op.evtKilled)addKillFeed(`☠ ${op.name}: ${op.evtKilled}`,'mp');
+            }
+          }
+        }catch{}
+      }
+    }
+    onlinePlayers=fresh;
+    updateMPSidePanel();updateMPHUD();
+    if(!GS||!GS.running){updateLobbyPlayers();updateLoginOnlineBadge();}
+  }catch(e){console.warn('mpRead error',e);}
 }
 
 async function mpCleanup(){
@@ -1346,7 +1539,60 @@ async function mpCleanup(){
   try{await window.storage.delete('sqfv9_'+myPid,true);}catch(e){}
   isOnline=false;myPid=null;onlinePlayers={};
 }
+// ── Live online badge on login screen ────────────────
+async function updateLoginOnlineBadge(){
+  const countEl=document.getElementById('onlineNowCount');
+  const listEl=document.getElementById('onlineNowList');
+  if(!countEl&&!listEl)return;
+  try{
+    const kk=await window.storage.list('sqfv9_',true);
+    const now=Date.now();const found=[];
+    if(kk&&kk.keys){
+      for(const k of kk.keys){
+        try{
+          const r=await window.storage.get(k,true);
+          if(r){
+            const p=JSON.parse(r.value);
+            if(now-p.ts<25000)found.push(p);
+          }
+        }catch{}
+      }
+    }
+    if(countEl){
+      if(found.length===0)countEl.textContent='No players online right now';
+      else if(found.length===1)countEl.textContent=`1 soldier online`;
+      else countEl.textContent=`${found.length} soldiers online now!`;
+    }
+    if(listEl){
+      if(found.length===0){
+        listEl.innerHTML='<div style="font-size:8px;color:#2a2a2a;text-align:center;padding:4px;font-family:monospace;">Be the first to play! Share the link.</div>';
+      }else{
+        listEl.innerHTML=found.slice(0,5).map(p=>{
+          const isActive=!p.inLobby;
+          return`<div style="display:flex;align-items:center;gap:6px;padding:3px 8px;background:rgba(255,255,255,0.02);border-radius:4px;">
+            <div style="width:7px;height:7px;border-radius:50%;background:${p.color||'#39ff8a'};box-shadow:0 0 5px ${p.color||'#39ff8a'};"></div>
+            <span style="font-size:9px;color:${p.color||'#aaa'};font-family:monospace;flex:1;">${(p.name||'?').slice(0,14)}</span>
+            <span style="font-size:8px;color:#333;font-family:monospace;">${isActive?'▶ IN GAME':'⏳ LOBBY'}</span>
+            <span style="font-size:8px;color:#555;">R${p.round||1}·S${p.stage||1}</span>
+          </div>`;
+        }).join('');
+        if(found.length>5){
+          listEl.innerHTML+=`<div style="font-size:8px;color:#2a4a2a;text-align:center;padding:2px;font-family:monospace;">+${found.length-5} more playing...</div>`;
+        }
+      }
+    }
+  }catch(e){
+    if(countEl)countEl.textContent='Network check failed';
+  }
+}
 
+// Poll login badge every 8 seconds
+setInterval(()=>{
+  if(document.getElementById('loginScreen')&&
+     document.getElementById('loginScreen').style.display!=='none'){
+    updateLoginOnlineBadge();
+  }
+},8000);
 async function goOnline(name,color,room){
   isOnline=true;myPlayerName=name;myPlayerColor=color;roomId=room||'open';
   myPid='sqfv9p_'+Date.now()+'_'+Math.random().toString(36).slice(2,5);
@@ -1356,19 +1602,19 @@ async function goOnline(name,color,room){
   await mpWrite();
   await mpRead();
   if(mpLobbyInt)clearInterval(mpLobbyInt);
-  mpLobbyInt=setInterval(async()=>{
+ mpLobbyInt=setInterval(async()=>{
     await mpWrite();
     await mpRead();
     updateMPSidePanel();
     updateMPHUD();
     if(!GS||!GS.running){
       updateLobbyPlayers();
-      const online=Object.values(onlinePlayers).filter(p=>p.room===roomId&&Date.now()-p.ts<15000);
+      const online=Object.values(onlinePlayers).filter(p=>p.room===roomId&&Date.now()-p.ts<30000);
       const el=document.getElementById('mpStatus');
       el.textContent=`${online.length+1} soldier(s) · ROOM: ${roomId}`;
       el.style.color='#2a6a2a';
     }
-  },3000); // 3 seconds between syncs — stays under JSONBin limits
+  },2000); // 2s sync — faster presence updates between syncs — stays under JSONBin limits
   aiSay('Online! Syncing every 3s. Share your room code!');
 }
 
@@ -1383,12 +1629,23 @@ function updateMPHUD(){
   const now=Date.now();let count=0;
   for(const k in onlinePlayers){
     const mp=onlinePlayers[k];
-    if(now-mp.ts<14000){
+    if(now-mp.ts<35000){
       count++;
-      const alive=mp.alive!==false;
-      el.innerHTML+=`<div class="mpEntry" style="border-left-color:${mp.color||'#888'};opacity:${alive?1:0.5}">
-        <span style="color:${mp.color||'#888'}">${alive?'●':'✝'} ${(mp.name||'?').slice(0,12)}</span> ${mp.score||0}pts
-        ${mp.country?`<span style="color:#444;font-size:8px"> ${mp.country.split(' ')[1]||''}</span>`:''}
+      const alive=mp.alive!==false&&!mp.dead;
+      const hpPct=mp.maxHp>0?Math.max(0,Math.min(100,(mp.hp/mp.maxHp)*100)):0;
+      const hpCol=hpPct>60?'#39ff8a':hpPct>30?'#ffd700':'#ff4444';
+      const timeSince=Math.floor((now-mp.ts)/1000);
+      const freshness=timeSince<5?'●':timeSince<15?'◉':'○'; // shows connection quality
+      el.innerHTML+=`<div class="mpEntry" style="border-left-color:${mp.color||'#888'};opacity:${alive?1:0.55};margin-bottom:3px;">
+        <div style="display:flex;align-items:center;gap:4px;">
+          <span style="color:${mp.color||'#888'};font-size:10px;">${alive?freshness:'✝'} ${(mp.name||'?').slice(0,11)}</span>
+          <span style="color:#ffd700;font-size:9px;margin-left:auto;">${(mp.score||0).toLocaleString()}</span>
+          <span style="color:#888;font-size:8px;">☠${mp.kills||0}</span>
+        </div>
+        ${alive?`<div style="width:100%;height:3px;background:#1a1a1a;border-radius:2px;margin-top:2px;">
+          <div style="width:${hpPct}%;height:100%;background:${hpCol};border-radius:2px;"></div>
+        </div>`:'<div style="font-size:8px;color:#ff4444;text-align:center;">💀 ELIMINATED — ${mp.stageLives||0} lives left</div>'}
+        <div style="font-size:7px;color:#444;margin-top:1px;">R${mp.round||1}·S${mp.stage||1}·W${mp.wave||1} ${mp.country?mp.country.split(' ')[1]||'':''}</div>
       </div>`;
     }
   }
@@ -1479,8 +1736,8 @@ let covers=[],barrels=[],fireBombs=[],shockwaves=[];
 function genCovers(){
   covers=[];
   const stg=GS?GS.stage:1, rnd=GS?GS.round:1;
-  const layoutSeed=(stg-1)*3+(rnd-1); // 0..8 unique layouts
-
+const waveNum=GS?GS.wave||1:1;
+  const layoutSeed=((stg-1)*3+(rnd-1)+(waveNum-1))%9; // changes every wave!
   // Different wall layouts per stage+round
   const layouts=[
     // Layout 0: R1S1 — open corridors
@@ -1613,13 +1870,12 @@ const ROUND_MULT={
   2:{1:{intel:1.2,speed:1.2,hp:1.4,dmg:1.3,bossHp:1.3},2:{intel:1.8,speed:1.5,hp:1.9,dmg:1.8,bossHp:2.0},3:{intel:2.5,speed:1.9,hp:2.6,dmg:2.4,bossHp:3.0}},
   3:{1:{intel:1.5,speed:1.4,hp:1.8,dmg:1.7,bossHp:1.6},2:{intel:2.2,speed:1.8,hp:2.5,dmg:2.3,bossHp:2.4},3:{intel:3.0,speed:2.4,hp:3.4,dmg:3.1,bossHp:3.8}},
 };
-const PLAYER_STAGE_BONUS={hpPerStage:65,shieldPerStage:40,speedPerStage:0.09,dmgPerStage:18,squadHpPerStage:85,squadDmgPerStage:0.7};
-const WEAPONS=[
-{gun:'RIFLE',  ammo:999,reserve:9999,rate:1,dmg:55,pwr:'SHOCKWAVE', shots:1},
-  {gun:'ASSAULT',ammo:999,reserve:9999,rate:1,dmg:85,pwr:'BLAST WAVE',shots:2},
-  {gun:'PLASMA', ammo:999,reserve:9999,rate:1,dmg:130,pwr:'APOCALYPSE',shots:3},
+const PLAYER_STAGE_BONUS={hpPerStage:120,shieldPerStage:80,speedPerStage:0.12,dmgPerStage:35,squadHpPerStage:160,squadDmgPerStage:1.4};const WEAPONS=[
+{gun:'RIFLE',  ammo:30,reserve:300,rate:1,dmg:55,pwr:'SHADOW',shots:1},
+  {gun:'ASSAULT',ammo:25,reserve:250,rate:1,dmg:85,pwr:'SHADOW',shots:2},
+  {gun:'PLASMA', ammo:15,reserve:150,rate:1,dmg:130,pwr:'SHADOW',shots:3},
 ];
-const DIFF={easy:{mul:0.6,pHp:520,pShield:380,sqHp:320},medium:{mul:0.9,pHp:420,pShield:280,sqHp:250},hard:{mul:1.4,pHp:320,pShield:200,sqHp:180}};let DC=DIFF.medium;
+const DIFF={easy:{mul:0.5,pHp:1200,pShield:800,sqHp:820},medium:{mul:0.75,pHp:950,pShield:620,sqHp:680},hard:{mul:1.1,pHp:720,pShield:460,sqHp:520}};let DC=DIFF.medium;
 const BASE_POSITIONS=[{x:WORLD_W*.12,y:WORLD_H*.5},{x:WORLD_W*.88,y:WORLD_H*.5},{x:WORLD_W*.5,y:WORLD_H*.12},{x:WORLD_W*.5,y:WORLD_H*.88}];
 const PLAYER_BASE={x:WORLD_W*.5,y:WORLD_H*.5};
 
@@ -1636,8 +1892,13 @@ function w2s(wx,wy){return{x:wx-camX+shakeX,y:wy-camY+shakeY};}
 function shake(mag,dur){shakeMag=Math.max(shakeMag,mag);shakeDur=Math.max(shakeDur,dur);}
 function rrect(x,y,w,h,r){r=Math.min(r,w/2,h/2);ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.arcTo(x+w,y,x+w,y+r,r);ctx.lineTo(x+w,y+h-r);ctx.arcTo(x+w,y+h,x+w-r,y+h,r);ctx.lineTo(x+r,y+h);ctx.arcTo(x,y+h,x,y+h-r,r);ctx.lineTo(x,y+r);ctx.arcTo(x,y,x+r,y,r);ctx.closePath();}
 function hasLOS(ax,ay,bx,by){const dx=(bx-ax)/12,dy=(by-ay)/12;for(let i=1;i<12;i++){if(inCov(ax+dx*i,ay+dy*i,5))return false;}return true;}
-function canSee(e,target,range=400){if(!target||(target===P&&P.dead))return false;if(dist(e,target)>range)return false;return hasLOS(e.x,e.y,target.x,target.y);}
-function nearestEnemy(x,y){let b=null,bd=99999;for(const e of enemies){if(!e.dead&&!e.sleeping){const d=(x-e.x)**2+(y-e.y)**2;if(d<bd){bd=d;b=e;}}}if(boss&&!boss.dead){const d=(x-boss.x)**2+(y-boss.y)**2;if(d<bd)b=boss;}return b;}
+function canSee(e,target,range=400){
+  if(!target||(target===P&&P.dead))return false;
+  // Invisibility check — enemies cannot see player while shadow active
+  if(target===P&&_invisActive)return false;
+  if(dist(e,target)>range)return false;
+  return hasLOS(e.x,e.y,target.x,target.y);
+}function nearestEnemy(x,y){let b=null,bd=99999;for(const e of enemies){if(!e.dead&&!e.sleeping){const d=(x-e.x)**2+(y-e.y)**2;if(d<bd){bd=d;b=e;}}}if(boss&&!boss.dead){const d=(x-boss.x)**2+(y-boss.y)**2;if(d<bd)b=boss;}return b;}
 function nearestTarget(x,y){let b=null,bd=99999;const ts=[P,...SQ.filter(m=>m.alive)];for(const t of ts){if(t===P&&P.dead)continue;const d=(t.x-x)**2+(t.y-y)**2;if(d<bd){bd=d;b=t;}}return b;}
 function nearCoverPos(x,y,range=360){let best=null,bd=Infinity;for(const c of covers){const pts=[{x:c.x-28,y:c.y+c.h/2},{x:c.x+c.w+28,y:c.y+c.h/2},{x:c.x+c.w/2,y:c.y-28},{x:c.x+c.w/2,y:c.y+c.h+28}];for(const p of pts){const d=dist({x,y},p);if(d<bd&&d<range){bd=d;best=p;}}}return best;}
 
@@ -2118,9 +2379,59 @@ if(e.hp<e.maxHp*.18&&!e.retreating&&!e.berserkMode){e.retreating=true;e.aiState=
     if(!stillDown)e.guardingDownedAt=null;
     e.x=clamp(e.x,16,WORLD_W-16);e.y=clamp(e.y,16,WORLD_H-16);return;
   }
+// ── ENEMY MELEE: close range punch/slam ──────────────
+  if(!e.dead&&!e.sleeping&&hasTgt&&d<42){
+    if(!e._meleeCD||e._meleeCD<=0){
+      e._meleeCD=e.heavy?35:e.type==='gorilla'||e.type==='brute'?28:e.isBerserker?18:45;
+      const mDmg=e.dmg*(e.berserkMode?1.8:1.0)*(e.heavy?1.4:1.0);
+      if(target===P&&!P.dead){
+        P.hp-=mDmg;P.flashT=10;updateHealthHUD();
+        shake(12,20);spawnBlood(P.x,P.y,8);
+        addKillFeed(`👊 ${e.type.toUpperCase()} MELEE HIT! -${Math.floor(mDmg)}`,'e');
+        if(P.hp<=0)triggerPlayerDeath();
+      } else if(target&&target!==P){
+        target.hp-=mDmg*0.7;target.flashT=8;
+        if(target.hp<=0&&target.alive)killSquadMember(target);
+      }
+      burst(e.x,e.y,e.col,14);sndMelee();
+      // Knockback
+      if(target&&!P.dead){
+        const kba=Math.atan2(target.y-e.y,target.x-e.x);
+        if(target===P){P.x=clamp(P.x+Math.cos(kba)*55,18,WORLD_W-18);P.y=clamp(P.y+Math.sin(kba)*55,18,WORLD_H-18);}
+      }
+    }
+  }
+  if(e._meleeCD>0)e._meleeCD--;
+
+  // ── ENEMY COMBAT RUSH: charge + punch when player low or cornered ──
+  if(!e.dead&&!e.sleeping&&hasTgt&&!e._combatRush){
+    const playerLow=target===P&&P.hp<P.maxHp*0.3;
+    const isClose=d<120;
+    const isTough=e.type==='gorilla'||e.type==='brute'||e.type==='ogre'||e.type==='swordsman'||e.isBerserker;
+    if((playerLow&&isClose)||(isTough&&d<160&&Math.random()<0.008)){
+      e._combatRush=true;e._combatRushT=0;
+      burst(e.x,e.y,e.col,20);
+      addKillFeed(`⚡ ${e.type.toUpperCase()} CHARGING!`,'e');
+    }
+  }
+  if(e._combatRush){
+    e._combatRushT=(e._combatRushT||0)+1;
+    if(hasTgt)mv(e,target.x,target.y,e.speed*2.2);
+    e.angle=ang;
+    if(e._combatRushT>90||d<30){e._combatRush=false;e._combatRushT=0;}
+  }
+
   switch(e.aiState){
-    case'berserk':e.angle=ang;if(hasTgt)mv(e,target.x,target.y,e.speed);e.shootT--;if(e.shootT<=0&&d<700){e.shootT=7+Math.floor(Math.random()*9);eShoot(e,target);}break;
-    case'approach':{e.angle=ang;if(!hasTgt){e.aiState='investigate';break;}
+case'berserk':{
+      const bTgt=(_invisActive&&target===P)?null:target;
+      e.angle=ang;
+      if(bTgt)mv(e,bTgt.x,bTgt.y,e.speed);
+      else{e.x+=Math.cos(e.angle)*e.speed*0.5;e.y+=Math.sin(e.angle)*e.speed*0.5;}
+      e.shootT--;
+      if(e.shootT<=0&&bTgt&&d<700){e.shootT=7+Math.floor(Math.random()*9);eShoot(e,bTgt);}
+      break;} 
+      
+      case'approach':{e.angle=ang;if(!hasTgt||(_invisActive&&target===P)){e.aiState='investigate';break;}
       const visible=canSee(e,target,e.sniper?720:e.heavy?380:480);
  if(visible){
         // Smarter approach — seek cover frequently
@@ -3428,6 +3739,152 @@ function updateSquadMember(m){
   if(!m.alive){if(m.deathT<200)m.deathT++;return;}
   if(m.flashT>0)m.flashT--;if(m.lastHitT>0)m.lastHitT--;if(m.suppressedT>0)m.suppressedT--;
   m.aiT++;if(m.superCD>0)m.superCD--;m.lastSpeakT++;
+
+  // ══════════════════════════════════════════════
+  // AUTONOMOUS SQUAD BRAIN — runs every frame
+  // They act on their own, no commands needed
+  // ══════════════════════════════════════════════
+  if(GS&&GS.running&&m.alive&&frameN%18===SQ.indexOf(m)*4){
+    const ne=nearestEnemy(m.x,m.y);
+    const neDist=ne?dist(m,ne):9999;
+    const bossNear=boss&&!boss.dead&&dist(m,boss)<600;
+    const playerLow=!P.dead&&P.hp<P.maxHp*0.38;
+    const playerVeryLow=!P.dead&&P.hp<P.maxHp*0.18;
+    const mLow=m.hp<m.maxHp*0.25;
+    const anySquadDown=SQ.find(s=>!s.alive&&s.deathT<200);
+    const enemyClose=ne&&!ne.dead&&neDist<180;
+    const enemyVeryClose=ne&&!ne.dead&&neDist<60;
+    const noEnemies=enemies.filter(e=>!e.dead).length===0&&(!boss||boss.dead);
+
+    // ── 1. COMBAT MODE: activate when enemy is very close ──
+    if(enemyVeryClose&&!m._autoCombat&&!m._autoCombatCD){
+      m._autoCombat=true;
+      m._autoCombatTimer=220;
+      m._autoCombatCD=400;
+      burst(m.x,m.y,'#ffaa00',18);
+      if(m.aiState!=='attack_order')m.aiState='attack_order';
+    }
+    if(m._autoCombat){
+      m._autoCombatTimer--;
+      // Punch nearest enemy automatically
+      if(ne&&!ne.dead&&neDist<65&&frameN%22===0){
+        const mDmg=(55+GS.stage*12)*m.dmgBonus*(berserkActive?1.8:1);
+        ne.hp-=mDmg;ne.flashT=10;
+        spawnBlood(ne.x,ne.y,6);
+        burst(ne.x,ne.y,'#ffaa00',10);
+        sndMelee();
+        if(ne.hp<=0)killEnemy(ne);
+      }
+      if(m._autoCombatTimer<=0){m._autoCombat=false;m._autoCombatCD=400;}
+    }
+    if(m._autoCombatCD>0)m._autoCombatCD--;
+
+  // ── 2. BOSS: all squad attacks boss automatically ──
+    if(bossNear&&!boss.dead&&m.aiState==='follow'&&!m._autoCombat){
+      m.aiState='kill_order';
+      m.killTarget=boss;
+      if(m.lastSpeakT>300){m.lastSpeakT=0;squadSpeak(m,'attack',m.helmetCol);}
+    }
+
+    // ── 2b. PLAYER UNDER ATTACK: squad immediately returns fire ──
+    if(!P.dead&&P.flashT>4&&!m._autoCombat){
+      const attacker=enemies.find(e=>!e.dead&&!e.sleeping&&dist(e,P)<360&&dist(m,e)<600);
+      if(attacker){
+        m.aiState='kill_order';
+        m.killTarget=attacker;
+        m.shootTimer=0; // fire immediately, no delay
+        if(m.lastSpeakT>180){m.lastSpeakT=0;squadSpeak(m,'attack',m.helmetCol);}
+      }
+    }
+
+    // ── 3. HEALER (ZARA): heal player and squad autonomously ──
+    if(m.name==='ZARA'&&m.alive){
+      if(playerVeryLow&&!P.dead&&dist(m,P)<280&&m._zaraHealCD<=0){
+        P.hp=Math.min(P.maxHp,P.hp+P.maxHp*0.45);
+        updateHealthHUD();
+        burst(m.x,m.y,'#39ff8a',28);sndRevive();
+        addKillFeed('✚ ZARA: Emergency heal on Commander!','h');
+        m._zaraHealCD=420;
+      }
+      if(playerLow&&!P.dead&&dist(m,P)<320&&m._zaraHealCD<=0){
+        P.hp=Math.min(P.maxHp,P.hp+P.maxHp*0.25);
+        updateHealthHUD();
+        burst(m.x,m.y,'#39ff8a',18);
+        m._zaraHealCD=300;
+        addKillFeed('✚ ZARA: Healing Commander!','h');
+      }
+      // Heal low squad members
+      const lowMember=SQ.find(s=>s.alive&&s!==m&&s.hp<s.maxHp*0.3&&dist(m,s)<240);
+      if(lowMember&&m._zaraHealCD<=0){
+        lowMember.hp=Math.min(lowMember.maxHp,lowMember.hp+lowMember.maxHp*0.4);
+        burst(m.x,m.y,'#39ff8a',15);
+        m._zaraHealCD=280;
+        addKillFeed(`✚ ZARA healed ${lowMember.name}!`,'h');
+      }
+      if(m._zaraHealCD>0)m._zaraHealCD--;
+    }
+
+    // ── 4. SHIELD (REX): intercept enemies heading for player ──
+    if(m.name==='REX'&&m.alive&&!P.dead){
+      const enemyTargetingPlayer=enemies.find(e=>!e.dead&&!e.sleeping&&
+        dist(e,P)<200&&dist(m,e)<350);
+      if(enemyTargetingPlayer&&m.aiState==='follow'){
+        m.aiState='kill_order';
+        m.killTarget=enemyTargetingPlayer;
+        if(m.lastSpeakT>240){m.lastSpeakT=0;squadSpeak(m,'attack','#4488ff');}
+      }
+      // Body-block: move between player and nearest threat
+      if(enemyClose&&dist(m,P)>120){
+        const blockX=P.x+(ne.x-P.x)*0.35;
+        const blockY=P.y+(ne.y-P.y)*0.35;
+        mv(m,blockX,blockY,m.speed*1.1);
+      }
+    }
+
+    // ── 5. RAPID (BOLT): flank and chase enemies fast ──
+    if(m.name==='BOLT'&&m.alive&&ne&&!ne.dead&&neDist<500&&m.aiState==='follow'){
+      m.aiState='flank_order';
+      m.flankAngle=(Math.random()-.5)*Math.PI;
+    }
+
+    // ── 6. REVIVE downed teammates autonomously (any member) ──
+    if(anySquadDown&&!enemyClose&&m.aiState!=='kill_order'){
+      const downed=anySquadDown;
+      if(dist(m,downed)<90&&m._reviveCD<=0){
+        downed.alive=true;
+        downed.hp=Math.floor(downed.maxHp*0.38);
+        downed.deathT=0;downed.aiState='follow';downed.sosPinged=false;
+        burst(m.x,m.y,'#39ff8a',25);sndRevive();shake(4,8);
+        addKillFeed(`✚ ${m.name} revived ${downed.name}!`,'h');
+        m._reviveCD=600;
+        updateSquadHUD();
+      } else if(dist(m,downed)>=90&&!enemyClose&&m._reviveCD<=0){
+        mv(m,downed.x,downed.y,m.speed*1.1);
+      }
+    }
+    if(m._reviveCD>0)m._reviveCD--;
+
+    // ── 7. GO TO BASE when no enemies and game is quiet ──
+    if(noEnemies&&!GS.betweenWaves===false&&m.aiState!=='base_order'){
+      if(dist(m,BASE_POSITIONS[SQ.indexOf(m)]||PLAYER_BASE)>150){
+        m.aiState='base_order';
+        m.basePos=BASE_POSITIONS[SQ.indexOf(m)]||PLAYER_BASE;
+      }
+    }
+
+    // ── 8. SELF-DEFENCE: retreat if very low HP ──
+    if(mLow&&enemyClose&&m.aiState!=='seek_cover'&&m.aiState!=='retreat_order'){
+      m.aiState='seek_cover';
+      m.covPos=null;
+      if(m.lastSpeakT>200){m.lastSpeakT=0;squadSpeak(m,'low',m.col);}
+    }
+
+    // ── 9. BERSERK support: join player berserk automatically ──
+    if(berserkActive&&m.aiState==='follow'&&ne&&neDist<500){
+      m.aiState='attack_order';
+      m.berserkMode=true;
+    }
+  }
   const prevX=m.lastX||m.x,prevY=m.lastY||m.y;
   const moved=Math.sqrt((m.x-prevX)**2+(m.y-prevY)**2);
   m.isMoving=moved>0.3;if(m.isMoving)m.stepPhase=(m.stepPhase||0)+0.16;
@@ -3482,8 +3939,7 @@ if(m.role==='BOMBER'){m.fireBombT--;if(m.fireBombT<=0){m.fireBombT=Math.max(150,
   m.crouching=(m.suppressedT>35&&inCov(m.x,m.y,22));
   m.shootTimer--;
   if(m.shootTimer<=0){
-    m.shootTimer=(m.role==='RAPID'?7:(berserkActive?10:17))+(m.crouching?12:0);
-    let te;if(m.killTarget&&!m.killTarget.dead)te=m.killTarget;else{m.killTarget=null;te=nearestEnemy(m.x,m.y);}
+m.shootTimer=(m.role==='RAPID'?5:(berserkActive?6:10))+(m.crouching?5:0);    let te;if(m.killTarget&&!m.killTarget.dead)te=m.killTarget;else{m.killTarget=null;te=nearestEnemy(m.x,m.y);}
     if(te&&!te.dead&&dist(m,te)<480+GS.upgradeLevel*45){if(!m.crouching||(m.peekT>40&&m.peekT<80))squadShoot(m,te);if(m.crouching){m.peekT++;if(m.peekT>=80)m.peekT=0;}}
   }
   if(Math.sqrt((m.x-(m.lastX||m.x))**2+(m.y-(m.lastY||m.y))**2)<.4)m.stuckT++;else m.stuckT=0;
@@ -3610,11 +4066,53 @@ if(m.role==='BOMBER'){m.fireBombT--;if(m.fireBombT<=0){m.fireBombT=Math.max(150,
   m.x=clamp(m.x,18,WORLD_W-18);m.y=clamp(m.y,18,WORLD_H-18);
 }
 
-function squadShoot(m,te){if(!te)return;const dmgMul=berserkActive?2.2:1.0;const a=Math.atan2(te.y-m.y,te.x-m.x)+(Math.random()-.5)*.08;m.angle=a;const spd=13+GS.upgradeLevel*.6,dmg=(28+GS.upgradeLevel*7)*m.dmgBonus*dmgMul;bullets.push({x:m.x+Math.cos(a)*22,y:m.y+Math.sin(a)*22,dx:Math.cos(a)*spd,dy:Math.sin(a)*spd,life:100,dmg,owner:'squad'});if(m.role==='RAPID')setTimeout(()=>{if(m.alive&&te&&!te.dead){const a2=Math.atan2(te.y-m.y,te.x-m.x)+(Math.random()-.5)*.11;bullets.push({x:m.x+Math.cos(a2)*22,y:m.y+Math.sin(a2)*22,dx:Math.cos(a2)*spd,dy:Math.sin(a2)*spd,life:100,dmg:dmg*.65,owner:'squad'});}},65);sndEShoot();}
+function squadShoot(m,te){if(!te)return;const dmgMul=berserkActive?2.8:1.0;const a=Math.atan2(te.y-m.y,te.x-m.x)+(Math.random()-.5)*.08;m.angle=a;const spd=15+GS.upgradeLevel*.8,dmg=(65+GS.upgradeLevel*18)*m.dmgBonus*dmgMul;  bullets.push({x:m.x+Math.cos(a)*22,y:m.y+Math.sin(a)*22,dx:Math.cos(a)*spd,dy:Math.sin(a)*spd,life:100,dmg,owner:'squad'});if(m.role==='RAPID')setTimeout(()=>{if(m.alive&&te&&!te.dead){const a2=Math.atan2(te.y-m.y,te.x-m.x)+(Math.random()-.5)*.11;bullets.push({x:m.x+Math.cos(a2)*22,y:m.y+Math.sin(a2)*22,dx:Math.cos(a2)*spd,dy:Math.sin(a2)*spd,life:100,dmg:dmg*.65,owner:'squad'});}},65);sndEShoot();}
 
 // ── PLAYER SHOOTING ─────────────────────────────────
-function pShoot(){if(P.reloading||P.dead)return;if(P.ammo<=0){P.ammo=P.maxAmmo;return;}P.ammo--;updateAmmoHUD();  const w=curWeapon();const bersMul=berserkActive?2.2:1;const total=w.shots+(P.extraShots||0)+(berserkActive?1:0);for(let i=0;i<total;i++){const crit=Math.random()<(P.critChance||.14)+(berserkActive?.12:0);const a=P.angle+(i-total/2+.5)*(total>1?.1:0)+(Math.random()-.5)*.03;const spd=14+GS.upgradeLevel;const dmg=(P.dmg||w.dmg)*(P.dmgMul||1)*bersMul*(crit?2.2:1);bullets.push({x:P.x+Math.cos(P.angle)*28,y:P.y+Math.sin(P.angle)*28,dx:Math.cos(a)*spd,dy:Math.sin(a)*spd,life:85,dmg,owner:'player',crit});if(crit)sndCrit();}spark(P.x+Math.cos(P.angle)*28,P.y+Math.sin(P.angle)*28,'#ffd700',4);sndShoot();
-}function startReload(){if(P.reserve<=0||P.reloading||P.ammo===P.maxAmmo)return;P.reloading=true;P.reloadProg=0;document.getElementById('rMsg').style.display='block';document.getElementById('reloadBar').style.display='block';sndReload();}
+function pShoot(){
+  if(P.reloading||P.dead)return;
+  if(P.ammo<=0){
+    // Out of ammo — auto-reload if reserve available
+    if(P.reserve>0&&!P.reloading)startReload();
+    return;
+  }P.ammo--;updateAmmoHUD();  const w=curWeapon();const bersMul=berserkActive?2.2:1;const total=w.shots+(P.extraShots||0)+(berserkActive?1:0);for(let i=0;i<total;i++){const crit=Math.random()<(P.critChance||.14)+(berserkActive?.12:0);const a=P.angle+(i-total/2+.5)*(total>1?.1:0)+(Math.random()-.5)*.03;const spd=14+GS.upgradeLevel;const dmg=(P.dmg||w.dmg)*(P.dmgMul||1)*bersMul*(crit?2.2:1);bullets.push({x:P.x+Math.cos(P.angle)*28,y:P.y+Math.sin(P.angle)*28,dx:Math.cos(a)*spd,dy:Math.sin(a)*spd,life:85,dmg,owner:'player',crit});if(crit)sndCrit();}spark(P.x+Math.cos(P.angle)*28,P.y+Math.sin(P.angle)*28,'#ffd700',4);sndShoot();
+}
+function startReload(){
+  if(!P)return;
+  // Force-clear any stuck reload state first
+  if(P.reloading&&P.reloadProg>0.95){
+    // Stuck near completion — just finish it
+    const needed=P.maxAmmo-P.ammo;
+    const taken=Math.min(needed,P.reserve);
+    P.ammo+=taken;P.reserve=Math.max(0,P.reserve-taken);
+    P.reloading=false;P.reloadProg=0;
+    document.getElementById('rMsg').style.display='none';
+    document.getElementById('reloadBar').style.display='none';
+    updateAmmoHUD();
+    addKillFeed(`✓ Reload complete! Mag:${P.ammo} Res:${P.reserve}`,'h');
+    return;
+  }
+  if(P.reloading)return; // genuinely mid-reload
+  if(P.reserve<=0&&P.ammo===0){
+    addKillFeed('🆘 OUT OF ALL AMMO — Emergency knife!','e');
+    if(!knifeMode)toggleKnifeMode();
+    return;
+  }
+  if(P.reserve<=0){
+    addKillFeed(`⚠ No reserve — mag has ${P.ammo} left`,'e');
+    return;
+  }
+  if(P.ammo>=P.maxAmmo){
+    addKillFeed('Mag full!','s');
+    return;
+  }
+  P.reloading=true;
+  P.reloadProg=0;
+  document.getElementById('rMsg').style.display='block';
+  document.getElementById('reloadBar').style.display='block';
+  sndReload();
+  addKillFeed(`↺ RELOADING — Reserve: ${P.reserve}`,'p');
+}
 function pMelee(){if(meleeCD>0||P.dead)return;meleeCD=berserkActive?10:20;P.meleeAnim=16;
 const dmg=(280+GS.upgradeLevel*80+GS.round*55)*(berserkActive?2.2:1);  sndMelee();shake(9,16);let hit=0;enemies.forEach(e=>{if(!e.dead&&dist(P,e)<66){e.hp-=dmg;e.flashT=14;burst(e.x,e.y,'#ff8800',15);hit++;if(e.hp<=0)killEnemy(e);}});
 if(boss&&!boss.dead&&dist(P,boss)<80){boss.hp-=dmg*.7;boss.flashT=14;updateBossHUD();if(boss.hp<=0)killBoss();hit++;}
@@ -4007,8 +4505,57 @@ function toggleFastForward(){
 }
 
 
-function activatePower(){if(powerCD>0||P.dead)return;powerCD=PMAX;const r=190+GS.upgradeLevel*45+GS.round*28,dmg=78+GS.upgradeLevel*36+GS.round*30;let hit=0;for(let rr=0;rr<=Math.floor(GS.upgradeLevel/2);rr++)shockwaves.push({x:P.x,y:P.y,radius:0,maxR:r*(1+rr*.4),delay:rr*9,color:'#cc44ff'});enemies.forEach(e=>{if(!e.dead&&dist(P,e)<r){const a=Math.atan2(e.y-P.y,e.x-P.x);e.x=clamp(e.x+Math.cos(a)*130,18,WORLD_W-18);e.y=clamp(e.y+Math.sin(a)*130,18,WORLD_H-18);e.hp-=dmg;e.flashT=16;if(e.hp<=0)killEnemy(e);hit++;}});
-if(boss&&!boss.dead&&dist(P,boss)<r*1.5){boss.hp-=dmg*.6;boss.flashT=16;updateBossHUD();if(boss.hp<=0)killBoss();hit++;}sndShockwave();shake(18,34);burst(P.x,P.y,'#cc44ff',38);addKillFeed(`⚡ ${curWeapon().pwr}! ${hit} hit!`,'p');showBanner('⚡',curWeapon().pwr,'#cc44ff');}
+let _invisTimer=0,_invisActive=false;
+function activatePower(){
+  if(powerCD>0||P.dead)return;
+  powerCD=PMAX;
+  _invisActive=true;_invisTimer=900; // 15 seconds at 60fps
+  P.dmgMul=(P.dmgMul||1)*2.2; // bonus dmg while invisible
+  burst(P.x,P.y,'#8800ff',45);burst(P.x,P.y,'#000000',30);
+  shake(12,22);sndSleep();
+  addKillFeed('🥷 SHADOW MODE — Invisible for 15s! 2× damage!','b');
+  showBanner('🥷 SHADOW','Enemies cannot see you!','#8800ff');
+  // Make all enemies lose the player
+  enemies.forEach(e=>{e.alertT=0;e.aiState='investigate';e.lastKnownX=e.x;e.lastKnownY=e.y;});
+  if(boss&&!boss.dead){boss.huntState='circle';boss.huntTimer=0;}
+}
+function updateInvisibility(){
+  if(!_invisActive)return;
+  _invisTimer--;
+  const psp=w2s(P.x,P.y);
+  // Draw shadow smoke around player
+  ctx.save();
+  const pulse=0.35+0.25*Math.sin(frameN*.12);
+  ctx.fillStyle=`rgba(80,0,180,${pulse})`;
+  ctx.shadowColor='#8800ff';ctx.shadowBlur=28;
+  ctx.beginPath();ctx.arc(psp.x,psp.y,36+Math.sin(frameN*.1)*8,0,Math.PI*2);ctx.fill();
+  // Timer bar
+  ctx.fillStyle='#1a0033';ctx.fillRect(psp.x-48,psp.y-75,96,6);
+  ctx.fillStyle='#8800ff';ctx.fillRect(psp.x-48,psp.y-75,96*(_invisTimer/900),6);
+  ctx.fillStyle='#cc88ff';ctx.font='7px monospace';ctx.textAlign='center';
+  ctx.fillText('🥷 SHADOW '+Math.ceil(_invisTimer/60)+'s',psp.x,psp.y-78);
+  ctx.restore();ctx.shadowBlur=0;
+  // Enemies keep losing track of player
+  if(frameN%30===0){
+    enemies.forEach(e=>{
+      if(e.aiState==='approach'||e.aiState==='berserk'){
+        e.aiState='investigate';
+        e.alertT=20;
+        e.lastKnownX=e.x+(Math.random()-.5)*400;
+        e.lastKnownY=e.y+(Math.random()-.5)*400;
+      }
+    });
+    if(boss&&!boss.dead){boss.huntState='circle';}
+  }
+  if(_invisTimer<=0){
+    _invisActive=false;
+    P.dmgMul=(P.dmgMul||1)/2.2;
+    burst(P.x,P.y,'#8800ff',30);sndBerserkEnd();
+    addKillFeed('🥷 Shadow faded — back to visible!','s');
+    // Re-alert all enemies
+    enemies.forEach(e=>{e.alertT=300;e.lastKnownX=P.x;e.lastKnownY=P.y;e.aiState='approach';});
+  }
+}
 
 // ── KILLS & COMBO ────────────────────────────────────
 function onKill(){
@@ -4106,8 +4653,11 @@ function killSquadMember(m){m.alive=false;m.deathT=0;burst(m.x,m.y,'#fff',20);sn
 
 // ── RESPAWN SYSTEM ───────────────────────────────────
 function triggerPlayerDeath(){
-  if(P.dead)return;P.dead=true;P.hp=0;burst(P.x,P.y,'#ff4444',40);flashDeath(1);sndPlayerDeath();shake(24,58);updateHealthHUD();
-  stageLives--;updateLivesHUD();saveProgress();
+  if(P.dead)return;P.dead=true;P.hp=0;burst(P.x,P.y,'#ff4444',40);
+  if(isOnline)P._mpDiedFlag=true; // broadcast death to other players
+  flashDeath(1);sndPlayerDeath();shake(24,58);updateHealthHUD();
+stageLives--;updateLivesHUD();saveProgress();
+  if(isOnline)setTimeout(()=>mpWrite(),200); // immediate death broadcast
   setTimeout(()=>{GS.running=false;stopMusic();showDeathScreen();},1800);
 }
 
@@ -4135,6 +4685,7 @@ function showDeathScreen(){
 
 function doRespawn(){
   document.getElementById('deathScreen').style.display='none';
+  if(isOnline)P._mpRespawnedFlag=true; // broadcast respawn to others
   const up=curStageUpgrades();const w=curWeapon();
   P.dead=false;P.hp=up.hp*.5;P.maxHp=up.hp;P.shield=up.shield*.35;P.maxShield=up.shield;
   P.x=PLAYER_BASE.x+(Math.random()-.5)*80;P.y=PLAYER_BASE.y+(Math.random()-.5)*80;
@@ -4185,7 +4736,7 @@ setTimeout(startWave,2200);
 
 // ── BULLETS ─────────────────────────────────────────
 function processBullets(){
-  function proc(arr,isEnemy){const keep=[];for(const b of arr){b.x+=b.dx;b.y+=b.dy;b.life--;if(b.life<=0||b.x<0||b.x>WORLD_W||b.y<0||b.y>WORLD_H)continue;let hit=false;for(const c of covers){if(crRect(b.x,b.y,4,c.x,c.y,c.w,c.h)){spark(b.x,b.y,'#aa8844',2);hit=true;break;}}if(hit)continue;if(!isEnemy){for(const bar of barrels){if(!bar.dead&&dist(b,bar)<18){bar.hp-=b.dmg*.5;bar.flashT=6;if(bar.hp<=0)explodeBarrel(bar);hit=true;break;}}if(hit)continue;}if(isEnemy){if(!P.dead&&dist(b,P)<24){if(P.shield>0){P.shield-=b.dmg*.5;if(P.shield<0)P.shield=0;updateShieldHUD();spark(b.x,b.y,'#4488ff',4);}else{const dmg=b.dmg*(inCov(P.x,P.y)?.27:1)*(berserkActive?.65:1);P.hp-=dmg;P.flashT=6;P.shieldRegen=0;spawnBlood(b.x,b.y,4);flashDeath(.28);updateHealthHUD();sndHit();shake(6,12);if(P.hp<=0)triggerPlayerDeath();}hit=true;}if(!hit)for(const m of SQ){if(!m.alive)continue;if(dist(b,m)<20){if(m.role==='SHIELD'&&m.shieldHp>0){m.shieldHp-=b.dmg*.7;spark(b.x,b.y,'#4488ff',4);}else{m.hp-=b.dmg*(inCov(m.x,m.y)?.22:.72);m.flashT=5;m.lastHitT=100;m.suppressedT=70;spawnBlood(b.x,b.y,3);updateSquadHUD();if(m.hp<=0)killSquadMember(m);}hit=true;break;}}}else{if(!hit)for(const e of enemies){if(!e.dead&&!e.sleeping&&dist(b,e)<(e.heavy?26:18)){e.hp-=b.dmg*(inCov(e.x,e.y)&&!e.berserkMode?.48:1);e.flashT=5;e.suppressedT=80;spawnBlood(b.x,b.y,5);if(b.crit)burst(b.x,b.y,'#ff4444',8);if(e.hp<=0)killEnemy(e);hit=true;break;}}
+  function proc(arr,isEnemy){const keep=[];for(const b of arr){b.x+=b.dx;b.y+=b.dy;b.life--;if(b.life<=0||b.x<0||b.x>WORLD_W||b.y<0||b.y>WORLD_H)continue;let hit=false;for(const c of covers){if(crRect(b.x,b.y,4,c.x,c.y,c.w,c.h)){spark(b.x,b.y,'#aa8844',2);hit=true;break;}}if(hit)continue;if(!isEnemy){for(const bar of barrels){if(!bar.dead&&dist(b,bar)<18){bar.hp-=b.dmg*.5;bar.flashT=6;if(bar.hp<=0)explodeBarrel(bar);hit=true;break;}}if(hit)continue;}if(isEnemy){if(!P.dead&&dist(b,P)<24){if(P.shield>0){P.shield-=b.dmg*.5;if(P.shield<0)P.shield=0;updateShieldHUD();spark(b.x,b.y,'#4488ff',4);}else{const dmg=b.dmg*(inCov(P.x,P.y)?.27:1)*(berserkActive?.65:1);P.hp-=dmg;P.flashT=6;P.shieldRegen=0;spawnBlood(b.x,b.y,4);flashDeath(.28);updateHealthHUD();sndHit();shake(6,12);if(P.hp<=0)triggerPlayerDeath();}hit=true;}if(!hit)for(const m of SQ){if(!m.alive)continue;if(dist(b,m)<20){if(m.role==='SHIELD'&&m.shieldHp>0){m.shieldHp-=b.dmg*.7;spark(b.x,b.y,'#4488ff',4);}else{m.hp-=b.dmg*(inCov(m.x,m.y)?.12:.32);m.flashT=5;m.lastHitT=100;m.suppressedT=70;spawnBlood(b.x,b.y,3);updateSquadHUD();if(m.hp<=0)killSquadMember(m);}hit=true;break;}}}else{if(!hit)for(const e of enemies){if(!e.dead&&!e.sleeping&&dist(b,e)<(e.heavy?26:18)){e.hp-=b.dmg*(inCov(e.x,e.y)&&!e.berserkMode?.48:1);e.flashT=5;e.suppressedT=80;spawnBlood(b.x,b.y,5);if(b.crit)burst(b.x,b.y,'#ff4444',8);if(e.hp<=0)killEnemy(e);hit=true;break;}}
 if(!hit&&boss&&!boss.dead&&dist(b,boss)<boss.size){if(boss.shieldActive){spark(b.x,b.y,'#4488ff',6);hit=true;}else{const hitWeak=boss._weakX&&dist(b,{x:boss._weakX,y:boss._weakY})<18;const dmgMul=hitWeak?3.0:0.9;boss.hp-=b.dmg*dmgMul;boss.flashT=hitWeak?12:4;if(hitWeak){burst(boss.x,boss.y,'#ff6600',22);shake(10,18);addKillFeed('🎯 WEAKPOINT HIT! 3× DAMAGE!','b');boss.weakAngle+=Math.PI;}spark(b.x,b.y,boss.col,3);updateBossHUD();if(boss.hp<=0)killBoss();hit=true;}}}
   if(hit)continue;const bsx=b.x-camX+shakeX,bsy=b.y-camY+shakeY;if(bsx<-25||bsx>W+25||bsy<-25||bsy>H+25){keep.push(b);continue;}
 const col=isEnemy?(b.boss?curStage().bossCol:'#ff3300'):(b.owner==='squad'?'#44ffaa':(b.crit?'#ff4444':(berserkActive?'#ff8800':'#00ddff')));  ctx.save();ctx.translate(bsx,bsy);ctx.rotate(Math.atan2(b.dy,b.dx));ctx.fillStyle=col;ctx.shadowColor=col;ctx.shadowBlur=b.crit?18:10;ctx.beginPath();ctx.ellipse(0,0,b.crit?11:8,b.crit?4:3,0,0,Math.PI*2);ctx.fill();ctx.restore();keep.push(b);}return keep;}
@@ -4360,12 +4911,33 @@ function drawMinimap(){
 function updateHealthHUD(){const pct=Math.max(0,P.hp/P.maxHp*100);const f=document.getElementById('healthFill');f.style.width=pct+'%';f.style.background=pct<25?'linear-gradient(90deg,#ff0000,#ff2200)':pct<50?'linear-gradient(90deg,#ff6600,#ffaa00)':'linear-gradient(90deg,#ff3333,#ff8844)';document.getElementById('hpNum').textContent=Math.max(0,Math.ceil(P.hp));}
 function updateShieldHUD(){document.getElementById('shieldFill').style.width=(P.shield/P.maxShield*100)+'%';}
 function updateAmmoHUD(){
-  document.getElementById('ammoNum').textContent=`${P.ammo}/${P.reserve}`;
-  // Only show ammo alert when no special weapon is active
+  if(!P)return;
+  const magPct=P.ammo/Math.max(1,P.maxAmmo);
+  const ammoColor=P.ammo===0?'#ff0000':magPct<=0.25?'#ff4444':magPct<=0.5?'#ff8800':'#ffd700';
+  const resColor=P.reserve===0?'#ff4444':P.reserve<=30?'#ff8800':'#aaaaaa';
+  const ammoEl=document.getElementById('ammoNum');
+  // MAG in bright color | RESERVE in dim color
+  ammoEl.innerHTML=`<span style="color:${ammoColor};font-size:15px;font-weight:bold">${P.ammo}</span><span style="color:#555"> / </span><span style="color:${resColor}">${P.reserve}</span>`;
+  const gunLbl=document.getElementById('gunLabel');
+  if(gunLbl){
+    if(P.reloading){
+      gunLbl.textContent='RELOADING...';
+      gunLbl.style.color='#ffd700';
+    } else if(P.ammo===0&&P.reserve>0){
+      gunLbl.textContent='PRESS R — RELOAD';
+      gunLbl.style.color='#ff8800';
+    } else if(P.ammo===0&&P.reserve===0){
+      gunLbl.textContent='NO AMMO';
+      gunLbl.style.color='#ff0000';
+    } else {
+      gunLbl.textContent=curWeapon()?curWeapon().gun:'RIFLE';
+      gunLbl.style.color='#666';
+    }
+  }
   const specialActive=combatMode||(knives&&knives.length>0)||(energyBlades&&energyBlades.length>0);
-  if(P&&P.ammo===0&&!P.reloading&&P.reserve===0&&!specialActive){
+  if(P.ammo===0&&!P.reloading&&P.reserve===0&&!specialActive){
     showLowAmmoPrompt();
-  }else{
+  } else {
     hideLowAmmoPrompt();
   }
 }
@@ -4873,19 +5445,37 @@ function pauseGame(){
   if(loopId){cancelAnimationFrame(loopId);loopId=null;}
   stopMusic();
   const ps=document.getElementById('pauseScreen');
-  ps.style.display='flex';
-  // Update stats
+  ps.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.93);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;pointer-events:all!important;touch-action:auto!important;';
+  ps.querySelectorAll('.pauseBtn').forEach(b=>{
+    b.style.pointerEvents='all';
+    b.style.position='relative';
+    b.style.zIndex='99999';
+    b.style.touchAction='manipulation';
+  });
   document.getElementById('pauseStats').innerHTML=
-    `SCORE: ${GS?GS.score:0}<br>`+
-    `KILLS: ${pvpKills}<br>`+
+    `SCORE: ${GS?GS.score.toLocaleString():0}<br>`+
+    `KILLS: ${pvpKills} | LIVES: ${stageLives}<br>`+
     `R${GS?GS.round:1} · S${GS?GS.stage:1} · W${GS?GS.wave:1}<br>`+
-    `HP: ${GS&&P?Math.ceil(P.hp):0} | LIVES: ${stageLives}`;
+    `HP: ${GS&&P?Math.ceil(P.hp):0} / ${GS&&P?P.maxHp:0}`;
+}
+
+function resumeGame(){
+  if(!gamePaused)return;
+  gamePaused=false;
+  const ps=document.getElementById('pauseScreen');
+  ps.style.display='none';
+  if(GS&&GS.running&&!loopId){
+    startMusic();
+    loopId=requestAnimationFrame(gameLoop);
+  }
 }
 
 function resumeGame(){
   if(!gamePaused)return;
   gamePaused=false;
   document.getElementById('pauseScreen').style.display='none';
+    CV.style.pointerEvents='auto';   
+
   if(GS&&GS.running&&!loopId){
     startMusic();
     loopId=requestAnimationFrame(gameLoop);
@@ -4900,8 +5490,8 @@ GS={running:true,round,stage,wave:1,waveKills:0,waveTarget:0,score:savedScore,sp
   comboCount=0;comboTimer=0;quickKills=0;quickKillTimer=0;reviving=false;reviveTarget=null;reviveProg=0;
   berserkActive=false;berserkTimer=0;berserkCooldown=0;sleepBombCD=0;shakeMag=0;shakeDur=0;spectating=false;
   stageLives=MAX_LIVES;
-  ['loginScreen','lobbyScreen','resultsScreen','deathScreen'].forEach(id=>document.getElementById(id).style.display='none');
-  document.getElementById('perkTray').innerHTML='';document.getElementById('aiChat').innerHTML='';
+['loginScreen','lobbyScreen','resultsScreen','deathScreen'].forEach(id=>document.getElementById(id).style.display='none');
+  const _qcEl=document.getElementById('quickCmds');if(_qcEl)_qcEl.style.display='flex';  document.getElementById('perkTray').innerHTML='';document.getElementById('aiChat').innerHTML='';
   document.getElementById('deathVig').style.opacity='0';document.getElementById('berserkOverlay').style.opacity='0';
 document.getElementById('bossBar').style.display='none';document.getElementById('comboBox').style.opacity='0';
   cmdPanelOpen=false;
@@ -4925,8 +5515,12 @@ const isMobile=('ontouchstart' in window)||navigator.maxTouchPoints>0||window.ma
   }
   genCovers();initPlayer();initSquad();
   gameSpeed=gameSpeedSetting;
-  const w=curWeapon();document.getElementById('gunLabel').textContent=w.gun;
-  updateAllHUD();updatePowerBars();updateProgressionBadge();
+  const w=curWeapon();
+document.getElementById('gunLabel').textContent=w.gun;
+  const _qc=document.getElementById('quickCmds');
+  if(_qc)_qc.style.display='flex';
+  updateAllHUD();
+  updatePowerBars();updateProgressionBadge();
   const roundName=round===1?'NORMAL':round===2?'HARD':'ELITE';const roundCol=round===1?'#ffd700':round===2?'#ff8800':'#ff4444';
   showBanner(`R${round} S${stage} BEGIN!`,`${STAGE_DEFS[stage-1].sub} — ${roundName}`,roundCol);
   startMusic();aiSay(`Round ${round} Stage ${stage} — ${roundName}! Type commands!`);
@@ -4936,8 +5530,8 @@ saveProgress();
   loopId=requestAnimationFrame(gameLoop);
   // ── 60s ranked auto-save — starts with every game ──
   if(window._rankAutoSave)clearInterval(window._rankAutoSave);
-  window._rankAutoSave=setInterval(async()=>{
-    if(!GS||!GS.running||!rankedMode||_lbSaving)return;
+window._rankAutoSave=setInterval(async()=>{
+    if(!GS||!GS.running||!rankedMode||_lbSaving||!rankedMode)return;
     if(!myPlayerName||(pvpKills||0)===0&&(GS.wave||1)<=1)return;
     _sess.kills=pvpKills||0;_sess.roundReached=GS.round||1;
     _sess.stageReached=GS.stage||1;
@@ -4999,7 +5593,8 @@ function gameLoop(ts){
   covers.forEach(drawCover);
   barrels.forEach(b=>{drawBarrel(b);if(b.hp<=0&&!b.dead)setTimeout(()=>explodeBarrel(b),120);});
   pickups.forEach(drawPickup);
-updateFireBombs();updateShockwaves();updateBerserk();updateSleepBar();updateRageTimer();updateSupplyDrops();updateMergeMode();updateKnives();updateEnergyBlades();updateCombatMode();updateKnifeMode();updateBladeMode();if(!spectating&&!P.dead){updateRevive();updateQHint();}
+updateFireBombs();updateShockwaves();updateBerserk();updateSleepBar();updateRageTimer();updateSupplyDrops();updateMergeMode();updateKnives();updateEnergyBlades();updateCombatMode();
+updateInvisibility();updateKnifeMode();updateBladeMode();if(!spectating&&!P.dead){updateRevive();  updateQHint();}
   if(comboTimer>0){comboTimer--;if(comboTimer<=0){comboCount=0;document.getElementById('comboBox').style.opacity='0';}}
   if(quickKillTimer>0){quickKillTimer--;if(quickKillTimer<=0)quickKills=0;}
 tickSpawn();if(frameN%6===0)rebuildGrid();
@@ -5029,11 +5624,44 @@ if(P.punchAnim>0)P.punchAnim--;
 if(P.kickAnim>0)P.kickAnim--;    if(meleeCD>0)meleeCD--;if(powerCD>0)powerCD--;
 P.shieldRegen++;if(P.shieldRegen>90&&P.shield<P.maxShield){P.shield=Math.min(P.maxShield,P.shield+0.55);updateShieldHUD();}  
 if(shootCD>0)shootCD--;
-  if(mouse.down&&!P.reloading&&!knifeMode&&!bladeMode&&!combatMode){
+// Reload watchdog — force-complete if stuck
+if(P.reloading){
+  if(!P._reloadWatchdog)P._reloadWatchdog=0;
+  P._reloadWatchdog++;
+  if(P._reloadWatchdog>300){ // 5 seconds
+    const needed=Math.max(0,P.maxAmmo-P.ammo);
+    const taken=Math.min(needed,P.reserve);
+    P.ammo+=taken;P.reserve=Math.max(0,P.reserve-taken);
+    P.reloading=false;P.reloadProg=0;P._reloadWatchdog=0;
+    document.getElementById('rMsg').style.display='none';
+    document.getElementById('reloadBar').style.display='none';
+    updateAmmoHUD();
+    addKillFeed('✓ Reload forced complete!','h');
+  }
+}else{P._reloadWatchdog=0;}  if(mouse.down&&!P.reloading&&!knifeMode&&!bladeMode&&!combatMode){
       if(shootCD<=0){pShoot();shootCD=berserkActive?1:Math.max(1,P.shootRate);}
     }
-    if(P.reloading){P.reloadProg+=(P.reloadSpeed||1)/80;document.getElementById('reloadFill').style.width=(P.reloadProg*100)+'%';if(P.reloadProg>=1){const g=Math.min(P.maxAmmo-P.ammo,P.reserve);P.ammo+=g;P.reserve-=g;P.reloading=false;P.reloadProg=0;document.getElementById('rMsg').style.display='none';document.getElementById('reloadBar').style.display='none';updateAmmoHUD();sndReload();}}
-   if(keys['b'])mv(P,PLAYER_BASE.x,PLAYER_BASE.y,P.speed*1.2);
+if(P.reloading){
+P.reloadProg+=(P.reloadSpeed||1)*(berserkActive?0.08:0.032);  const fillEl=document.getElementById('reloadFill');
+  if(fillEl)fillEl.style.width=Math.min(100,P.reloadProg*100)+'%';
+  if(P.reloadProg>=1){
+    // Complete the reload
+    const needed=Math.max(0,P.maxAmmo-P.ammo);
+    const taken=Math.min(needed,Math.max(0,P.reserve));
+    P.ammo=Math.min(P.maxAmmo,P.ammo+taken);
+    P.reserve=Math.max(0,P.reserve-taken);
+    P.reloading=false;
+    P.reloadProg=0;
+    const rMsg=document.getElementById('rMsg');
+    const rBar=document.getElementById('reloadBar');
+    if(rMsg)rMsg.style.display='none';
+    if(rBar)rBar.style.display='none';
+    updateAmmoHUD();
+    sndPickup();
+    addKillFeed(`✓ RELOADED! Mag:${P.ammo}/${P.maxAmmo} | Reserve:${P.reserve}`,'h');
+    hideLowAmmoPrompt();
+  }
+}   if(keys['b'])mv(P,PLAYER_BASE.x,PLAYER_BASE.y,P.speed*1.2);
 // ── AUTO KNIFE — slices nearby enemies when low/out of ammo ──
     if((P.ammo<=3)&&!P.reloading&&!knifeMode&&!bladeMode&&!combatMode&&meleeCD<=0){
       const nearE=nearestEnemy(P.x,P.y);
@@ -5058,11 +5686,12 @@ addKillFeed('🔪 KNIFE SLASH!','p');
     ctx.globalAlpha=1;ctx.shadowBlur=0;ctx.shadowColor='transparent';ctx.setLineDash([]);
 
   const psp=w2s(P.x,P.y);
-  const pCol=P.flashT>0?'#ffff88':(P.hiding?'#aaccff':(berserkActive?'#ff4444':myPlayerColor));
-// Player faces left or right based on mouse — no spinning
+if(_invisActive)ctx.globalAlpha=0.22;
+  const pCol=P.flashT>0?'#ffff88':(_invisActive?'#8800ff':(P.hiding?'#aaccff':(berserkActive?'#ff4444':myPlayerColor)));// Player faces left or right based on mouse — no spinning
 const _pFaceAngle = mouse.x+camX > P.x ? 0 : Math.PI;
-drawStickFigure(psp.x,psp.y,_pFaceAngle,pCol,21+(P.mergeSize||0),P.dead,P.deadT||0,P.crouching,false,berserkActive||mergeMode,false,P.isMoving,P.stepPhase||0,'#39ff8a',false); if(P.dead)P.deadT=(P.deadT||0)+1;
-if(!P.dead){
+drawStickFigure(psp.x,psp.y,_pFaceAngle,pCol,21+(P.mergeSize||0),P.dead,P.deadT||0,P.crouching,false,berserkActive||mergeMode,false,P.isMoving,P.stepPhase||0,'#39ff8a',false);
+ctx.globalAlpha=1;
+if(P.dead)P.deadT=(P.deadT||0)+1;if(!P.dead){
   ctx.fillStyle=berserkActive?'#ff4444':'#39ff8a';ctx.font='bold 9px Courier New';ctx.textAlign='center';
   ctx.fillText(myPlayerName+(berserkActive?' [BERSERK]':''),psp.x,psp.y-52);
   // Draw gun pointing toward mouse
@@ -5322,7 +5951,19 @@ ctx.shadowBlur=0;
   ctx.save();parts=parts.filter(p=>{p.x+=p.vx;p.y+=p.vy;p.vx*=.9;p.vy*=.9;p.life--;drawParticle(p);return p.life>0;});ctx.restore();
 
   pickups=pickups.filter(pk=>{pk.life--;if(!P.dead&&dist(pk,P)<28){
-if(pk.type==='ammo'){P.reserve=Math.min(9999,P.reserve+200);P.ammo=P.maxAmmo;updateAmmoHUD();showFloat(pk.x-camX+shakeX,pk.y-camY-22+shakeY,'+AMMO','#ffd700',11);}else if(pk.type==='life'){stageLives=Math.min(stageLives+1,MAX_LIVES+2);updateLivesHUD();shake(8,16);addKillFeed('❤️ EXTRA LIFE COLLECTED!','h');showBanner('❤️','Extra Life!','#ff4444');showFloat(pk.x-camX+shakeX,pk.y-camY-22+shakeY,'+LIFE','#ff4444',14);}
+if(pk.type==='ammo'){
+  const addAmt=P.maxAmmo*3; // adds 3 full mags worth
+  P.reserve=Math.min(P.maxAmmo*10, P.reserve+addAmt);
+  updateAmmoHUD();
+  showFloat(pk.x-camX+shakeX,pk.y-camY-22+shakeY,`+${addAmt} AMMO`,'#ffd700',13);
+  addKillFeed(`📦 Ammo picked up! Reserve: ${P.reserve}`,'h');
+  // Auto-reload if mag empty
+  if(P.ammo===0&&!P.reloading&&P.reserve>0){
+    setTimeout(()=>startReload(),200);
+    addKillFeed('↺ AUTO-RELOAD triggered!','p');
+  }
+}
+else if(pk.type==='life'){stageLives=Math.min(stageLives+1,MAX_LIVES+2);updateLivesHUD();shake(8,16);addKillFeed('❤️ EXTRA LIFE COLLECTED!','h');showBanner('❤️','Extra Life!','#ff4444');showFloat(pk.x-camX+shakeX,pk.y-camY-22+shakeY,'+LIFE','#ff4444',14);}
 else{P.hp=Math.min(P.maxHp,P.hp+85+GS.stage*10+GS.round*14);updateHealthHUD();showFloat(pk.x-camX+shakeX,pk.y-camY-22+shakeY,'+HP','#39ff8a',11);}
 sndPickup();spark(pk.x,pk.y,pk.type==='ammo'?'#ffd700':pk.type==='life'?'#ff4444':'#39ff8a',10);    return false;}drawPickup(pk);return pk.life>0;});
   enemies=enemies.filter(e=>!(e.dead&&e.deathT>115));
@@ -5333,12 +5974,77 @@ sndPickup();spark(pk.x,pk.y,pk.type==='ammo'?'#ffd700':pk.type==='life'?'#ff4444
     setTimeout(()=>{if(GS&&GS.running)showCongrats(r,s);},600);
   }
 if(!GS.bossSpawned){const alive2=enemies.filter(e=>!e.dead).length;
-  const done=GS.waveKills>=GS.waveTarget&&GS.spawnQ.length===0&&alive2===0;if(done&&!GS.betweenWaves){GS.betweenWaves=true;if(GS.wave>=curStage().waves){GS.score+=700;updateScoreHUD();sndAlarm();aiSay('All waves cleared! BOSS INCOMING!');setTimeout(spawnBoss,2800);}else{GS.wave++;GS.score+=450;updateScoreHUD();aiSay(`Wave cleared! Wave ${GS.wave} incoming!`);if(GS.wave%2===0)setTimeout(triggerSupplyDrop,1200);setTimeout(startWave,2400);}}}
+  const done=GS.waveKills>=GS.waveTarget&&GS.spawnQ.length===0&&alive2===0;
+if(done&&!GS.betweenWaves){GS.betweenWaves=true;
+  genCovers();
+  covers=covers.filter(c=>c.t==='tree'||c.t==='rock');
+  const wv=GS.wave||1;
+  const waveCoverCount=8+wv*2;
+  for(let wi=0;wi<waveCoverCount;wi++){
+    const bx=100+Math.random()*(WORLD_W-200),by=100+Math.random()*(WORLD_H-200);
+    if(Math.abs(bx-PLAYER_BASE.x)<140&&Math.abs(by-PLAYER_BASE.y)<140)continue;
+    const t=Math.random();
+    if(t<0.33)covers.push({x:bx,y:by,w:90+Math.random()*60,h:20,t:'wall'});
+    else if(t<0.66)covers.push({x:bx,y:by,w:20,h:90+Math.random()*60,t:'wall'});
+    else covers.push({x:bx,y:by,w:50+Math.random()*30,h:50+Math.random()*30,t:'bunker'});
+  }
+  if(GS.wave>=curStage().waves){
+    
+    GS.score+=700;updateScoreHUD();sndAlarm();
+  aiSay('⚠ KILLERS deployed before the boss! Survive them first!');
+  showBanner('🤺 KILLERS INCOMING','Survive to face the BOSS!','#ff0000');
+  shake(18,40);
+  // Spawn wave of elite killers (3 types)
+  const killerTypes=['swordsman','shadow','necromancer'];
+  const killerCount=3+GS.stage+GS.round;
+  for(let ki=0;ki<killerCount;ki++){
+    setTimeout(()=>{
+      const ktype=killerTypes[ki%3];
+      // Spawn from random edges
+      const edge=Math.floor(Math.random()*4);
+      let kx,ky;
+      if(edge===0){kx=Math.random()*WORLD_W;ky=-45;}
+      else if(edge===1){kx=WORLD_W+45;ky=Math.random()*WORLD_H;}
+      else if(edge===2){kx=Math.random()*WORLD_W;ky=WORLD_H+45;}
+      else{kx=-45;ky=Math.random()*WORLD_H;}
+      const S=curStage(),RM=curRoundMult();
+      const killerStats={
+        swordsman:{hp:1200+GS.stage*300,spd:4.5,dmg:180+GS.stage*40,sz:22},
+        shadow:    {hp:800+GS.stage*200, spd:7.0,dmg:140+GS.stage*30,sz:18},
+        necromancer:{hp:1000+GS.stage*250,spd:3.0,dmg:160+GS.stage*35,sz:19},
+      }[ktype];
+      enemies.push({
+        x:kx,y:ky,angle:0,type:ktype,
+        hp:killerStats.hp*DC.mul*RM.hp,maxHp:killerStats.hp*DC.mul*RM.hp,
+        speed:killerStats.spd*S.eSpd*RM.speed,
+        dmg:killerStats.dmg*DC.mul*RM.dmg,
+        col:ktype==='swordsman'?'#ffaa00':ktype==='shadow'?'#222233':'#440066',
+        sz:killerStats.sz,label:ktype==='swordsman'?'🤺':ktype==='shadow'?'🥷':'🪰',
+        heavy:false,sniper:false,scout:false,isBerserker:true,isPhantom:false,isBomber:false,
+        dead:false,flashT:0,deathT:0,burnT:0,aiState:'berserk',
+        aiT:0,covPos:null,shootT:8+Math.random()*12,intel:0.98,
+        lastKnownX:P.x,lastKnownY:P.y,alertT:999,
+        flankAngle:Math.random()*Math.PI*2,suppressedT:0,stuckT:0,
+        lastX:kx,lastY:ky,berserkMode:true,berserkHP:0,sleeping:false,sleepT:0,
+        canCling:ktype==='shadow',clinging:false,clingTimer:0,clingTarget:null,
+        hasPower:true,powerType:ktype==='necromancer'?'poison':ktype==='shadow'?'teleport_dash':'ground_slam',
+        powerCD:60+Math.floor(Math.random()*80),
+        callTimer:9999,guardingDownedAt:null,retreating:false,retreatTarget:null,
+        crouching:false,peekT:0,stepPhase:Math.random()*Math.PI*2,isMoving:true,vx:0,vy:0,
+        phantomAlpha:ktype==='shadow'?0.45:1,phantomRevealT:0,bombT:9999,
+        faction:'alpha',factionShirt:null,factionCol:null,isCommander:false,commanderT:0,
+        _isKiller:true,
+      });
+      addKillFeed(`🤺 KILLER ${ktype.toUpperCase()} has entered the battlefield!`,'b');
+    },ki*900);
+  }
+  // Boss comes AFTER all killers are announced
+  setTimeout(spawnBoss,killerCount*900+3500);}else{GS.wave++;GS.score+=450;updateScoreHUD();aiSay(`Wave cleared! Wave ${GS.wave} incoming!`);if(GS.wave%2===0)setTimeout(triggerSupplyDrop,1200);setTimeout(startWave,2400);}}}
 if(frameN%30===0){updatePowerBars();}
   if(frameN%45===0){renderLiveScoreboard();}  drawCursor();drawMinimap();
 
-  mpSyncT++;if(mpSyncT>=22){mpSyncT=0;if(isOnline)mpWrite();}
-  mpReadT++;if(mpReadT>=180){mpReadT=0;if(isOnline)mpRead();}
+mpSyncT++;if(mpSyncT>=18){mpSyncT=0;if(isOnline)mpWrite();}
+  mpReadT++;if(mpReadT>=90){mpReadT=0;if(isOnline)mpRead();} // read every 1.5s instead of 3s
 
   loopId=requestAnimationFrame(gameLoop);
 }
@@ -5377,7 +6083,20 @@ CV.addEventListener('mouseup',()=>mouse.down=false);
 window.addEventListener('keydown',e=>{
   if(chatMode||document.activeElement===document.getElementById('ci'))return;
   const k=e.key.toLowerCase();keys[k]=true;
-if(k==='r'&&P&&!P.reloading){P.ammo=P.maxAmmo;sndReload();updateAmmoHUD();addKillFeed('↺ RELOADED!','p');}  if(k==='f')pMelee();if(k==='e')activatePower();
+if(k==='r'&&P&&!P.reloading){
+  if(P.ammo>=P.maxAmmo){
+    addKillFeed('Magazine already full!','s');
+  } else if(P.reserve<=0){
+    addKillFeed('⚠ No reserve ammo! Pick up drops!','e');
+    if(P.ammo===0){toggleKnifeMode();}
+  } else {
+    P.reloading=false; // force-reset any stuck state
+    P.reloadProg=0;
+    startReload();
+  }
+}
+
+if(k==='f')pMelee();if(k==='e')activatePower();
   if(k==='q'&&GS&&GS.running&&!P.dead&&!reviving)tryRevive();
 if(k==='z'&&GS&&GS.running)throwSleepBomb();
   if(k==='x'&&GS&&GS.running)activateBerserk();
@@ -5479,30 +6198,25 @@ document.getElementById('dMed').addEventListener('click',()=>{difficulty='medium
 document.getElementById('dHard').addEventListener('click',()=>{difficulty='hard';['dEasy','dMed','dHard'].forEach(id=>{const b=document.getElementById(id);b.style.borderColor='';b.style.color='';});const hb=document.getElementById('dHard');hb.style.borderColor='#ff3a3a';hb.style.color='#ff3a3a';});
 
 function _collectLoginInfo(){
-  let inputName=document.getElementById('nameInput').value.trim();
-  // Never allow empty name — fall back to stored, then default
-  if(!inputName&&_playerIdentity?.name)inputName=_playerIdentity.name;
-  if(!inputName)inputName='SOLDIER';
-  const ciEl=document.getElementById('countryInput');
-  const inputCountry=(ciEl&&ciEl.value&&ciEl.value!=='')?ciEl.value:(_playerIdentity?.country||'Unknown');
+  // Prefer saved identity — only fall back to form if no identity saved
+  let inputName='';let inputCountry='Unknown';
+  if(_playerIdentity&&_playerIdentity.name){
+    inputName=_playerIdentity.name;
+    inputCountry=_playerIdentity.country||'Unknown';
+  }else{
+    const ni=document.getElementById('nameInput');
+    const ci=document.getElementById('countryInput');
+    inputName=(ni?ni.value.trim():'');
+    inputCountry=(ci&&ci.value?ci.value:'Unknown');
+    if(!inputName){alert('Please save your profile first — enter a name and click SAVE PROFILE.');return false;}
+    if(!inputCountry||inputCountry===''){alert('Please select your country.');return false;}
+    _saveIdentity(inputName,inputCountry);
+    refreshProfileUI();
+  }
   myPlayerName=inputName;
   myPlayerColor=selectedColor;
-  // ALWAYS save so leaderboard always has a name
-  _saveIdentity(inputName,inputCountry);
-  // Keep fields in sync
-  document.getElementById('nameInput').value=inputName;
-  if(ciEl&&inputCountry)ciEl.value=inputCountry;
-  // Show welcome back message
-  document.getElementById('returningName').textContent=inputName;
-  document.getElementById('returningMsg').style.display='block';
-  // Only hide country row if we have a stored country already
-  const cr=document.getElementById('countryRow');
-  if(cr)cr.style.display=(_playerIdentity?.country&&_playerIdentity.country!=='Unknown')?'none':'';
-  // Update medals display immediately
-  const m=loadMedals(inputName);
-  const medEl=document.getElementById('storedMedals');
-  if(medEl)medEl.textContent=m.gold||m.silver||m.bronze?
-    `${inputName}: 🥇${m.gold} 🥈${m.silver} 🥉${m.bronze}`:'';
+  _saveIdentity(inputName,inputCountry); // always update lastSeen
+  return true;
 }
 function showGameModeModal(type){
   _collectLoginInfo();
@@ -5514,25 +6228,13 @@ function selectGameMode(ranked){
   document.getElementById('gameModeModal').style.display='none';
   const modeTag=ranked?'🏆 RANKED':'🎮 FUN';
 
-  // RANKED: difficulty randomly assigned — players can't game the system
+// RANKED: always hard — fair for everyone, not shown to player
   if(ranked){
-    const roll=Math.random();
-    if(roll<0.42){difficulty='easy';}
-    else if(roll<0.88){difficulty='hard';}
-    else{difficulty='medium';}
+    difficulty='hard';
     DC=DIFF[difficulty];
-    // Show what was assigned (after game starts)
 const diffEmoji={easy:'🟢 EASY',medium:'🟡 MEDIUM',hard:'🔴 HARD'};
     const _dc=difficulty==='hard'?'#ff4444':difficulty==='easy'?'#39ff8a':'#ffd700';
-    setTimeout(()=>{
-      if(typeof addKillFeed==='function')
-        addKillFeed(`🎲 Ranked: ${diffEmoji[difficulty]} assigned!`,'b');
-      const _dn=document.createElement('div');
-      _dn.style.cssText=`position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.97);border:3px solid ${_dc};border-radius:16px;padding:26px 44px;text-align:center;z-index:700;font-family:'Share Tech Mono',monospace;pointer-events:none;box-shadow:0 0 60px ${_dc}55;`;
-      _dn.innerHTML=`<div style="font-size:10px;color:#555;letter-spacing:3px;margin-bottom:12px;">🏆 RANKED MODE · DIFFICULTY ASSIGNED</div><div style="font-size:38px;font-weight:900;color:${_dc};letter-spacing:4px;text-shadow:0 0 30px ${_dc};">${diffEmoji[difficulty]}</div><div style="font-size:9px;color:#444;letter-spacing:2px;margin-top:12px;">Randomly selected — your result will be tracked on leaderboard</div>`;
-      document.body.appendChild(_dn);
-      setTimeout(()=>_dn.remove(),5500);
-    },3200);
+   
   }
 
   if(_pendingGameType==='solo'){
@@ -5554,8 +6256,10 @@ const diffEmoji={easy:'🟢 EASY',medium:'🟡 MEDIUM',hard:'🔴 HARD'};
     startGame(saved.round||1,saved.stage||1,saved.score||0);
   }
 }
-document.getElementById('soloBtn').addEventListener('click',()=>showGameModeModal('solo'));
-
+document.getElementById('soloBtn').addEventListener('click',()=>{
+  if(_collectLoginInfo()===false)return;
+  showGameModeModal('solo');
+});
 document.getElementById('resumeBtn').addEventListener('click',()=>{
   const saved=loadProgress();if(!saved)return;
   myPlayerName=saved.name||document.getElementById('nameInput').value.trim()||'SOLDIER';
@@ -5572,8 +6276,10 @@ async function _startCreateRoom(){
   await goOnline(myPlayerName,myPlayerColor,roomId);
   document.getElementById('mpStatus').textContent=`Room ${roomId} ready! Share code!`;
 }
-document.getElementById('createRoomBtn').addEventListener('click',()=>showGameModeModal('room'));
-
+document.getElementById('createRoomBtn').addEventListener('click',()=>{
+  if(_collectLoginInfo()===false)return;
+  showGameModeModal('room');
+});
 document.getElementById('browseRoomsBtn').addEventListener('click',()=>{
   const name=document.getElementById('nameInput').value.trim()||'SOLDIER';
   myPlayerName=name;myPlayerColor=selectedColor;
@@ -5639,8 +6345,23 @@ var cmdPanelOpen=false; // var hoists globally — avoids temporal dead zone cra
 function toggleCmdPanel(){
   if(!GS||!GS.running)return;
   cmdPanelOpen=!cmdPanelOpen;
-  document.getElementById('cmdPanel').style.display=cmdPanelOpen?'block':'none';
-  document.getElementById('cmdHint').style.display=cmdPanelOpen?'none':'block';
+  const cp=document.getElementById('cmdPanel');
+  const ch=document.getElementById('cmdHint');
+  if(cmdPanelOpen){
+    cp.style.display='flex';
+    ch.style.display='none';
+    // Pause game while browsing commands
+    if(!gamePaused&&GS&&GS.running){
+      if(loopId){cancelAnimationFrame(loopId);loopId=null;}
+    }
+  }else{
+    cp.style.display='none';
+    ch.style.display='block';
+    // Resume game
+    if(!gamePaused&&GS&&GS.running&&!loopId){
+      loopId=requestAnimationFrame(gameLoop);
+    }
+  }
 }
 function qCmd(cmd){
   if(!GS||!GS.running)return;
@@ -5686,8 +6407,10 @@ function refreshResumeBtn(){
 })();
 
 window.addEventListener('load',()=>{
-  refreshResumeBtn(); // <-- ADD THIS AS FIRST LINE
-const saved=loadProgress();
+  refreshResumeBtn();
+  refreshProfileUI();          // ← show profile or edit form on load
+  updateLoginOnlineBadge();    // ← check online players immediately
+  const saved=loadProgress();
   const resumeBtn=document.getElementById('resumeBtn');
   if(saved&&Date.now()-saved.ts<86400000*5){
     if(resumeBtn){
@@ -5745,37 +6468,32 @@ function togglePause(){
 }
 
 // PAUSE BUTTONS — triple-wired for reliability
-function wirePauseBtn(id, fn){
-  const el=document.getElementById(id);
-  if(!el)return;
-  // Remove all old listeners by cloning
-  const fresh=el.cloneNode(true);
-  el.parentNode.replaceChild(fresh,el);
-  ['click','touchend','pointerup'].forEach(evt=>{
-    fresh.addEventListener(evt, e=>{
-      e.preventDefault();e.stopPropagation();
-      fn();
-    }, {passive:false});
-  });
-}
-wirePauseBtn('resumeGameBtn', resumeGame);
-wirePauseBtn('pauseSettingsBtn', ()=>{
-  document.getElementById('settingsPanel').style.display='block';
-});
-wirePauseBtn('pauseMenuBtn', async()=>{
+// ── PAUSE BUTTONS — single clean implementation ──
+function forceMainMenu(){
   gamePaused=false;
   document.getElementById('pauseScreen').style.display='none';
-  if(GS&&GS.running){GS.running=false;saveProgress();}
-  _sess.won=false;_sess.kills=pvpKills||0;_sess.roundReached=GS?GS.round:1;_sess.stageReached=GS?GS.stage:1;_sess.wavesSurvived=Math.max(0,(GS?GS.wave||1:1)-1);
-  submitScore();
   if(loopId){cancelAnimationFrame(loopId);loopId=null;}
   stopMusic();
-  await mpCleanup();
+  if(GS){GS.running=false;saveProgress();}
+  _sess.won=false;
+  _sess.kills=pvpKills||0;
+  _sess.roundReached=GS?GS.round:1;
+  _sess.stageReached=GS?GS.stage:1;
+  submitScore();
+  mpCleanup();
   document.getElementById('mobileControls').style.display='none';
   document.getElementById('loginScreen').style.display='flex';
-  setTimeout(refreshResumeBtn,300);
-});
+  setTimeout(refreshResumeBtn,400);
+}
 
+// Force pause screen to always receive clicks/touches
+(function(){
+  const ps=document.getElementById('pauseScreen');
+  if(!ps)return;
+  ps.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.93);z-index:99999;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;pointer-events:all!important;touch-action:auto!important;';
+  // Catch any tap on the pause screen and route to correct button
+  ps.addEventListener('touchstart',e=>{e.stopPropagation();},{passive:true});
+})();
 
 
 // ══════════════════════════════════════════════════
@@ -6213,7 +6931,16 @@ async function jbSaveAll(entries){
 
 // ── MASTER SUBMIT — called on EVERY game end/quit ────
 async function submitScore(){
-if(!myPlayerName||_lbSaving)return;
+  // Fun mode — never touches leaderboard
+  if(!rankedMode){
+    const funToast=document.createElement('div');
+    funToast.style.cssText='position:fixed;bottom:120px;left:50%;transform:translateX(-50%);background:rgba(0,10,20,.95);border:1px solid #4488ff;border-radius:8px;padding:8px 18px;font-family:monospace;font-size:10px;color:#4488ff;letter-spacing:1px;z-index:999;pointer-events:none;';
+    funToast.textContent='🎮 Fun mode — no leaderboard change';
+    document.body.appendChild(funToast);
+    setTimeout(()=>funToast.remove(),2800);
+    return;
+  }
+  if(!myPlayerName||_lbSaving)return;
   // Guarantee name is saved before submitting
   if(!_playerIdentity||!_playerIdentity.name){
     _saveIdentity(myPlayerName,_playerIdentity?.country||'Unknown');
