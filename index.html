@@ -413,13 +413,15 @@ body{background:var(--bg);color:#fff;font-family:'Share Tech Mono','Courier New'
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
 @keyframes deathPulse{0%,100%{opacity:1;text-shadow:0 0 60px #ff0000}50%{opacity:.7;text-shadow:0 0 120px #ff0000}}
 @keyframes dmgFly{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-60px)}}
-/* ══ MOBILE CONTROLS — CLEAN SYSTEM ══ */
+/* ── MOBILE CONTROLS — CLEAN SYSTEM ══ */
 #mobileControls{
   position:fixed;inset:0;
   pointer-events:none;
   z-index:400;
   display:none;
   isolation:isolate;
+  width:100%;
+  height:100%;
 }
 #joystickZone,#mobileRightPanel,#mobileShootZone{
   pointer-events:all!important;
@@ -7887,42 +7889,113 @@ if(window.visualViewport){
 (()=>{
   const sz2=document.getElementById('mobileShootZone');
   if(!sz2)return;
-  sz2.addEventListener('touchmove',e=>{
-    e.preventDefault();
-    const t=e.touches[0];const r=CV.getBoundingClientRect();
-    mouse.x=t.clientX-r.left;mouse.y=t.clientY-r.top;
-  },{passive:false});
-sz2.addEventListener('touchstart',e=>{
+  
+  // Make sure shoot zone is touchable
+  sz2.style.touchAction = 'none';
+  sz2.style.pointerEvents = 'all';
+  
+  let shootZoneTouchId = null;
+  
+  sz2.addEventListener('touchstart',e=>{
     if(!GS||!GS.running)return;
-    e.preventDefault();initAudio();if(AC&&AC.state==='suspended')AC.resume();
-    const t=e.touches[0];const r=CV.getBoundingClientRect();
-    mouse.x=t.clientX-r.left;mouse.y=t.clientY-r.top;
+    e.preventDefault();
+    e.stopPropagation();
+    initAudio();
+    if(AC&&AC.state==='suspended')AC.resume();
+    const t=e.touches[0] || e.changedTouches[0];
+    if(!t) return;
+    shootZoneTouchId = t.identifier;
+    const r=CV.getBoundingClientRect();
+    mouse.x=t.clientX-r.left;
+    mouse.y=t.clientY-r.top;
     if(P&&!P.dead){
-      mouse.down=true;shootCD=0;
+      mouse.down=true;
+      shootCD=0;
       // Aim player toward touch point
       P.angle=Math.atan2(mouse.y+camY-P.y, mouse.x+camX-P.x);
       // Fire immediately
-      if(!P.reloading && !knifeMode && !bladeMode){pShoot();}
+      if(!P.reloading && !knifeMode && !bladeMode && !combatMode){pShoot();}
       else if(knifeMode){throwKnife();}
       else if(bladeMode){throwEnergyBlade();}
+      else if(combatMode){combatPunch();}
     }
-  },{passive:false});
-sz2.addEventListener('touchmove',e=>{
+  },{passive:false, capture:true});
+  
+  sz2.addEventListener('touchmove',e=>{
     e.preventDefault();
-    const t=e.touches[0];const r=CV.getBoundingClientRect();
-    mouse.x=t.clientX-r.left;mouse.y=t.clientY-r.top;
+    e.stopPropagation();
+    const t = Array.from(e.touches).find(touch => touch.identifier === shootZoneTouchId) || Array.from(e.changedTouches).find(touch => touch.identifier === shootZoneTouchId) || e.touches[0];
+    if(!t) return;
+    const r=CV.getBoundingClientRect();
+    mouse.x=t.clientX-r.left;
+    mouse.y=t.clientY-r.top;
     if(P&&!P.dead) P.angle=Math.atan2(mouse.y+camY-P.y, mouse.x+camX-P.x);
-  },{passive:false});
-  sz2.addEventListener('touchend',e=>{e.preventDefault();mouse.down=false;},{passive:false});
-  sz2.addEventListener('touchcancel',e=>{e.preventDefault();mouse.down=false;},{passive:false});
+  },{passive:false, capture:true});
+  
+  sz2.addEventListener('touchend',e=>{
+    e.preventDefault();
+    e.stopPropagation();
+    mouse.down=false;
+    shootZoneTouchId = null;
+  },{passive:false, capture:true});
+  
+  sz2.addEventListener('touchcancel',e=>{
+    e.preventDefault();
+    e.stopPropagation();
+    mouse.down=false;
+    shootZoneTouchId = null;
+  },{passive:false, capture:true});
 })();
 // ── onBtn helper ────────────────────────────────
 function onBtn(id,onDown,onUp){
   const el=document.getElementById(id);if(!el)return;
-  el.addEventListener('touchstart',e=>{e.preventDefault();initAudio();if(AC&&AC.state==='suspended')AC.resume();onDown();},{passive:false});
-  if(onUp){el.addEventListener('touchend',e=>{e.preventDefault();onUp();},{passive:false});el.addEventListener('touchcancel',e=>{e.preventDefault();onUp();},{passive:false});}
-  el.addEventListener('mousedown',e=>{if(e.button!==0)return;e.preventDefault();onDown();});
-  if(onUp){el.addEventListener('mouseup',e=>{e.preventDefault();onUp();});el.addEventListener('mouseleave',()=>onUp());}
+  
+  let isPressed = false;
+  
+  el.addEventListener('touchstart',e=>{
+    e.preventDefault();
+    e.stopPropagation();
+    initAudio();
+    if(AC&&AC.state==='suspended')AC.resume();
+    isPressed = true;
+    onDown();
+  },{passive:false, capture:true});
+  
+  if(onUp){
+    el.addEventListener('touchend',e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      isPressed = false;
+      onUp();
+    },{passive:false, capture:true});
+    el.addEventListener('touchcancel',e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      isPressed = false;
+      onUp();
+    },{passive:false, capture:true});
+  }
+  
+  el.addEventListener('mousedown',e=>{
+    if(e.button!==0)return;
+    e.preventDefault();
+    isPressed = true;
+    onDown();
+  },{capture:true});
+  
+  if(onUp){
+    el.addEventListener('mouseup',e=>{
+      e.preventDefault();
+      isPressed = false;
+      onUp();
+    },{capture:true});
+    el.addEventListener('mouseleave',()=>{
+      if(isPressed) {
+        isPressed = false;
+        onUp();
+      }
+    },{capture:true});
+  }
 }
 // ══════════════════════════════════════════════════
 // MOBILE TOUCH CONTROLS — COMPLETE SYSTEM
@@ -7930,49 +8003,92 @@ function onBtn(id,onDown,onUp){
 // ── FIRE BUTTON (big red) ────────────────────────
 (()=>{
   let fireBtnInt=null;
+  let isFiringMelee=false;
+  
+  function stopFiring(){
+    if(fireBtnInt){
+      clearInterval(fireBtnInt);
+      fireBtnInt=null;
+    }
+    mouse.down=false;
+    isFiringMelee=false;
+  }
+  
   onBtn('mBtnFire',
     ()=>{
       if(!GS||!GS.running||!P||P.dead)return;
+      
+      // Stop any previous firing
+      stopFiring();
+      
       // Auto-aim at nearest enemy on mobile fire press
       const nearE=nearestEnemy(P.x,P.y);
-  if(nearE&&!nearE.dead){
+      if(nearE&&!nearE.dead){
         P.angle=Math.atan2(nearE.y-P.y,nearE.x-P.x);
         mouse.x=(nearE.x-camX+shakeX);
         mouse.y=(nearE.y-camY+shakeY);
       } else {
         // Aim in the direction player is facing if no enemy found
+        const psp=w2s(P.x,P.y);
         mouse.x = psp ? psp.x + Math.cos(P.angle)*120 : mouse.x;
         mouse.y = psp ? psp.y + Math.sin(P.angle)*120 : mouse.y;
       }
+      
       if(combatMode){
+        isFiringMelee=true;
         combatPunch();
         fireBtnInt=setInterval(()=>{
+          if(!isFiringMelee || !GS || !GS.running) {
+            stopFiring();
+            return;
+          }
           const ne=nearestEnemy(P.x,P.y);
           if(ne&&!ne.dead){P.angle=Math.atan2(ne.y-P.y,ne.x-P.x);}
           combatPunch();
         },280);
       }else if(knifeMode){
+        isFiringMelee=true;
         throwKnife();
         fireBtnInt=setInterval(()=>{
+          if(!isFiringMelee || !GS || !GS.running) {
+            stopFiring();
+            return;
+          }
           const ne=nearestEnemy(P.x,P.y);
           if(ne&&!ne.dead){P.angle=Math.atan2(ne.y-P.y,ne.x-P.x);}
           throwKnife();
         },KNIFE_FIRE_RATE*16);
+      }else if(bladeMode){
+        isFiringMelee=true;
+        throwEnergyBlade();
+        fireBtnInt=setInterval(()=>{
+          if(!isFiringMelee || !GS || !GS.running) {
+            stopFiring();
+            return;
+          }
+          const ne=nearestEnemy(P.x,P.y);
+          if(ne&&!ne.dead){P.angle=Math.atan2(ne.y-P.y,ne.x-P.x);}
+          throwEnergyBlade();
+        },BLADE_FIRE_RATE*16);
       }else{
         shootCD=0;
         if(!P.reloading)pShoot();
         mouse.down=true;
         fireBtnInt=setInterval(()=>{
+          if(!GS||!GS.running||P.dead||!mouse.down) {
+            stopFiring();
+            return;
+          }
           const ne=nearestEnemy(P.x,P.y);
           if(ne&&!ne.dead){
             P.angle=Math.atan2(ne.y-P.y,ne.x-P.x);
             mouse.x=ne.x-camX+shakeX; mouse.y=ne.y-camY+shakeY;
           }
           mouse.down=true;
-        },60);
+        },45);
       }
     },
-    ()=>{mouse.down=false;clearInterval(fireBtnInt);fireBtnInt=null;}
+    ()=>{ stopFiring(); }
   );
   // ── OTHER ACTION BUTTONS ──────────────────────────
   onBtn('mBtnMelee',()=>pMelee());
@@ -8034,7 +8150,7 @@ document.addEventListener('touchmove',e=>{
   },{passive:false});
 
 // ── JOYSTICK IMPLEMENTATION ──────────────────────────
-// ── JOYSTICK IMPLEMENTATION — FIXED ─────────────────
+// ── JOYSTICK IMPLEMENTATION — SUPER RESPONSIVE ──────
 (()=>{
   const zone = document.getElementById('joystickZone');
   const knob = document.getElementById('joystickKnob');
@@ -8047,6 +8163,7 @@ document.addEventListener('touchmove',e=>{
 
   const MAX = 44;
   let touchId = null;
+  let isJoyTouching = false;
 
   function getCenter(){
     const r = zone.getBoundingClientRect();
@@ -8061,7 +8178,8 @@ document.addEventListener('touchmove',e=>{
     knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
     window._joyDX = dx / MAX;  // -1 to +1
     window._joyDY = dy / MAX;
-    window._joyActive = Math.abs(dx)>4 || Math.abs(dy)>4;
+    const DEADZONE = 0.08;
+    window._joyActive = (Math.abs(dx) > DEADZONE || Math.abs(dy) > DEADZONE);
     // Also set key states for compatibility
     const T = 0.18;
     keys['w'] = dy < -MAX*T;
@@ -8073,34 +8191,89 @@ document.addEventListener('touchmove',e=>{
   function resetJoy(){
     window._joyDX = 0; window._joyDY = 0; window._joyActive = false;
     touchId = null;
+    isJoyTouching = false;
     knob.style.transform = 'translate(-50%, -50%)';
     keys['w']=false; keys['s']=false; keys['a']=false; keys['d']=false;
   }
 
+  // Prevent default browser touch behaviors on joystick
+  zone.style.touchAction = 'none';
   zone.addEventListener('touchstart', e=>{
-    e.preventDefault(); e.stopPropagation();
+    if(!GS || !GS.running) return;
+    e.preventDefault(); 
+    e.stopPropagation();
     initAudio();
     if(AC && AC.state==='suspended') AC.resume();
-    const t = e.changedTouches[0];
+    const t = e.touches[0] || e.changedTouches[0];
+    if(!t) return;
     touchId = t.identifier;
+    isJoyTouching = true;
     applyJoy(t.clientX, t.clientY);
-  },{passive:false});
+  },{passive:false, capture:true});
 
   zone.addEventListener('touchmove', e=>{
-    e.preventDefault(); e.stopPropagation();
-    for(let i=0;i<e.changedTouches.length;i++){
-      if(e.changedTouches[i].identifier === touchId){
-        applyJoy(e.changedTouches[i].clientX, e.changedTouches[i].clientY);
-        break;
-      }
+    if(!isJoyTouching) return;
+    e.preventDefault(); 
+    e.stopPropagation();
+    const t = Array.from(e.touches).find(touch => touch.identifier === touchId) || Array.from(e.changedTouches).find(touch => touch.identifier === touchId);
+    if(t){
+      applyJoy(t.clientX, t.clientY);
     }
-  },{passive:false});
+  },{passive:false, capture:true});
 
-  zone.addEventListener('touchend',   e=>{ e.preventDefault(); resetJoy(); },{passive:false});
-  zone.addEventListener('touchcancel',e=>{ e.preventDefault(); resetJoy(); },{passive:false});
+  zone.addEventListener('touchend', e=>{ 
+    if(e.changedTouches.length === 0 || Array.from(e.changedTouches).some(t => t.identifier === touchId)) {
+      e.preventDefault(); 
+      resetJoy();
+    }
+  },{passive:false, capture:true});
+  
+  zone.addEventListener('touchcancel', e=>{ 
+    e.preventDefault(); 
+    resetJoy();
+  },{passive:false, capture:true});
+
+  // Guard against stuck joystick on long touches
+  zone.addEventListener('touchleave', e=>{ resetJoy(); },{passive:true});
 })();
 
-})();  // ← ADD THIS LINE — closes the outer mobile controls IIFE</script>
+// ── STUCK CONTROL DETECTION & RECOVERY ──────────────
+// Auto-clear stuck keys every 50ms if no game running
+setInterval(()=>{
+  if(!GS || !GS.running || gamePaused) {
+    // Force clear all movement keys
+    keys['w']=false; keys['a']=false; keys['s']=false; keys['d']=false;
+    keys['arrowup']=false; keys['arrowdown']=false; keys['arrowleft']=false; keys['arrowright']=false;
+    // Force clear joystick
+    window._joyDX = 0;
+    window._joyDY = 0;
+    window._joyActive = false;
+    // Force clear mouse
+    mouse.down = false;
+  }
+},50);
+
+// If player is stuck for >3 seconds, clear all inputs
+let _lastNonStuckTime = Date.now();
+setInterval(()=>{
+  if(!P || !GS || !GS.running) return;
+  
+  // Check if player has moved in last 3 seconds
+  if(Math.hypot(P.vx, P.vy) > 0.5) {
+    _lastNonStuckTime = Date.now();
+  } else if(Date.now() - _lastNonStuckTime > 3000) {
+    // Player stuck — clear all inputs
+    console.warn('🎮 Mobile: Clearing stuck controls');
+    keys['w']=false; keys['a']=false; keys['s']=false; keys['d']=false;
+    keys['arrowup']=false; keys['arrowdown']=false; keys['arrowleft']=false; keys['arrowright']=false;
+    window._joyDX = 0; window._joyDY = 0; window._joyActive = false;
+    mouse.down = false;
+    P.vx = 0; P.vy = 0;
+    _lastNonStuckTime = Date.now();
+  }
+},500);
+
+})();  // ← Closes the outer mobile controls IIFE</script>
  
 <!-- GLOBAL LEADERBOARD PANEL -->
 <div id="leaderboardPanel" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.97);z-index:600;flex-direction:column;align-items:center;padding-top:28px;overflow-y:auto;">
