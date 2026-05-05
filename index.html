@@ -10,6 +10,18 @@
 <meta name="theme-color" content="#050608">
 <script>
 // ══════════════════════════════════════════════════════
+// CRITICAL: MOBILE DEVICE DETECTION - MUST BE FIRST
+// ══════════════════════════════════════════════════════
+const isMobileDevice = (() => {
+  return ('ontouchstart' in window) || 
+         (navigator.maxTouchPoints > 0) ||
+         (navigator.msMaxTouchPoints > 0) ||
+         window.matchMedia('(pointer:coarse)').matches ||
+         /Android|iPhone|iPad|iPod|Windows Phone|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+})();
+console.log('📱 Mobile Device:', isMobileDevice);
+
+// ══════════════════════════════════════════════════════
 // JSONBIN — LEADERBOARD + REAL MULTIPLAYER STORAGE
 // ══════════════════════════════════════════════════════
 
@@ -711,6 +723,22 @@ body{background:var(--bg);color:#fff;font-family:'Share Tech Mono','Courier New'
   <div style="font-size:20px;color:#39ff8a;letter-spacing:4px;font-weight:900;">ROTATE DEVICE</div>
   <div style="font-size:11px;color:#555;letter-spacing:2px;max-width:260px;line-height:1.8;">Squad Force requires<br>LANDSCAPE mode to play</div>
 </div>
+
+<!-- MOBILE DEBUG INDICATOR (REMOVE AFTER TESTING) -->
+<div id="mobileDebugIndicator" style="display:none;position:fixed;bottom:10px;right:10px;background:rgba(57,255,138,0.9);color:#000;padding:8px 12px;border-radius:6px;font-family:monospace;font-size:10px;z-index:9998;pointer-events:none;white-space:nowrap;">
+  📱 MOBILE DETECTED
+</div>
+
+<script>
+  // Show debug indicator on page load if mobile
+  window.addEventListener('DOMContentLoaded', () => {
+    const debug = document.getElementById('mobileDebugIndicator');
+    if(debug && (typeof isMobileDevice!=='undefined' ? isMobileDevice : (('ontouchstart' in window)||navigator.maxTouchPoints>0))) {
+      debug.style.display = 'block';
+      console.log('✅ Mobile debug indicator visible at bottom-right');
+    }
+  });
+</script>
 <div id="loginScreen" class="screen">  <div class="logo"><span class="r">SQUAD</span><span style="color:#fff">FORCE</span> <span class="g">V9</span></div>
   <div class="tagline">AI COMMANDS · WALKING ANIMATION · AGGRESSIVE BOSS · LIVE MULTIPLAYER</div>
   <div class="form-box">
@@ -1079,7 +1107,8 @@ const MM=document.getElementById('mc');
 const mmx=MM.getContext('2d');
 CV.width=window.innerWidth;CV.height=window.innerHeight;
 let W=CV.width,H=CV.height;
-const WORLD_W=Math.max(W*2.4,3200),WORLD_H=Math.max(H*2.4,2400);let camX=0,camY=0,shakeX=0,shakeY=0,shakeDur=0,shakeMag=0;
+const _isMob=typeof isMobileDevice!=='undefined'?isMobileDevice:(('ontouchstart' in window)||navigator.maxTouchPoints>0);
+const WORLD_W=_isMob?Math.max(W*1.5,1800):Math.max(W*2.4,3200),WORLD_H=_isMob?Math.max(H*1.5,1400):Math.max(H*2.4,2400);let camX=0,camY=0,shakeX=0,shakeY=0,shakeDur=0,shakeMag=0;
 
 const GRID_SZ=120;let spatialGrid={};
 function gridKey(x,y){return`${Math.floor(x/GRID_SZ)},${Math.floor(y/GRID_SZ)}`;}
@@ -2384,9 +2413,9 @@ const ROUND_MULT={
   3:{1:{intel:1.5,speed:1.4,hp:1.8,dmg:1.7,bossHp:1.6},2:{intel:2.2,speed:1.8,hp:2.5,dmg:2.3,bossHp:2.4},3:{intel:3.0,speed:2.4,hp:3.4,dmg:3.1,bossHp:3.8}},
 };
 const PLAYER_STAGE_BONUS={hpPerStage:120,shieldPerStage:80,speedPerStage:0.12,dmgPerStage:35,squadHpPerStage:160,squadDmgPerStage:1.4};const WEAPONS=[
-{gun:'RIFLE',  ammo:30,reserve:1200,rate:1,dmg:55,pwr:'SHADOW',shots:1},
-  {gun:'ASSAULT',ammo:25,reserve:1000,rate:1,dmg:85,pwr:'SHADOW',shots:2},
-  {gun:'PLASMA', ammo:15,reserve:800, rate:1,dmg:130,pwr:'SHADOW',shots:3},
+{gun:'RIFLE',  ammo:90,reserve:9999,rate:1,dmg:55,pwr:'SHADOW',shots:1},
+  {gun:'ASSAULT',ammo:75,reserve:9999,rate:1,dmg:85,pwr:'SHADOW',shots:2},
+  {gun:'PLASMA', ammo:45,reserve:9999,rate:1,dmg:130,pwr:'SHADOW',shots:3},
 ];
 const DIFF={easy:{mul:0.5,pHp:1200,pShield:800,sqHp:820},medium:{mul:0.75,pHp:950,pShield:620,sqHp:680},hard:{mul:1.1,pHp:720,pShield:460,sqHp:520}};let DC=DIFF.medium;
 const BASE_POSITIONS=[{x:WORLD_W*.12,y:WORLD_H*.5},{x:WORLD_W*.88,y:WORLD_H*.5},{x:WORLD_W*.5,y:WORLD_H*.12},{x:WORLD_W*.5,y:WORLD_H*.88}];
@@ -6723,7 +6752,7 @@ if(mouse.down&&!P.reloading&&!knifeMode&&!bladeMode&&!combatMode){
       }
     }
 if(P.reloading){
-P.reloadProg+=(P.reloadSpeed||1)*(berserkActive?0.08:0.032);  const fillEl=document.getElementById('reloadFill');
+P.reloadProg+=(P.reloadSpeed||1)*(berserkActive?0.12:0.055);  const fillEl=document.getElementById('reloadFill');
   if(fillEl)fillEl.style.width=Math.min(100,P.reloadProg*100)+'%';
   if(P.reloadProg>=1){
     // Complete the reload
@@ -7280,6 +7309,11 @@ CV.addEventListener('mousedown',e=>{
 CV.style.touchAction='none';
 // Touchpad: pointer events catch trackpad tap-to-click reliably
 CV.addEventListener('pointerdown',e=>{
+  // NEVER steal touches from mobile controls
+  if(e.pointerType==='touch') {
+    const tgt = e.target;
+    if(tgt === CV) return; // only handle if directly on canvas
+  }
   if(e.pointerType==='mouse'&&e.button===0){return;}// handled by mousedown
   if(e.pointerType==='touch'){return;}// handled by touch system
   // Trackpad or stylus — treat as mouse click
@@ -7670,7 +7704,7 @@ document.getElementById('muteBtn').addEventListener('click',()=>{muted=!muted;do
 document.getElementById('settingsBtn').addEventListener('click',()=>{const sp=document.getElementById('settingsPanel');sp.style.display=sp.style.display==='block'?'none':'block';});
 document.getElementById('closeSettings').addEventListener('click',()=>{document.getElementById('settingsPanel').style.display='none';});
 document.getElementById('openSettingsLogin').addEventListener('click',()=>{document.getElementById('settingsPanel').style.display='block';});
-(function(){const lb=document.getElementById('lbOpenBtn');if(lb)lb.addEventListener('click',openLeaderboard);})();
+document.getElementById('lbOpenBtn')?.addEventListener('click',()=>{ if(typeof openLeaderboard==='function')openLeaderboard(); });
 var cmdPanelOpen=false; // var hoists globally — avoids temporal dead zone crash
 function toggleCmdPanel(){
   if(!GS||!GS.running)return;
@@ -8091,14 +8125,14 @@ function onBtn(id,onDown,onUp){
     ()=>{ stopFiring(); }
   );
   // ── OTHER ACTION BUTTONS ──────────────────────────
-  onBtn('mBtnMelee',()=>pMelee());
-  onBtn('mBtnReload',()=>startReload());
-  onBtn('mBtnPower',()=>activatePower());
-  onBtn('mBtnBerserk',()=>{activateBerserk();});
-  onBtn('mBtnPause',()=>togglePause());
-onBtn('mBtnKnife',()=>throwKnife());
-onBtn('mBtnBlade',()=>throwEnergyBlade());
-onBtn('mBtnCombat',()=>{if(P.ammo<=0)activateCombatMode();});
+  onBtn('mBtnMelee',()=>{if(P&&!P.dead)pMelee();});
+  onBtn('mBtnReload',()=>{if(P&&!P.dead&&!P.reloading)startReload();});
+  onBtn('mBtnPower',()=>{if(P&&!P.dead)activatePower();});
+  onBtn('mBtnBerserk',()=>{if(P&&!P.dead)activateBerserk();});
+  onBtn('mBtnPause',()=>{if(GS&&GS.running)togglePause();});
+onBtn('mBtnKnife',()=>{if(P&&!P.dead)throwKnife();});
+onBtn('mBtnBlade',()=>{if(P&&!P.dead)throwEnergyBlade();});
+onBtn('mBtnCombat',()=>{if(P&&!P.dead&&P.ammo<=0)activateCombatMode();});
 
 // Show/hide buttons based on ammo
 setInterval(()=>{
@@ -8118,6 +8152,7 @@ setInterval(()=>{
 },200);
   // ── MERGE/RELEASE TOGGLE ──────────────────────────
   onBtn('mBtnMerge',()=>{
+    if(!P||P.dead)return;
     if(mergeMode)releaseSquad();
     else doSquadMerge();
   });
@@ -8199,7 +8234,21 @@ document.addEventListener('touchmove',e=>{
   // Prevent default browser touch behaviors on joystick
   zone.style.touchAction = 'none';
   zone.addEventListener('touchstart', e=>{
-    if(!GS || !GS.running) return;
+    if(!GS || !GS.running) {
+      e.preventDefault();
+      e.stopPropagation();
+      const t = e.touches[0] || e.changedTouches[0];
+      if(!t) return;
+      touchId = t.identifier;
+      isJoyTouching = true;
+      const c = getCenter();
+      let dx = t.clientX - c.x, dy = t.clientY - c.y;
+      const d = Math.sqrt(dx*dx+dy*dy);
+      const MAX = 70;
+      if(d > MAX){ dx = dx/d*MAX; dy = dy/d*MAX; }
+      knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+      return;
+    }
     e.preventDefault(); 
     e.stopPropagation();
     initAudio();
@@ -8217,7 +8266,16 @@ document.addEventListener('touchmove',e=>{
     e.stopPropagation();
     const t = Array.from(e.touches).find(touch => touch.identifier === touchId) || Array.from(e.changedTouches).find(touch => touch.identifier === touchId);
     if(t){
-      applyJoy(t.clientX, t.clientY);
+      if(!GS || !GS.running) {
+        const c = getCenter();
+        let dx = t.clientX - c.x, dy = t.clientY - c.y;
+        const d = Math.sqrt(dx*dx+dy*dy);
+        const MAX = 70;
+        if(d > MAX){ dx = dx/d*MAX; dy = dy/d*MAX; }
+        knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+      } else {
+        applyJoy(t.clientX, t.clientY);
+      }
     }
   },{passive:false, capture:true});
 
@@ -8273,7 +8331,216 @@ setInterval(()=>{
   }
 },500);
 
-})();  // ← Closes the outer mobile controls IIFE</script>
+})();
+
+// ═══════════════════════════════════════════════════════
+// CRITICAL MOBILE CONTROLS DIRECT BINDING
+// ═══════════════════════════════════════════════════════
+// Bind touch handlers directly to button elements IMMEDIATELY
+(function() {
+  if(!isMobileDevice) return;
+  
+  console.log('🎮 Binding direct mobile touch handlers...');
+  
+  // Direct fire button binding
+  const fireBtn = document.getElementById('mBtnFire');
+  if(fireBtn) {
+    fireBtn.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log('🔫 FIRE button touched!');
+      if(window.__mobileFireActive) return;
+      window.__mobileFireActive = true;
+    }, {passive: false, capture: true});
+    
+    fireBtn.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log('🔫 FIRE button released');
+      window.__mobileFireActive = false;
+    }, {passive: false, capture: true});
+    
+    fireBtn.addEventListener('touchcancel', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      window.__mobileFireActive = false;
+    }, {passive: false, capture: true});
+  }
+  
+  // Also add click handlers as fallback
+  if(fireBtn) {
+    fireBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log('🔫 FIRE button clicked!');
+    }, true);
+  }
+  
+  // Direct melee button binding
+  const meleeBtn = document.getElementById('mBtnMelee');
+  if(meleeBtn) {
+    meleeBtn.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log('👊 MELEE button touched');
+    }, {passive: false, capture: true});
+  }
+  
+  // Direct pause button binding
+  const pauseBtn = document.getElementById('mBtnPause');
+  if(pauseBtn) {
+    pauseBtn.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log('⏸ PAUSE button touched');
+    }, {passive: false, capture: true});
+  }
+  
+  // Direct reload button binding  
+  const reloadBtn = document.getElementById('mBtnReload');
+  if(reloadBtn) {
+    reloadBtn.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log('↺ RELOAD button touched');
+    }, {passive: false, capture: true});
+  }
+  
+  console.log('✅ Direct touch bindings complete');
+})();
+// IMPROVED MOBILE TOUCH DETECTION & INITIALIZATION
+// ═══════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════
+// COMPREHENSIVE MOBILE DIAGNOSTIC & TEST SUITE
+// ═══════════════════════════════════════════════════════
+(function diagnosticSuite() {
+  if(!isMobileDevice) {
+    console.log('ℹ️ Desktop detected - mobile diagnostics skipped');
+    return;
+  }
+  
+  console.group('📱 MOBILE DEVICE DIAGNOSTICS');
+  
+  // 1. Check viewport
+  console.log('Viewport:', {
+    width: window.innerWidth,
+    height: window.innerHeight,
+    visualViewport: window.visualViewport ? {
+      width: window.visualViewport.width,
+      height: window.visualViewport.height
+    } : 'not supported'
+  });
+  
+  // 2. Check mobile controls container
+  const mc = document.getElementById('mobileControls');
+  console.log('Mobile Controls Container:', {
+    exists: !!mc,
+    display: mc?.style.display,
+    pointerEvents: mc?.style.pointerEvents,
+    zIndex: mc?.style.zIndex,
+    visible: mc && mc.style.display !== 'none'
+  });
+  
+  // 3. Check individual buttons
+  const buttons = ['mBtnFire', 'mBtnMelee', 'mBtnReload', 'mBtnPower', 'mBtnPause'];
+  console.log('Button Status:');
+  buttons.forEach(btn => {
+    const el = document.getElementById(btn);
+    console.log(`  ${btn}:`, {
+      exists: !!el,
+      display: el?.style.display,
+      pointerEvents: el?.style.pointerEvents,
+      zIndex: el?.style.zIndex,
+      visible: el && el.style.display !== 'none'
+    });
+  });
+  
+  // 4. Check joystick
+  const joy = document.getElementById('joystickZone');
+  console.log('Joystick Zone:', {
+    exists: !!joy,
+    display: joy?.style.display,
+    pointerEvents: joy?.style.pointerEvents,
+    zIndex: joy?.style.zIndex,
+    touchAction: joy?.style.touchAction
+  });
+  
+  // 5. Check shoot zone
+  const shoot = document.getElementById('mobileShootZone');
+  console.log('Shoot Zone:', {
+    exists: !!shoot,
+    display: shoot?.style.display,
+    pointerEvents: shoot?.style.pointerEvents,
+    zIndex: shoot?.style.zIndex
+  });
+  
+  // 6. Add test touch logging
+  document.addEventListener('touchstart', (e) => {
+    const tgt = e.target;
+    const id = tgt.id || tgt.className || 'unknown';
+    if(tgt.closest('#mobileControls')) {
+      console.log('✓ Touch on mobile control:', id);
+    }
+  }, {passive: true, capture: true});
+  
+  console.groupEnd();
+  
+  // 7. Create CSS override for visibility guarantee
+  const style = document.createElement('style');
+  style.textContent = `
+    #mobileControls {
+      display: flex !important;
+      pointer-events: all !important;
+      z-index: 400 !important;
+    }
+    .mBtn, #joystickZone, #mobileRightPanel, #mobileShootZone {
+      pointer-events: all !important;
+      touch-action: none !important;
+    }
+  `;
+  document.head.appendChild(style);
+  console.log('✅ CSS overrides applied');
+})();
+
+// ═══════════════════════════════════════════════════════
+(function initMobileControlsVisibility() {
+  const mc = document.getElementById('mobileControls');
+  if(!mc) {
+    console.error('❌ Mobile controls container not found!');
+    return;
+  }
+  
+  if(isMobileDevice) {
+    mc.style.display = 'flex';
+    mc.style.pointerEvents = 'all';
+    mc.style.zIndex = '400';
+    mc.style.position = 'fixed';
+    mc.style.inset = '0';
+    
+    // Ensure all child elements are clickable
+    mc.querySelectorAll('.mBtn, #joystickZone, #mobileShootZone, #mobileRightPanel').forEach(el => {
+      el.style.pointerEvents = 'all !important';
+      el.style.touchAction = 'none';
+      el.style.userSelect = 'none';
+    });
+    
+    // Debug: add visible borders to touch zones during development
+    if(window.location.search.includes('debug')) {
+      document.getElementById('joystickZone').style.border = '2px dashed red';
+      document.getElementById('mobileShootZone').style.border = '2px dashed blue';
+      document.getElementById('mobileRightPanel').style.border = '2px dashed green';
+    }
+    
+    console.log('✅ Mobile controls ENABLED and visible');
+    console.log('  - Joystick:', document.getElementById('joystickZone') ? 'OK' : 'MISSING');
+    console.log('  - Fire button:', document.getElementById('mBtnFire') ? 'OK' : 'MISSING');
+    console.log('  - Right panel:', document.getElementById('mobileRightPanel') ? 'OK' : 'MISSING');
+  } else {
+    mc.style.display = 'none';
+    console.log('ℹ️ Mobile controls hidden (desktop detected)');
+  }
+})();</script>
  
 <!-- GLOBAL LEADERBOARD PANEL -->
 <div id="leaderboardPanel" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.97);z-index:600;flex-direction:column;align-items:center;padding-top:28px;overflow-y:auto;">
