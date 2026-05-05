@@ -667,7 +667,6 @@ body{background:var(--bg);color:#fff;font-family:'Share Tech Mono','Courier New'
 <div id="deathVig"></div><div id="berserkOverlay"></div>
 
 <div id="mobileControls">
-  <div id="mobileShootZone"></div>
 
 <!-- FLOATING QUICK COMMANDS — always accessible mid-combat -->
 <div id="quickCmds">
@@ -6545,8 +6544,7 @@ document.getElementById('bossBar').style.display='none';document.getElementById(
 const isMobile=('ontouchstart' in window)||navigator.maxTouchPoints>0||window.matchMedia('(pointer:coarse)').matches||/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   const mc2=document.getElementById('mobileControls');
   if(mc2){
-    mc2.style.display=isMobile?'block':'none';
-    mc2.style.pointerEvents='all';
+mc2.style.display=isMobile?'flex':'none';    mc2.style.pointerEvents='all';
     mc2.style.zIndex='400';
     if(isMobile){
       mc2.querySelectorAll('.mBtn').forEach(b=>{
@@ -6659,11 +6657,13 @@ tickSpawn();if(frameN%6===0)rebuildGrid();
 
   // Player update
   if(!P.dead&&!spectating){
-    let mx=0,my=0;
+   let mx=0,my=0;
     if(keys['w']||keys['arrowup'])my=-1;if(keys['s']||keys['arrowdown'])my=1;
     if(keys['a']||keys['arrowleft'])mx=-1;if(keys['d']||keys['arrowright'])mx=1;
+    // Joystick override
+    if(window._joyActive){mx=window._joyDX;my=window._joyDY;}
     const spd=P.speed*(P.crouching&&!berserkActive?.54:1)*(berserkActive?1.32:1);
-if(mx||my){const l=Math.sqrt(mx*mx+my*my);const gs=gameSpeedSetting||1.0;P.vx=mx/l*spd*gs;P.vy=my/l*spd*gs;P.x+=P.vx;P.y+=P.vy;}else{P.vx=0;P.vy=0;}    P.isMoving=Math.hypot(P.vx,P.vy)>0.2;if(P.isMoving)P.stepPhase=(P.stepPhase||0)+0.16;else P.stepPhase=(P.stepPhase||0)*.9;
+    if(mx||my){const l=Math.max(0.001,Math.sqrt(mx*mx+my*my));const gs=gameSpeedSetting||1.0;P.vx=(mx/l)*spd*gs;P.vy=(my/l)*spd*gs;P.x+=P.vx;P.y+=P.vy;}else{P.vx=0;P.vy=0;}    P.isMoving=Math.hypot(P.vx,P.vy)>0.2;if(P.isMoving)P.stepPhase=(P.stepPhase||0)+0.16;else P.stepPhase=(P.stepPhase||0)*.9;
 covers.forEach(c=>{
   if(!crRect(P.x,P.y,17,c.x,c.y,c.w,c.h))return;
   const cx=c.x+c.w/2,cy=c.y+c.h/2;
@@ -7915,10 +7915,14 @@ function onBtn(id,onDown,onUp){
       if(!GS||!GS.running||!P||P.dead)return;
       // Auto-aim at nearest enemy on mobile fire press
       const nearE=nearestEnemy(P.x,P.y);
-      if(nearE&&!nearE.dead){
+  if(nearE&&!nearE.dead){
         P.angle=Math.atan2(nearE.y-P.y,nearE.x-P.x);
-        mouse.x=nearE.x-camX+shakeX;
-        mouse.y=nearE.y-camY+shakeY;
+        mouse.x=(nearE.x-camX+shakeX);
+        mouse.y=(nearE.y-camY+shakeY);
+      } else {
+        // Aim in the direction player is facing if no enemy found
+        mouse.x = psp ? psp.x + Math.cos(P.angle)*120 : mouse.x;
+        mouse.y = psp ? psp.y + Math.sin(P.angle)*120 : mouse.y;
       }
       if(combatMode){
         combatPunch();
@@ -7993,7 +7997,7 @@ setInterval(()=>{
 document.addEventListener('touchmove',e=>{
   const tgt=e.target;
   const isUI=tgt.closest&&(
-    tgt.closest('#pauseScreen')||tgt.closest('#mobileRightPanel')||
+    tgt.closest('#joystickZone')||tgt.closest('#pauseScreen')||tgt.closest('#mobileRightPanel')||
     tgt.closest('#cmdStrip')||tgt.closest('#cmdPanel')||
     tgt.closest('#settingsPanel')||tgt.closest('#deathScreen')||
     tgt.closest('#perkScreen')||tgt.closest('#lobbyScreen')||
@@ -8010,82 +8014,70 @@ document.addEventListener('touchmove',e=>{
   },{passive:false});
 
 // ── JOYSTICK IMPLEMENTATION ──────────────────────────
+// ── JOYSTICK IMPLEMENTATION — FIXED ─────────────────
 (()=>{
   const zone = document.getElementById('joystickZone');
-  const base = document.getElementById('joystickBase');
   const knob = document.getElementById('joystickKnob');
-  if(!zone||!base||!knob) return;
+  if(!zone||!knob) return;
 
-  let active = false;
-  let startX = 0, startY = 0;
-  const maxDist = 42;
+  // Global joystick state read by game loop every frame
+  window._joyDX = 0;
+  window._joyDY = 0;
+  window._joyActive = false;
+
+  const MAX = 44;
+  let touchId = null;
 
   function getCenter(){
-    const r = base.getBoundingClientRect();
+    const r = zone.getBoundingClientRect();
     return { x: r.left + r.width/2, y: r.top + r.height/2 };
   }
 
-function updateJoystick(tx, ty){
+  function applyJoy(tx, ty){
     const c = getCenter();
-    let dx = tx - c.x;
-    let dy = ty - c.y;
-    const d2 = Math.sqrt(dx*dx + dy*dy);
-    if(d2 > maxDist){ dx = dx/d2*maxDist; dy = dy/d2*maxDist; }
+    let dx = tx - c.x, dy = ty - c.y;
+    const d = Math.sqrt(dx*dx+dy*dy);
+    if(d > MAX){ dx = dx/d*MAX; dy = dy/d*MAX; }
     knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
-    const threshold = 8;
-    keys['w'] = dy < -threshold;
-    keys['s'] = dy >  threshold;
-    keys['a'] = dx < -threshold;
-    keys['d'] = dx >  threshold;
-    // Direct player movement fallback — bypasses key system on mobile
-    if(GS && GS.running && P && !P.dead){
-      const mag = Math.sqrt(dx*dx+dy*dy);
-      if(mag > threshold){
-        const spd = P.speed * (P.crouching ? 0.54 : 1) * (berserkActive ? 1.32 : 1);
-        P.x = Math.max(18, Math.min(WORLD_W-18, P.x + (dx/maxDist)*spd));
-        P.y = Math.max(18, Math.min(WORLD_H-18, P.y + (dy/maxDist)*spd));
-        P.isMoving = true;
-        P.stepPhase = (P.stepPhase||0) + 0.16;
-      }
-    }
+    window._joyDX = dx / MAX;  // -1 to +1
+    window._joyDY = dy / MAX;
+    window._joyActive = Math.abs(dx)>4 || Math.abs(dy)>4;
+    // Also set key states for compatibility
+    const T = 0.18;
+    keys['w'] = dy < -MAX*T;
+    keys['s'] = dy >  MAX*T;
+    keys['a'] = dx < -MAX*T;
+    keys['d'] = dx >  MAX*T;
   }
 
-  function resetJoystick(){
-    active = false;
+  function resetJoy(){
+    window._joyDX = 0; window._joyDY = 0; window._joyActive = false;
+    touchId = null;
     knob.style.transform = 'translate(-50%, -50%)';
-    keys['w']=false; keys['s']=false;
-    keys['a']=false; keys['d']=false;
+    keys['w']=false; keys['s']=false; keys['a']=false; keys['d']=false;
   }
 
- zone.addEventListener('touchstart', e=>{
-    if(!GS||!GS.running)return;
-    e.preventDefault();
-    e.stopPropagation();
+  zone.addEventListener('touchstart', e=>{
+    e.preventDefault(); e.stopPropagation();
     initAudio();
-    if(AC&&AC.state==='suspended') AC.resume();
-    active = true;
-    const t = e.touches[0];
-    updateJoystick(t.clientX, t.clientY);
-  }, {passive:false});
+    if(AC && AC.state==='suspended') AC.resume();
+    const t = e.changedTouches[0];
+    touchId = t.identifier;
+    applyJoy(t.clientX, t.clientY);
+  },{passive:false});
 
   zone.addEventListener('touchmove', e=>{
-    e.preventDefault();
-    e.stopPropagation();
-    if(!active) return;
-    const t = e.touches[0];
-    updateJoystick(t.clientX, t.clientY);
-  }, {passive:false});
+    e.preventDefault(); e.stopPropagation();
+    for(let i=0;i<e.changedTouches.length;i++){
+      if(e.changedTouches[i].identifier === touchId){
+        applyJoy(e.changedTouches[i].clientX, e.changedTouches[i].clientY);
+        break;
+      }
+    }
+  },{passive:false});
 
-  zone.addEventListener('touchend', e=>{
-    e.preventDefault();
-    e.stopPropagation();
-    resetJoystick();
-  }, {passive:false});
-
-zone.addEventListener('touchcancel', e=>{
-    e.preventDefault();
-    resetJoystick();
-  }, {passive:false});
+  zone.addEventListener('touchend',   e=>{ e.preventDefault(); resetJoy(); },{passive:false});
+  zone.addEventListener('touchcancel',e=>{ e.preventDefault(); resetJoy(); },{passive:false});
 })();
 
 })();  // ← ADD THIS LINE — closes the outer mobile controls IIFE</script>
