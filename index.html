@@ -15,221 +15,183 @@
 
 // ── Leaderboard bin (existing) ──
 const JBIN_KEY  = '$2a$10$eFVVBmIg1fwxfS7.50gU5.mJsBfMpfrj2MuXl6gd3dDIHY92D3YmG';
+
 const JBIN_ID   = '69f0a63836566621a8ff65f6';
 const JBIN_URL  = `https://api.jsonbin.io/v3/b/${JBIN_ID}`;
 
-// ── Multiplayer bin (NEW — paste your new Bin ID below) ──
-const MP_BIN_ID = '69f0b189856a682189814a51';
-const MP_BIN_URL= `https://api.jsonbin.io/v3/b/${MP_BIN_ID}`;
-
 // ══════════════════════════════════════════════════════
-// PERSISTENT PLAYER IDENTITY — name + country stored
-// forever so we always know who is playing
+// ABLY REAL-TIME CO-OP ENGINE
 // ══════════════════════════════════════════════════════
-const _IDENTITY_KEY='sqfv9_id_v3';
-let _playerIdentity=null;
-let rankedMode=true;        // true=ranked, false=fun
-let _pendingGameType=null;  // 'solo'|'room'|'resume'
+const ABLY_KEY = null; // Multiplayer coming soon
+let ablyClient=null,ablyChannel=null,ablyReady=false;
+let isRoomHost=false,mpCoopMode=false,myRole='commander',_hostClaimSent=false;
+let rankedMode=false,_pendingGameType='solo';
 
-function _loadIdentity(){
-  try{const d=localStorage.getItem(_IDENTITY_KEY);if(d){_playerIdentity=JSON.parse(d);return _playerIdentity;}}catch(e){}
-  return null;
-}
-function saveProfile(){
-  const ni=document.getElementById('nameInput');
-  const ci=document.getElementById('countryInput');
-  const name=(ni?ni.value.trim():'');
-  const country=(ci?ci.value:'');
-  if(!name){alert('Please enter your callsign first!');return;}
-  if(!country){alert('Please select your country!');return;}
-  _saveIdentity(name,country);
-  myPlayerName=name;
-  myPlayerColor=selectedColor;
-  refreshProfileUI();
-  // Flash confirmation
-  const btn=event.target;
-  const orig=btn.textContent;
-  btn.textContent='✓ SAVED!';
-  btn.style.borderColor='#ffd700';btn.style.color='#ffd700';
-  setTimeout(()=>{btn.textContent=orig;btn.style.borderColor='';btn.style.color='';},1800);
-}
-function showEditProfile(){
-  document.getElementById('profileSavedBanner').style.display='none';
-  document.getElementById('profileEditForm').style.display='flex';
-  if(_playerIdentity){
-    const ni=document.getElementById('nameInput');
-    const ci=document.getElementById('countryInput');
-    if(ni)ni.value=_playerIdentity.name||'';
-    if(ci)ci.value=_playerIdentity.country||'';
-  }
-}
-function refreshProfileUI(){
-  const banner=document.getElementById('profileSavedBanner');
-  const form=document.getElementById('profileEditForm');
-  if(_playerIdentity&&_playerIdentity.name){
-    if(banner){
-      banner.style.display='block';
-      const rn=document.getElementById('returningName');
-      const rc=document.getElementById('returningCountryLine');
-      if(rn)rn.textContent=_playerIdentity.name;
-      if(rc)rc.textContent=(_playerIdentity.country&&_playerIdentity.country!=='Unknown')?
-        'Country: '+_playerIdentity.country:
-        'No country set — click Edit to add';
-    }
-    if(form)form.style.display='none';
-    // Update hidden values used by game
-    myPlayerName=_playerIdentity.name;
-    const m=loadMedals(_playerIdentity.name);
-    const medEl=document.getElementById('storedMedals');
-    if(medEl)medEl.textContent=m.gold||m.silver||m.bronze?
-      `${_playerIdentity.name}: 🥇${m.gold} 🥈${m.silver} 🥉${m.bronze}`:'';
-  }else{
-    if(banner)banner.style.display='none';
-    if(form)form.style.display='flex';
-  }
-}
-function resetIdentity(){
-  if(!confirm('Clear your saved profile? You will need to set your name again.'))return;
-  localStorage.removeItem(_IDENTITY_KEY);_playerIdentity=null;
-  const ni=document.getElementById('nameInput');
-  const ci=document.getElementById('countryInput');
-  if(ni)ni.value='';if(ci)ci.value='';
-  refreshProfileUI();
-}
-function _saveIdentity(name,country){
-  _playerIdentity={
-    name:(name||'').trim()||_playerIdentity?.name||'SOLDIER',
-    country:country||_playerIdentity?.country||'Unknown',
-    uid:_playerIdentity?.uid||('u'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)),
-    firstSeen:_playerIdentity?.firstSeen||Date.now(),
-    lastSeen:Date.now(),
-    totalVisits:(_playerIdentity?.totalVisits||0)+1,
-  };
-  try{localStorage.setItem(_IDENTITY_KEY,JSON.stringify(_playerIdentity));}catch(e){}
-  return _playerIdentity;
-}
-function resetIdentity(){
-  if(!confirm('Clear your saved name and country? You will be asked again next visit.'))return;
-  localStorage.removeItem(_IDENTITY_KEY);_playerIdentity=null;
-  document.getElementById('nameInput').value='';
-  const ci=document.getElementById('countryInput');if(ci)ci.value='';
-  document.getElementById('returningMsg').style.display='none';
-  document.getElementById('callsignRow').style.display='';
-  document.getElementById('countryRow').style.display='';
-}
-_loadIdentity(); // run immediately so identity is ready before anything else
-
-// ── fbDB stub so no other code breaks ──
-const fbDB={
-  ref(){return{set:async()=>{},get:async()=>({exists:()=>false,val:()=>null}),remove:async()=>{},orderByChild:()=>({limitToLast:()=>({on:()=>{}})})};},
+const ROLE_DEFS={
+  commander:{name:'COMMANDER',icon:'🎖️',color:'#39ff8a',hp:1.0,shield:1.0,speed:1.0,dmg:1.0,helmetCol:'#39ff8a',desc:'Balanced leader. Shadow power.',ability:'Shadow/Invisibility [E]'},
+  rex:      {name:'REX',      icon:'🛡️',color:'#4488ff',hp:2.2,shield:2.8,speed:0.72,dmg:0.8,helmetCol:'#3366ff',desc:'Tank. Massive HP and shield.',ability:'Shield Bash [Q]'},
+  zara:     {name:'ZARA',     icon:'✚', color:'#39ffcc',hp:0.85,shield:1.2,speed:1.1,dmg:0.75,helmetCol:'#22ccaa',desc:'Healer. Q heals all nearby players.',ability:'Mass Heal [Q]'},
+  bolt:     {name:'BOLT',     icon:'⚡',color:'#ffff44',hp:0.8,shield:0.9,speed:1.9,dmg:1.1,helmetCol:'#ddcc00',desc:'Fastest player. Rapid fire.',ability:'Speed Dash [SHIFT]'},
+  nova:     {name:'NOVA',     icon:'🔥',color:'#ff8800',hp:0.9,shield:1.0,speed:1.0,dmg:1.5,helmetCol:'#ff7700',desc:'Bomber. High AoE damage.',ability:'Napalm Bomb [E]'},
 };
 
-// ══════════════════════════════════════════════════════
-// MULTIPLAYER STORAGE — JSONBin backed, cached
-// ── shared=false → local memory only (private)
-// ── shared=true  → JSONBin (visible to all players)
-// ══════════════════════════════════════════════════════
-let _mpCache     = null;   // cached bin contents
-let _mpCacheTs   = 0;      // when cache was last filled
-const _MP_TTL    = 2500;   // ms before re-fetching
-
-async function _mpRead() {
-  const now = Date.now();
-  if (_mpCache && now - _mpCacheTs < _MP_TTL) return _mpCache;
-  try {
-    const r = await fetch(MP_BIN_URL + '/latest', {
-      headers: { 'X-Master-Key': JBIN_KEY, 'X-Bin-Meta': 'false' }
-    });
-    if (!r.ok) { console.warn('MP read HTTP', r.status); return _mpCache || {}; }
-    const d = await r.json();
-    _mpCache  = (d && typeof d === 'object') ? d : {};
-    _mpCacheTs = now;
-    return _mpCache;
-  } catch(e) {
-    console.warn('MP read error', e);
-    return _mpCache || {};
-  }
-}
-
-async function _mpWrite(data) {
-  // Auto-purge entries older than 25 s so the bin stays clean
-  const cutoff = Date.now() - 25000;
-  Object.keys(data).forEach(k => {
-    if (data[k] && data[k].ts && data[k].ts < cutoff) delete data[k];
+// Load Ably SDK dynamically
+function loadAbly(){
+  return new Promise(resolve=>{
+    if(window.Ably){resolve();return;}
+    const s=document.createElement('script');
+    s.src='https://cdn.ably.com/lib/ably.min-1.js';
+    s.onload=resolve;
+    document.head.appendChild(s);
   });
-  try {
-    const r = await fetch(MP_BIN_URL, {
-      method : 'PUT',
-      headers: { 'Content-Type': 'application/json', 'X-Master-Key': JBIN_KEY },
-      body   : JSON.stringify(data)
-    });
-    if (!r.ok) console.warn('MP write HTTP', r.status);
-    else { _mpCache = data; _mpCacheTs = Date.now(); }
-  } catch(e) { console.warn('MP write error', e); }
 }
 
-window.storage = {
-  _local: {},   // non-shared (private) keys live here
+async function initAbly(channelName){
+  await loadAbly();
+  if(!window.Ably){console.error('Ably SDK failed to load');return;}
+  ablyClient=new Ably.Realtime({key:ABLY_KEY,clientId:myPid||'anon'});
+  ablyChannel=ablyClient.channels.get('sqf9-'+channelName);
+  // Wait for actual connection before marking ready
+  await new Promise(resolve=>{
+    ablyClient.connection.on('connected',()=>{
+      console.log('✅ Ably connected → channel: sqf9-'+channelName);
+      resolve();
+    });
+    ablyClient.connection.on('failed',()=>{
+      console.error('❌ Ably connection failed');
+      resolve();
+    });
+    setTimeout(resolve,6000); // 6s timeout fallback
+  });
+ ablyReady=ablyClient.connection.state==='connected';
+  if(ablyReady)_initAblyRouter();
+}
 
-  async set(key, value, shared = false) {
-    if (!shared) {
-      this._local[key] = { value, ts: Date.now() };
-      return { key, value, shared };
-    }
-    try {
-      const data = await _mpRead();
-      data[key] = { value, ts: Date.now() };
-      await _mpWrite(data);
-      return { key, value, shared };
-    } catch(e) { console.warn('storage.set', e); return null; }
-  },
+// Send a message to all players in the room
 
-  async get(key, shared = false) {
-    if (!shared) {
-      const d = this._local[key];
-      if (d) return { key, value: d.value, shared };
-      throw new Error('Key not found: ' + key);
-    }
-    try {
-      const data = await _mpRead();
-      if (data[key] !== undefined) return { key, value: data[key].value, shared };
-      throw new Error('Key not found: ' + key);
-    } catch(e) { throw e; }
-  },
+// Listen for messages from other players
+// ── SINGLE ROUTING TABLE — one subscriber, no duplicates ──
+const _ablyRoutes={};
+function ablySubscribe(type,callback){
+  _ablyRoutes[type]=callback; // just register, don't subscribe yet
+}
 
-  async delete(key, shared = false) {
-    if (!shared) {
-      delete this._local[key];
-      return { key, deleted: true };
-    }
-    try {
-      const data = await _mpRead();
-      delete data[key];
-      await _mpWrite(data);
-      return { key, deleted: true };
-    } catch(e) { return null; }
-  },
-
-  async list(prefix = '', shared = false) {
-    if (!shared) {
-      const keys = Object.keys(this._local).filter(k => k.startsWith(prefix));
-      return { keys };
-    }
-    try {
-      const data = await _mpRead();
-      const keys = Object.keys(data).filter(k => k.startsWith(prefix));
-      return { keys };
-    } catch(e) { return { keys: [] }; }
+function _applyWorldState(d){
+  if(!d||!GS||!GS.running)return;
+  if(d.enemies&&Array.isArray(d.enemies)){
+    const hMap={};d.enemies.forEach(e=>{hMap[e.id]=e;});
+    enemies.forEach(e=>{
+      const h=hMap[e.id];
+      if(!h){e.dead=true;e.deathT=99;return;}
+      e.x+=(h.x-e.x)*0.45;e.y+=(h.y-e.y)*0.45;
+      e.angle=h.angle;e.hp=h.hp;e.maxHp=h.maxHp;
+      e.dead=h.dead;e.deathT=h.deathT||0;
+      e.flashT=h.flashT||0;
+      e.aiState=h.aiState||e.aiState;
+      e.sleeping=h.sleeping||false;
+    });
+    d.enemies.forEach(he=>{
+      if(!enemies.find(e=>e.id===he.id)){
+        enemies.push({
+          ...he,vx:0,vy:0,_meleeCD:0,burnT:0,_combatRushT:0,
+          canCling:false,clinging:false,hasPower:false,powerCD:999,
+          callTimer:999,aiT:0,covPos:null,shootT:30,intel:0.7,
+          lastKnownX:he.x,lastKnownY:he.y,alertT:0,flankAngle:0,
+          suppressedT:0,stuckT:0,lastX:he.x,lastY:he.y,
+          berserkMode:he.berserkMode||false,berserkHP:(he.hp||1)*0.15,
+          sleeping:he.sleeping||false,sleepT:0,
+          phantomAlpha:1,phantomRevealT:0,bombT:999999,
+          faction:'alpha',factionShirt:null,factionCol:null,
+          isCommander:false,commanderT:0,
+          dead:he.dead||false,flashT:0,deathT:0,
+          guardingDownedAt:null,retreating:false,retreatTarget:null,
+          crouching:false,peekT:0,stepPhase:0,isMoving:false,
+          sz:he.sz||18,col:he.col||'#ff4444',label:he.label||'',
+          heavy:he.heavy||false,sniper:he.sniper||false,scout:he.scout||false,
+          isBerserker:he.isBerserker||false,isPhantom:he.isPhantom||false,
+          isBomber:he.isBomber||false,
+        });
+      }
+    });
   }
-};
+  if(d.boss&&boss&&!boss.dead){
+    boss.x+=(d.boss.x-boss.x)*0.4;
+    boss.y+=(d.boss.y-boss.y)*0.4;
+    boss.hp=d.boss.hp;boss.maxHp=d.boss.maxHp;
+    boss.phase=d.boss.phase||1;boss.angle=d.boss.angle||0;
+    updateBossHUD();
+    if(boss.hp<=0&&!boss.dead)killBoss();
+  }
+}
+
+function _applyRemoteBullet(d){
+  if(!GS||!GS.running)return;
+  bullets.push({
+    x:d.x,y:d.y,
+    dx:d.vx!==undefined?d.vx:d.dx||0,
+    dy:d.vy!==undefined?d.vy:d.dy||0,
+    life:d.life||60,dmg:d.dmg||10,
+    owner:'remote',remoteColor:d.color||'#ff88ff',
+    crit:d.crit===1,pierce:0,explosive:false
+  });
+}
+
+function _initAblyRouter(){
+  if(!ablyReady||!ablyChannel)return;
+  ablyChannel.unsubscribe(); // clear ALL previous listeners
+  ablyChannel.subscribe(msg=>{
+    const d=msg.data;
+    if(!d)return;
+    // Filter own messages
+    if((d._pid&&d._pid===myPid)||(d.pid&&d.pid===myPid))return;
+    const name=msg.name;
+    // ── WORLD STATE: authoritative enemy sync host→clients ──
+    if(name==='world_state'&&mpCoopMode&&!isRoomHost){
+      _applyWorldState(d);return;
+    }
+    // ── BULLET: another player fired ──
+    if(name==='bullet_fired'){
+      _applyRemoteBullet(d);return;
+    }
+    // ── PLAYER DIED ──
+    if(name==='player_died'){
+      if(d.name)showBanner('💀 TEAMMATE DOWN',`${d.name} was eliminated!`,'#ff3333');
+      if(d.id&&onlinePlayers[d.id])onlinePlayers[d.id].dead=true;
+      return;
+    }
+    // ── ENEMY HIT: client reports damage, host applies ──
+    if(name==='enemy_hit'&&isRoomHost&&GS&&GS.running){
+      const _e=enemies.find(e=>e.id===d.id);
+      if(_e&&!_e.dead){_e.hp-=d.dmg;_e.flashT=6;if(_e.hp<=0)killEnemy(_e);}
+      return;
+    }
+    // ── ROUTE everything else to registered handler ──
+    if(_ablyRoutes[name])_ablyRoutes[name](d);
+  });
+}
+
+function ablyPublish(type,data){
+  if(!ablyReady||!ablyChannel)return;
+  try{
+    ablyChannel.publish(type,{...data,_pid:myPid,pid:myPid,_ts:Date.now()});
+  }catch(e){console.warn('Ably publish:',e);}
+}
+// Keep the window.storage API for leaderboard (uses JSONBin still)
+// Multiplayer now uses Ably directly — storage only for scores
 
 console.log('✅ JSONBin storage ready — leaderboard + multiplayer');
-</script>
+
+let _playerIdentity=(()=>{try{return JSON.parse(localStorage.getItem('sqfv9_identity'))||null;}catch{return null;}})();
+function _saveIdentity(name,country){_playerIdentity={name,country,uid:_playerIdentity?.uid||('u_'+Date.now().toString(36)+Math.random().toString(36).slice(2,5)),lastSeen:Date.now()};try{localStorage.setItem('sqfv9_identity',JSON.stringify(_playerIdentity));}catch(e){}}
+function refreshProfileUI(){const banner=document.getElementById('profileSavedBanner');const editForm=document.getElementById('profileEditForm');const rn=document.getElementById('returningName');const rc=document.getElementById('returningCountryLine');if(!banner||!editForm)return;if(_playerIdentity&&_playerIdentity.name){banner.style.display='block';editForm.style.display='none';if(rn)rn.textContent=_playerIdentity.name;if(rc)rc.textContent=_playerIdentity.country||'';myPlayerName=_playerIdentity.name;}else{banner.style.display='none';editForm.style.display='flex';}}
+function showEditProfile(){document.getElementById('profileSavedBanner').style.display='none';document.getElementById('profileEditForm').style.display='flex';document.getElementById('nameInput').value=_playerIdentity?.name||'';const ci=document.getElementById('countryInput');if(ci&&_playerIdentity?.country)ci.value=_playerIdentity.country;}
+function resetIdentity(){_playerIdentity=null;try{localStorage.removeItem('sqfv9_identity');}catch(e){}refreshProfileUI();}
+function saveProfile(){const name=document.getElementById('nameInput').value.trim();const country=document.getElementById('countryInput').value||'Unknown';if(!name){alert('Enter a callsign first!');return;}_saveIdentity(name,country);myPlayerName=name;myPlayerColor=selectedColor;refreshProfileUI();const m=loadMedals(name);document.getElementById('storedMedals').textContent=m.gold||m.silver||m.bronze?`${name}: 🥇${m.gold} 🥈${m.silver} 🥉${m.bronze}`:'';alert('Profile saved! ✓');}</script>
 <style>  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;}
 :root{--green:#39ff8a;--red:#ff3a3a;--gold:#ffd700;--blue:#4af;--bg:#050608;--border:#1a2a1a;}
 body{background:var(--bg);color:#fff;font-family:'Share Tech Mono','Courier New',monospace;overflow:hidden;user-select:none;}
-.logo,.form-box h2,.fl label,.btn,.hv,.hl,.hb,.smr,.sn,.ss,.pn,.pd,.rEntry,.ply-name,.ply-status,.rEntry *{font-family:'Share Tech Mono','Courier New',monospace!important;}canvas{display:block;cursor:none;position:relative;z-index:1;}
+.logo,.form-box h2,.fl label,.btn,.hv,.hl,.hb,.smr,.sn,.ss,.pn,.pd,.rEntry,.ply-name,.ply-status,.rEntry *{font-family:'Share Tech Mono','Courier New',monospace!important;}canvas{display:block;cursor:none;position:relative;z-index:1;touch-action:none;}
 .screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;}
 #loginScreen{background:radial-gradient(ellipse at 50% 30%,#0a1a0a 0%,#000 70%);}
 #lobbyScreen,#resultsScreen,#onlineScreen{background:rgba(0,0,0,0.97);display:none;}
@@ -277,8 +239,7 @@ body{background:var(--bg);color:#fff;font-family:'Share Tech Mono','Courier New'
 #reloadFill{height:100%;background:var(--gold);border-radius:2px;width:0%;}
 #rMsg{font-size:8px;color:var(--gold);display:none;animation:blink .5s infinite;}
 #livesHUD{font-size:13px;letter-spacing:2px;margin-top:3px;}
-#sqPanel{position:absolute;right:14px;top:68px;background:rgba(0,0,0,.88);border:1px solid #111;border-radius:8px;padding:9px;min-width:215px;pointer-events:none;}
-#sqPanel h3{font-size:8px;color:#333;letter-spacing:2px;margin-bottom:5px;}
+#sqPanel{position:absolute;right:14px;top:68px;background:rgba(0,0,0,.92);border:1px solid #1a3a1a;border-radius:8px;padding:9px;min-width:220px;pointer-events:none;z-index:22;}#sqPanel h3{font-size:8px;color:#333;letter-spacing:2px;margin-bottom:5px;}
 .smr{display:flex;align-items:center;gap:5px;margin-bottom:4px;font-size:10px;}
 .sd{width:9px;height:9px;border-radius:50%;flex-shrink:0;}.sn{flex:1;color:#bbb;}.ss{font-size:9px;color:#555;}
 #bossBar{position:absolute;left:50%;top:62px;transform:translateX(-50%);width:380px;display:none;pointer-events:none;}
@@ -458,11 +419,15 @@ body{background:var(--bg);color:#fff;font-family:'Share Tech Mono','Courier New'
   pointer-events:none;
   z-index:400;
   display:none;
+  isolation:isolate;
+}
+#joystickZone,#mobileRightPanel,#mobileShootZone{
+  pointer-events:all!important;
 }
 @media(max-width:900px),(pointer:coarse){
   body{cursor:default;}
   canvas{cursor:default;}
-  #sqPanel{display:none!important;}
+  #sqPanel{display:block!important;right:4px!important;top:60px!important;min-width:160px!important;font-size:9px!important;padding:6px!important;}
   #powerBars{display:none!important;}
   #onlineSidePanel{display:none!important;}
   #perkTray{display:none!important;}
@@ -586,7 +551,7 @@ body{background:var(--bg);color:#fff;font-family:'Share Tech Mono','Courier New'
   #mobileShootZone{left:130px!important;right:180px!important;top:0!important;bottom:0!important;}
 
   /* Hide overlays that crowd landscape */
-  #minimap{display:none!important;}
+#minimap{display:none!important;}
   #sqPanel{display:none!important;}
   #powerBars{display:none!important;}
   #killFeed{top:40px!important;bottom:auto!important;left:130px!important;max-width:220px!important;}
@@ -620,18 +585,19 @@ body{background:var(--bg);color:#fff;font-family:'Share Tech Mono','Courier New'
     justify-content:flex-start!important;
     overflow-y:auto!important;
     overflow-x:hidden!important;
-    padding:6px 0 24px!important;
+    padding:4px 0 16px!important;
     -webkit-overflow-scrolling:touch;
     align-items:center!important;
+    transform-origin:top center;
   }
-  .logo{font-size:22px!important;margin-bottom:0!important;letter-spacing:3px!important;}
+  .logo{font-size:18px!important;margin-bottom:0!important;letter-spacing:2px!important;}
   .tagline{display:none!important;}
   .form-box{
-    padding:10px 14px!important;
-    gap:6px!important;
-    width:min(96vw,540px)!important;
-    max-width:96vw!important;
-    border-radius:8px!important;
+    padding:7px 10px!important;
+    gap:4px!important;
+    width:min(92vw,480px)!important;
+    max-width:92vw!important;
+    border-radius:6px!important;
     margin:0!important;
   }
   .form-box h2{font-size:9px!important;margin-bottom:0!important;}
@@ -648,8 +614,7 @@ body{background:var(--bg);color:#fff;font-family:'Share Tech Mono','Courier New'
 }
 .cbtn{background:rgba(10,40,10,0.95);border:1px solid #39ff8a;color:#39ff8a;  font-family:'Share Tech Mono','Courier New',monospace;font-size:9px;padding:5px 10px;border-radius:4px;cursor:pointer;letter-spacing:1px;white-space:nowrap;-webkit-tap-highlight-color:transparent;transition:opacity .1s;}
 .cbtn:active{opacity:0.5;transform:scale(0.93);}
-#liveScoreboard{position:fixed;top:68px;right:14px;background:rgba(0,0,0,0.92);border:1px solid #1a3a1a;border-radius:8px;padding:9px 12px;min-width:200px;max-width:260px;pointer-events:none;z-index:25;font-family:'Share Tech Mono',monospace;display:none;}
-#liveScoreboard h4{font-size:7px;color:#2a5a2a;letter-spacing:2px;margin-bottom:7px;border-bottom:1px solid #1a3a1a;padding-bottom:3px;}
+#liveScoreboard{position:fixed;top:68px;left:160px;background:rgba(0,0,0,0.92);border:1px solid #1a3a1a;border-radius:8px;padding:9px 12px;min-width:200px;max-width:260px;pointer-events:none;z-index:25;font-family:'Share Tech Mono',monospace;display:none;}#liveScoreboard h4{font-size:7px;color:#2a5a2a;letter-spacing:2px;margin-bottom:7px;border-bottom:1px solid #1a3a1a;padding-bottom:3px;}
 .lsRow{display:flex;align-items:center;gap:6px;margin-bottom:5px;padding:2px 0;}
 .lsRank{font-size:9px;color:#555;width:14px;}
 .lsDot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
@@ -760,8 +725,7 @@ body{background:var(--bg);color:#fff;font-family:'Share Tech Mono','Courier New'
       <span onclick="resetIdentity()" style="color:#333;cursor:pointer;font-size:8px;letter-spacing:1px;text-decoration:underline;line-height:2;">✕ Reset</span>
     </div>
   </div>
-  <div id="profileEditForm" style="display:none;flex-direction:column;gap:8px;">
-    <input class="fi" id="nameInput" placeholder="Your callsign / name" maxlength="18">
+<div id="profileEditForm" style="display:flex;flex-direction:column;gap:8px;">    <input class="fi" id="nameInput" placeholder="Your callsign / name" maxlength="18">
     <select class="fi" id="countryInput" style="cursor:pointer;font-size:12px;padding:7px 10px;">
       <option value="">🌍 Select your country...</option>
       <option value="Ghana 🇬🇭">Ghana 🇬🇭</option>
@@ -804,8 +768,8 @@ body{background:var(--bg);color:#fff;font-family:'Share Tech Mono','Courier New'
     </div>
     <button class="btn" id="soloBtn" style="margin-top:4px;font-size:14px;">▶ PLAY SOLO</button>
     <button class="btn" id="resumeBtn" style="border-color:#ff8800;color:#ff8800;display:none;">↩ RESUME SAVED GAME</button>
-    <button class="btn blue" id="createRoomBtn">🌐 CREATE ROOM</button>
-    <button class="btn" id="browseRoomsBtn" style="border-color:#9944ff;color:#9944ff;">👥 BROWSE ONLINE</button>
+<button class="btn blue" id="createRoomBtn" onclick="showMultiplayerComingSoon()">🌐 MULTIPLAYER</button>
+<div id="mpComingSoonBadge" style="text-align:center;font-size:8px;color:#4488ff;letter-spacing:2px;margin-top:-4px;animation:blink 1.5s infinite;">⚡ COMING SOON — Online Co-op & PvP</div>
 <div class="medals-stored" id="storedMedals"></div>
     <!-- FIX: leaderboard button hardcoded, no JS injection needed -->
 <div id="onlineNowBadge" style="text-align:center;margin-bottom:2px;">
@@ -842,17 +806,57 @@ body{background:var(--bg);color:#fff;font-family:'Share Tech Mono','Courier New'
 
 <!-- LOBBY -->
 <div id="lobbyScreen" class="screen">
-  <div id="lobbyBox">
-    <h2>⬢ WAR ROOM</h2>
-    <div id="roomCode"></div>
-    <div id="mpStatus">Connecting...</div>
-    <div id="playerList"></div>
-    <div class="row" style="justify-content:center">
-      <button class="btn" id="readyBtn">✓ READY</button>
-      <button class="btn red" id="leaveBtn">← LEAVE</button>
+<div id="lobbyBox">
+  <h2>⬢ WAR ROOM</h2>
+  <div id="roomCode" style="font-size:10px;color:#39ff8a;letter-spacing:2px;text-align:center;padding:6px;background:rgba(57,255,138,0.05);border:1px solid #1a3a1a;border-radius:4px;margin-bottom:8px;"></div>
+  <div id="mpStatus" style="font-size:9px;color:#444;text-align:center;margin-bottom:10px;letter-spacing:1px;">Connecting...</div>
+
+  <!-- ROLE PICKER -->
+  <div style="font-size:9px;color:#2a5a2a;letter-spacing:2px;text-align:center;margin-bottom:8px;">— PICK YOUR ROLE (max 5 players) —</div>
+  <div style="display:flex;gap:7px;flex-wrap:wrap;justify-content:center;margin-bottom:10px;" id="rolePicker2">
+    <div class="roleCard2" data-role="commander" onclick="pickRole('commander')"
+      style="cursor:pointer;background:rgba(57,255,138,0.08);border:2px solid #39ff8a44;border-radius:9px;padding:8px 10px;text-align:center;width:80px;transition:all .18s;">
+      <div style="font-size:20px">🎖️</div>
+      <div style="font-size:8px;color:#39ff8a;margin-top:2px;letter-spacing:1px;">COMMANDER</div>
+      <div style="font-size:7px;color:#444;margin-top:2px;">Balanced</div>
     </div>
-    <div id="waitMsg">Waiting for players…</div>
+    <div class="roleCard2" data-role="rex" onclick="pickRole('rex')"
+      style="cursor:pointer;background:rgba(68,136,255,0.08);border:2px solid #4488ff44;border-radius:9px;padding:8px 10px;text-align:center;width:80px;transition:all .18s;">
+      <div style="font-size:20px">🛡️</div>
+      <div style="font-size:8px;color:#4488ff;margin-top:2px;letter-spacing:1px;">REX</div>
+      <div style="font-size:7px;color:#444;margin-top:2px;">Tank</div>
+    </div>
+    <div class="roleCard2" data-role="zara" onclick="pickRole('zara')"
+      style="cursor:pointer;background:rgba(57,255,204,0.08);border:2px solid #39ffcc44;border-radius:9px;padding:8px 10px;text-align:center;width:80px;transition:all .18s;">
+      <div style="font-size:20px">✚</div>
+      <div style="font-size:8px;color:#39ffcc;margin-top:2px;letter-spacing:1px;">ZARA</div>
+      <div style="font-size:7px;color:#444;margin-top:2px;">Healer</div>
+    </div>
+    <div class="roleCard2" data-role="bolt" onclick="pickRole('bolt')"
+      style="cursor:pointer;background:rgba(255,255,68,0.08);border:2px solid #ffff4444;border-radius:9px;padding:8px 10px;text-align:center;width:80px;transition:all .18s;">
+      <div style="font-size:20px">⚡</div>
+      <div style="font-size:8px;color:#ffff44;margin-top:2px;letter-spacing:1px;">BOLT</div>
+      <div style="font-size:7px;color:#444;margin-top:2px;">Speed</div>
+    </div>
+    <div class="roleCard2" data-role="nova" onclick="pickRole('nova')"
+      style="cursor:pointer;background:rgba(255,136,0,0.08);border:2px solid #ff880044;border-radius:9px;padding:8px 10px;text-align:center;width:80px;transition:all .18s;">
+      <div style="font-size:20px">🔥</div>
+      <div style="font-size:8px;color:#ff8800;margin-top:2px;letter-spacing:1px;">NOVA</div>
+      <div style="font-size:7px;color:#444;margin-top:2px;">Bomber</div>
+    </div>
   </div>
+  <div id="roleConfirm" style="text-align:center;font-size:9px;color:#555;letter-spacing:1px;margin-bottom:10px;padding:5px;background:rgba(255,255,255,0.03);border-radius:4px;min-height:16px;">
+    No role selected yet
+  </div>
+
+  <div id="playerList" style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px;max-height:200px;overflow-y:auto;"></div>
+
+  <div class="row" style="justify-content:center;gap:8px;">
+    <button class="btn" id="readyBtn">✓ READY</button>
+    <button class="btn red" id="leaveBtn">← LEAVE</button>
+  </div>
+  <div id="waitMsg" style="font-size:9px;color:#444;text-align:center;margin-top:8px;letter-spacing:1px;">Pick a role then hit READY!</div>
+</div>
 </div>
 <!-- ONLINE -->
 <div id="onlineScreen" class="screen">
@@ -1074,8 +1078,7 @@ const MM=document.getElementById('mc');
 const mmx=MM.getContext('2d');
 CV.width=window.innerWidth;CV.height=window.innerHeight;
 let W=CV.width,H=CV.height;
-const WORLD_W=Math.max(W*1.9,2400),WORLD_H=Math.max(H*1.9,1700);
-let camX=0,camY=0,shakeX=0,shakeY=0,shakeDur=0,shakeMag=0;
+const WORLD_W=Math.max(W*2.4,3200),WORLD_H=Math.max(H*2.4,2400);let camX=0,camY=0,shakeX=0,shakeY=0,shakeDur=0,shakeMag=0;
 
 const GRID_SZ=120;let spatialGrid={};
 function gridKey(x,y){return`${Math.floor(x/GRID_SZ)},${Math.floor(y/GRID_SZ)}`;}
@@ -1103,7 +1106,7 @@ function initAudio(){
     },{once:true});
   }
   if(AC.state==='suspended')AC.resume();
-}function getVol(){return(SETTINGS.musicVol/10)*0.85;}
+}function getVol(){return(SETTINGS.musicVol/10)*0.48;}
 function playTone(freq,dur,type='sine',vol=0.15,delay=0,freqEnd=null){if(muted||!AC)return;try{const osc=AC.createOscillator(),g=AC.createGain();osc.connect(g);g.connect(masterGain);osc.type=type;const t=AC.currentTime+delay;osc.frequency.setValueAtTime(freq,t);if(freqEnd)osc.frequency.exponentialRampToValueAtTime(Math.max(freqEnd,1),t+dur);const r=dur*0.65;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol*getVol(),t+0.005);g.gain.setValueAtTime(vol*getVol(),t+dur-r);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);osc.start(t);osc.stop(t+dur+0.02);}catch(e){}}
 function playNoise(dur,vol=0.1,delay=0,loF=80,hiF=2000){if(muted||!AC)return;try{const buf=AC.createBuffer(1,AC.sampleRate*Math.min(dur,2),AC.sampleRate);const data=buf.getChannelData(0);for(let i=0;i<data.length;i++)data[i]=Math.random()*2-1;const src=AC.createBufferSource();src.buffer=buf;const filt=AC.createBiquadFilter();filt.type='bandpass';filt.frequency.value=(loF+hiF)/2;filt.Q.value=0.6;const g=AC.createGain();src.connect(filt);filt.connect(g);g.connect(masterGain);const t=AC.currentTime+delay;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol*getVol(),t+0.003);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);src.start(t);src.stop(t+dur+0.01);}catch(e){}}
 // ── ACTION MOVIE CINEMATIC SOUNDS ──────────────────
@@ -1357,18 +1360,28 @@ function bossScream(){
 }
 let musicInt=null,musicBeat=0,musicStep=0;
 
-function sndVoice(text,pitch=1.0,rate=1.0){
-  if(muted||!text)return;
+let _voiceLastT = 0;
+const _VOICE_CD = 8000; // 14 seconds minimum between any voice
+
+function sndVoice(text, pitch=1.0, rate=1.0, priority=false){
+  if(muted || !text) return;
+  const now = Date.now();
+  // Non-priority calls blocked if voice spoke recently
+  if(!priority && now - _voiceLastT < _VOICE_CD) return;
+  // Priority calls still need 4 seconds gap (prevents overlap)
+  if(priority && now - _voiceLastT < 4000) return;
   try{
     if('speechSynthesis' in window){
       speechSynthesis.cancel();
-      const u=new SpeechSynthesisUtterance(text);
-      u.pitch=pitch;u.rate=rate;
-      u.volume=Math.min(1,0.7*(SETTINGS.musicVol/10));
+      const u = new SpeechSynthesisUtterance(text);
+      u.pitch=pitch; u.rate=rate;
+      u.volume = Math.min(1, Math.max(0.88, SETTINGS.musicVol/10));
       speechSynthesis.speak(u);
+      _voiceLastT = now;
     }
   }catch(e){}
-}// ── ACTION GAME DRUM MACHINE ─────────────────────────
+}
+// ── ACTION GAME DRUM MACHINE ─────────────────────────
 function playKick(t){if(!AC)return;try{
   const o=AC.createOscillator(),g=AC.createGain();o.connect(g);g.connect(masterGain);
   o.type='sine';o.frequency.setValueAtTime(150,t);o.frequency.exponentialRampToValueAtTime(32,t+0.12);
@@ -1535,55 +1548,22 @@ async function mpRead(){
 
 async function mpCleanup(){
   if(mpLobbyInt){clearInterval(mpLobbyInt);mpLobbyInt=null;}
-  if(!myPid)return;
-  try{await window.storage.delete('sqfv9_'+myPid,true);}catch(e){}
+  if(ablyChannel)try{ablyChannel.detach();}catch(e){}
+  if(ablyClient)try{ablyClient.close();}catch(e){}
+  ablyReady=false;ablyChannel=null;ablyClient=null;
   isOnline=false;myPid=null;onlinePlayers={};
+  isRoomHost=false;mpCoopMode=false;_hostClaimSent=false;
 }
 // ── Live online badge on login screen ────────────────
 async function updateLoginOnlineBadge(){
   const countEl=document.getElementById('onlineNowCount');
   const listEl=document.getElementById('onlineNowList');
-  if(!countEl&&!listEl)return;
-  try{
-    const kk=await window.storage.list('sqfv9_',true);
-    const now=Date.now();const found=[];
-    if(kk&&kk.keys){
-      for(const k of kk.keys){
-        try{
-          const r=await window.storage.get(k,true);
-          if(r){
-            const p=JSON.parse(r.value);
-            if(now-p.ts<25000)found.push(p);
-          }
-        }catch{}
-      }
-    }
-    if(countEl){
-      if(found.length===0)countEl.textContent='No players online right now';
-      else if(found.length===1)countEl.textContent=`1 soldier online`;
-      else countEl.textContent=`${found.length} soldiers online now!`;
-    }
-    if(listEl){
-      if(found.length===0){
-        listEl.innerHTML='<div style="font-size:8px;color:#2a2a2a;text-align:center;padding:4px;font-family:monospace;">Be the first to play! Share the link.</div>';
-      }else{
-        listEl.innerHTML=found.slice(0,5).map(p=>{
-          const isActive=!p.inLobby;
-          return`<div style="display:flex;align-items:center;gap:6px;padding:3px 8px;background:rgba(255,255,255,0.02);border-radius:4px;">
-            <div style="width:7px;height:7px;border-radius:50%;background:${p.color||'#39ff8a'};box-shadow:0 0 5px ${p.color||'#39ff8a'};"></div>
-            <span style="font-size:9px;color:${p.color||'#aaa'};font-family:monospace;flex:1;">${(p.name||'?').slice(0,14)}</span>
-            <span style="font-size:8px;color:#333;font-family:monospace;">${isActive?'▶ IN GAME':'⏳ LOBBY'}</span>
-            <span style="font-size:8px;color:#555;">R${p.round||1}·S${p.stage||1}</span>
-          </div>`;
-        }).join('');
-        if(found.length>5){
-          listEl.innerHTML+=`<div style="font-size:8px;color:#2a4a2a;text-align:center;padding:2px;font-family:monospace;">+${found.length-5} more playing...</div>`;
-        }
-      }
-    }
-  }catch(e){
-    if(countEl)countEl.textContent='Network check failed';
-  }
+  if(countEl) countEl.textContent = '⚡ Multiplayer Coming Soon!';
+  if(listEl) listEl.innerHTML = `
+    <div style="font-size:8px;color:#2a4a2a;text-align:center;
+    padding:6px;font-family:monospace;letter-spacing:1px;">
+      Solo ranked mode is live now — get on the leaderboard!
+    </div>`;
 }
 
 // Poll login badge every 8 seconds
@@ -1593,31 +1573,200 @@ setInterval(()=>{
     updateLoginOnlineBadge();
   }
 },8000);
-async function goOnline(name,color,room){
-  isOnline=true;myPlayerName=name;myPlayerColor=color;roomId=room||'open';
-  myPid='sqfv9p_'+Date.now()+'_'+Math.random().toString(36).slice(2,5);
-  document.getElementById('onlineBtn').style.display='block';
-  document.getElementById('onlineSidePanel').style.display='block';
-  // FIX: write once immediately, then every 3 seconds only
-  await mpWrite();
-  await mpRead();
-  if(mpLobbyInt)clearInterval(mpLobbyInt);
- mpLobbyInt=setInterval(async()=>{
-    await mpWrite();
-    await mpRead();
-    updateMPSidePanel();
-    updateMPHUD();
-    if(!GS||!GS.running){
-      updateLobbyPlayers();
-      const online=Object.values(onlinePlayers).filter(p=>p.room===roomId&&Date.now()-p.ts<30000);
-      const el=document.getElementById('mpStatus');
-      el.textContent=`${online.length+1} soldier(s) · ROOM: ${roomId}`;
-      el.style.color='#2a6a2a';
-    }
-  },2000); // 2s sync — faster presence updates between syncs — stays under JSONBin limits
-  aiSay('Online! Syncing every 3s. Share your room code!');
+function pickRole(role){
+  myRole=role;
+  const def=ROLE_DEFS[role];
+  if(!def)return;
+  myPlayerColor=def.color;selectedColor=def.color;
+  document.querySelectorAll('.roleCard2').forEach(c=>{
+    c.style.opacity='0.45';c.style.transform='';
+    c.style.borderColor=c.dataset.role===role?def.color:def.color+'22';
+  });
+  const sel=document.querySelector(`.roleCard2[data-role="${role}"]`);
+  if(sel){sel.style.opacity='1';sel.style.transform='scale(1.1)';}
+  const rc=document.getElementById('roleConfirm');
+  if(rc){
+    rc.textContent=`${def.icon} ${def.name} — ${def.desc} · ${def.ability}`;
+    rc.style.color=def.color;
+  }
+  // Broadcast role update if already in lobby
+  if(isOnline&&ablyReady)ablyPublish('lobby',{name:myPlayerName,color:def.color,role,inLobby:true});
 }
 
+async function goOnline(name,color,room){
+  // Always prefer the saved profile identity — prevents role names (REX, NOVA) showing instead of callsign
+  const _resolvedName=(_playerIdentity&&_playerIdentity.name&&_playerIdentity.name.trim().length>0)
+    ? _playerIdentity.name.trim()
+    : (name&&name.trim().length>0?name.trim():myPlayerName||'SOLDIER');
+  isOnline=true;myPlayerName=_resolvedName;myPlayerColor=color;
+  roomId=room||'open';
+  myPid='p'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+  document.getElementById('onlineBtn').style.display='block';
+
+  // Connect Ably
+  await initAbly(roomId);
+  if(!ablyReady){
+    document.getElementById('mpStatus').textContent='⚠ Connection failed — playing solo';
+    isOnline=false;return;
+  }
+
+  // ── Subscribe to all message types ──────────────────
+
+  // Other players' positions
+ablySubscribe('player',data=>{
+    const prev=onlinePlayers[data._pid];
+    onlinePlayers[data._pid]={
+      ...data,
+      ts:Date.now(),
+      _tx:data.x,_ty:data.y,
+      _rx:prev?prev._rx:data.x,
+      _ry:prev?prev._ry:data.y,
+    };
+    updateMPHUD();
+    if(!GS||!GS.running) updateLobbyPlayers();
+  });
+
+  // Lobby presence
+  ablySubscribe('lobby',data=>{
+    onlinePlayers[data._pid]={...data,ts:Date.now(),inLobby:true};
+    updateLobbyPlayers();
+  });
+
+  // HOST: full game state (enemies+boss)
+  ablySubscribe('gamestate',data=>{
+    if(isRoomHost)return;
+    applyHostGameState(data);
+  });
+
+  // Wave events from host
+ablySubscribe('wave_start',data=>{
+    if(isRoomHost)return;
+    GS.wave=data.wave;GS.stage=data.stage;GS.round=data.round;
+    GS.waveKills=0;GS.waveTarget=data.waveTarget||50;GS.betweenWaves=false;GS.spawnQ=[];
+    updateWaveHUD();sndAlarm();
+    addKillFeed(`⚔ Wave ${data.wave} — ${data.waveTarget||'?'} enemies incoming!`,'b');
+    showBanner(`⚔ WAVE ${data.wave}`,`Synced with host — fight together!`,'#ffd700');
+  });
+
+// Other players' bullets — everyone sees them
+  ablySubscribe('player_bullets',data=>{
+    if(!GS||!GS.running)return;
+    data.bullets.forEach(b=>{
+      bullets.push({x:b.x,y:b.y,dx:b.dx,dy:b.dy,life:80,dmg:b.dmg,owner:'remote',crit:b.crit===1,remoteColor:data.color||'#ff88ff'});
+    });
+  });
+
+  // Kill confirmations from host
+  ablySubscribe('enemy_killed',data=>{
+    if(isRoomHost)return;
+    const e=enemies[data.idx];
+    if(e&&!e.dead){
+      // Client gets partial score credit — host gets full kill credit
+      const base=e.heavy?120:e.sniper?90:e.scout?45:40;
+      const pts=Math.floor(base*comboMult()*(1+GS.round*.38)*.6); // 60% credit for clients
+      GS.score+=pts;
+      pvpKills++; // count toward their personal kill tally
+      updateScoreHUD();
+      e.dead=true;e.deathT=0;
+      burst(e.x,e.y,curStage().eCol,12);
+      const sp=w2s(e.x,e.y);
+      showFloat(sp.x,sp.y-26,`+${pts}`,'#aaffcc',11);
+      onKill();
+    }
+  });
+
+  ablySubscribe('boss_hp',data=>{
+    if(isRoomHost)return;
+    if(boss&&!boss.dead){
+      boss.hp=data.hp;
+      updateBossHUD();
+      if(boss.hp<=0)killBoss();
+    }
+  });
+
+  // Heal pulse from Zara player
+  ablySubscribe('zara_heal',data=>{
+    if(P&&!P.dead&&dist(P,{x:data.x,y:data.y})<380){
+      P.hp=Math.min(P.maxHp,P.hp+P.maxHp*0.38);
+      P.shield=P.maxShield;
+      updateHealthHUD();updateShieldHUD();
+      burst(P.x,P.y,'#39ffcc',28);sndRevive();
+      addKillFeed(`✚ ${data.name} healed you!`,'h');
+    }
+  });
+
+// Player lifecycle — deaths, respawns, spectating
+  ablySubscribe('player_event',data=>{
+    if(!data||!data.name)return;
+    const k=Object.keys(onlinePlayers).find(k2=>onlinePlayers[k2].name===data.name);
+    if(data.type==='died'){
+      addKillFeed(`💀 ${data.name} ELIMINATED! (${data.lives||0} lives left)`,'mp');
+      shake(8,15);
+      if(k){onlinePlayers[k].alive=false;onlinePlayers[k].dead=true;onlinePlayers[k].hp=0;}
+    }
+    if(data.type==='respawned'){
+      addKillFeed(`⚡ ${data.name} RESPAWNED!`,'h');
+      if(k){onlinePlayers[k].alive=true;onlinePlayers[k].dead=false;onlinePlayers[k].spectating=false;}
+    }
+    if(data.type==='spectating'){
+      addKillFeed(`👁 ${data.name} is now spectating`,'s');
+      if(k){onlinePlayers[k].alive=false;onlinePlayers[k].spectating=true;}
+    }
+    updateMPHUD();renderLiveScoreboard();
+  });
+
+  // Host claim — first to arrive becomes host
+  ablySubscribe('host_claim',data=>{
+    // Someone else claimed host before us — we are client
+    if(!_hostClaimSent){isRoomHost=false;}
+  });
+
+  // Client hit reports (host applies them)
+  ablySubscribe('hit_report',data=>{
+    if(!isRoomHost)return;
+    if(data.targetType==='enemy'){
+      const e=enemies[data.idx];
+      if(e&&!e.dead){
+        e.hp-=data.dmg;e.flashT=5;
+        if(e.hp<=0){
+          killEnemy(e);
+          // Tell everyone this enemy died
+          ablyPublish('enemy_killed',{idx:data.idx});
+        }
+      }
+    } else if(data.targetType==='boss'&&boss&&!boss.dead){
+      boss.hp-=data.dmg;boss.flashT=5;
+      updateBossHUD();
+      ablyPublish('boss_hp',{hp:boss.hp,mhp:boss.maxHp});
+      if(boss.hp<=0)killBoss();
+    }
+  });
+
+  // Announce arrival in lobby
+  ablyPublish('lobby',{
+    name:myPlayerName,color:myPlayerColor,role:myRole,
+    inLobby:true,ts:Date.now()
+  });
+
+  // Try to claim host after brief delay
+  // (gives time for existing host to announce themselves)
+  setTimeout(async()=>{
+    const others=Object.values(onlinePlayers).filter(p=>Date.now()-p.ts<8000);
+    const existingHost=others.find(p=>p.isHost);
+    if(!existingHost){
+      isRoomHost=true;_hostClaimSent=true;
+      ablyPublish('host_claim',{name:myPlayerName});
+      document.getElementById('mpStatus').textContent=`👑 You are HOST · Room: ${roomId}`;
+      addKillFeed('👑 You are the HOST — you control wave progression','p');
+    } else {
+      isRoomHost=false;
+      document.getElementById('mpStatus').textContent=`Room: ${roomId} · Host: ${existingHost.name}`;
+    }
+    updateLobbyPlayers();
+  },2000);
+
+  aiSay('Connected! Waiting for teammates...');
+}
 function updateMPSidePanel(){
   const list=document.getElementById('onlineSideList');
   const ids=Object.keys(onlinePlayers).filter(k=>Date.now()-onlinePlayers[k].ts<10000);
@@ -1714,6 +1863,300 @@ function renderLiveScoreboard(){
     </div>
   `).join('');
 }
+// ══════════════════════════════════════════════════════
+// CO-OP SYNC FUNCTIONS
+// ══════════════════════════════════════════════════════
+
+function broadcastMyPosition(){
+  if(!ablyReady||!P)return;
+  ablyPublish('player',{
+    pid: myPid,
+    name: myPlayerName,
+    color: myPlayerColor,
+    role: myRole,
+    x: Math.round(P.x),
+    y: Math.round(P.y),
+    angle: +(P.angle||0).toFixed(2),
+    hp: Math.round(P.hp),
+    maxHp: Math.round(P.maxHp),
+    shield: Math.round(P.shield),
+    maxShield: Math.round(P.maxShield),
+    alive: !P.dead,
+    isMoving: P.isMoving,
+    stepPhase: +(P.stepPhase||0).toFixed(2),
+    crouching: P.crouching,
+    score: GS?GS.score:0,
+    kills: pvpKills||0,
+    wave: GS?GS.wave:1,
+    stage: GS?GS.stage:1,
+    round: GS?GS.round:1,
+    ts: Date.now(),
+  });
+}
+
+function broadcastGameState(){
+  // Host sends compact enemy + boss state
+  if(!GS||!GS.running)return;
+  const enemyData = enemies
+    .filter(e=>!e.dead)
+    .map(e=>({
+      i: enemies.indexOf(e),  // index as shared ID
+      x: Math.round(e.x),
+      y: Math.round(e.y),
+      hp: Math.round(e.hp),
+      mhp: Math.round(e.maxHp),
+      t: e.type,
+      a: +(e.angle||0).toFixed(1),
+      s: e.sleeping?1:0,
+      b: e.berserkMode?1:0,
+      dead: 0,
+    }))
+    // Cap at 20 enemies to keep message small
+    .slice(0, 20);
+
+  const bossData = boss && !boss.dead ? {
+    x: Math.round(boss.x), y: Math.round(boss.y),
+    hp: Math.round(boss.hp), mhp: Math.round(boss.maxHp),
+    phase: boss.phase, a: +(boss.angle||0).toFixed(1),
+  } : null;
+
+  ablyPublish('gamestate',{
+    pid: myPid,
+    enemies: enemyData,
+    boss: bossData,
+    wave: GS.wave,
+    stage: GS.stage,
+    round: GS.round,
+    bossSpawned: GS.bossSpawned,
+    bossAlive: GS.bossAlive,
+    spawnCount: enemies.filter(e=>!e.dead).length,
+    ts: Date.now(),
+  });
+}
+
+
+// HOST: handle kill reported by a client player
+function handleClientKill(data){
+  if(!isRoomHost)return;
+  if(data.targetType==='enemy'&&data.enemyIdx!=null){
+    const e=enemies[data.enemyIdx];
+    if(e&&!e.dead){
+      e.hp -= data.dmg||999;
+      if(e.hp<=0) killEnemy(e);
+    }
+  }
+  if(data.targetType==='boss'&&boss&&!boss.dead){
+    boss.hp -= data.dmg||0;
+    if(boss.hp<=0) killBoss();
+    updateBossHUD();
+  }
+}
+
+// CLIENT: report a hit to host
+function reportHitToHost(targetType, idx, dmg){
+  if(isRoomHost) return; // host handles its own hits directly
+  ablyPublish('kill',{
+    pid: myPid,
+    targetType, // 'enemy' or 'boss'
+    enemyIdx: idx,
+    dmg: Math.round(dmg),
+  });
+}
+
+// Cleanup Ably on exit
+// ══════════════════════════════════════════════════════
+// CO-OP BROADCAST FUNCTIONS
+// ══════════════════════════════════════════════════════
+// CO-OP BROADCAST FUNCTIONS
+// ══════════════════════════════════════════════════════
+
+function _broadcastMyPos(){
+  if(!P||!ablyReady)return;
+  ablyPublish('player',{
+    pid:myPid,name:myPlayerName,color:myPlayerColor,role:myRole,
+    x:Math.round(P.x),y:Math.round(P.y),
+    angle:+(P.angle||0).toFixed(2),
+    hp:Math.round(P.hp),maxHp:Math.round(P.maxHp),
+    shield:Math.round(P.shield),
+    alive:!P.dead,isMoving:P.isMoving,
+    stepPhase:+(P.stepPhase||0).toFixed(2),
+    crouching:P.crouching,
+    score:GS?GS.score:0,kills:pvpKills||0,
+    wave:GS?GS.wave:1,stage:GS?GS.stage:1,round:GS?GS.round:1,
+    isHost:isRoomHost,ts:Date.now(),
+  });
+}
+
+function _broadcastHostState(){
+  if(!GS||!GS.running||!isRoomHost)return;
+  // Send top 24 enemies (compact)
+  const ed=enemies.filter(e=>!e.dead).slice(0,24).map(e=>({
+    i:enemies.indexOf(e),
+    x:Math.round(e.x),y:Math.round(e.y),
+    hp:Math.round(e.hp),mhp:Math.round(e.maxHp),
+    t:e.type,a:+(e.angle||0).toFixed(1),
+    s:e.sleeping?1:0,b:e.berserkMode?1:0,
+  }));
+  const bd=boss&&!boss.dead?{
+    x:Math.round(boss.x),y:Math.round(boss.y),
+    hp:Math.round(boss.hp),mhp:Math.round(boss.maxHp),
+    phase:boss.phase,a:+(boss.angle||0).toFixed(1),
+  }:null;
+const ebd=eBullets.slice(0,18).map(b=>({
+    x:Math.round(b.x),y:Math.round(b.y),
+    dx:+b.dx.toFixed(1),dy:+b.dy.toFixed(1),
+    dmg:Math.round(b.dmg),boss:b.boss?1:0,
+  }));
+  ablyPublish('gamestate',{
+    enemies:ed,boss:bd,eBullets:ebd,
+    wave:GS.wave,stage:GS.stage,round:GS.round,
+    bossSpawned:GS.bossSpawned,bossAlive:GS.bossAlive,
+    aliveCount:enemies.filter(e=>!e.dead).length,
+  });
+}
+
+// Client receives and applies host game state
+function applyHostGameState(data){
+  if(!GS||!GS.running||!data)return;
+  // Sync wave
+  if(data.wave&&data.wave!==GS.wave){GS.wave=data.wave;updateWaveHUD();}
+
+  // Sync boss
+if(data.boss){
+    if(!boss||boss.dead){
+      if(!GS.bossSpawned){
+        GS.bossSpawned=true;GS.bossAlive=true;
+        const S=curStage();const hp=data.boss.mhp;
+        boss={x:data.boss.x,y:data.boss.y,angle:data.boss.a||0,hp:data.boss.hp,maxHp:hp,
+          phase:data.boss.phase||1,dead:false,flashT:0,deathT:0,
+          speed:1.2+GS.stage*.15+GS.round*.2,dmg:28+GS.stage*8,
+          col:S.bossCol,name:S.bossName,size:44+GS.stage*5+GS.round*5,
+          berserkMode:false,berserkHP:hp*.15,huntState:'charge',huntTimer:0,
+          chargeTarget:{x:data.boss.x,y:data.boss.y},chargeSpeed:0,
+          circleAngle:0,circleDir:1,teleportCD:0,dashTarget:null,rage:false,rageT:0,
+          summonT:0,shieldActive:false,shieldT:0,beamT:0,beamActive:false,
+          aiT:0,voiceTimer:300,stepPhase:0,isMoving:false,
+          lastTargetX:P?P.x:WORLD_W*.5,lastTargetY:P?P.y:WORLD_H*.5,targetLostTimer:0};
+        document.getElementById('bossBar').style.display='block';
+        document.getElementById('bossLabel').textContent=`⚔ ${S.bossName} [R${GS.round}]`;
+        document.getElementById('bossHpFill').style.background=`linear-gradient(90deg,${S.bossCol},#ff6600)`;
+        addKillFeed(`⚠ ${S.bossName} IS HERE — ALL FIGHT TOGETHER!`,'b');
+        showBanner(`⚠ BOSS`,`${S.bossName}`,'#ff4444');
+        sndAlarm();shake(16,50);
+      }
+    }
+    if(boss&&!boss.dead){
+      boss.x=boss.x*0.65+data.boss.x*0.35;
+      boss.y=boss.y*0.65+data.boss.y*0.35;
+      boss.hp=data.boss.hp;boss.maxHp=data.boss.mhp;
+      boss.phase=data.boss.phase;boss.angle=data.boss.a;
+      updateBossHUD();
+      if(boss.hp<=0&&!boss.dead)killBoss();
+    }
+  } else if(data.bossSpawned&&!data.bossAlive&&boss&&!boss.dead){
+    killBoss();
+  }
+
+  // Sync enemy positions and deaths
+if(data.enemies){
+    const hostIdx=new Set(data.enemies.map(e=>e.i));
+    const S=curStage();
+    const TYPE_COL={heavy:'#cc4400',sniper:S.eColH,scout:'#88ffff',berserker:'#ff2200',
+      shielder:'#2244ff',phantom:'#cc44ff',bomber:'#ff8800',shadow:'#111111',brute:'#222222',
+      demon:'#cc0033',imp:'#ff4422',spider:'#1a0a00',wraith:'#8888ff',ogre:'#2a5a0a',
+      hellhound:'#440000',necromancer:'#440066',alien:'#00ff88',swordsman:'#cc8800',
+      spider_creature:'#330011',lobster:'#cc3300',serpent:'#225500',dragon:'#882200',gorilla:'#443322'};
+    const TYPE_SZ={heavy:24,sniper:15,scout:14,berserker:20,shielder:22,phantom:16,bomber:18,
+      shadow:17,brute:26,demon:22,imp:12,spider:14,wraith:18,ogre:28,hellhound:15,
+      necromancer:17,alien:18,swordsman:19,spider_creature:14,lobster:22,serpent:20,dragon:26,gorilla:24};
+    data.enemies.forEach(ed=>{
+      // Pad array if needed
+      while(enemies.length<=ed.i)enemies.push({dead:true,deathT:999,hp:0,maxHp:1,x:0,y:0});
+      let e=enemies[ed.i];
+      if(!e||e.dead){
+        // ── CREATE enemy on client that exists on host ──
+        const eType=ed.t||'grunt';
+        e={
+          x:ed.x,y:ed.y,angle:ed.a||0,type:eType,
+          hp:ed.hp,maxHp:ed.mhp,
+          speed:3.0+GS.stage*.12,dmg:35*S.eDmg,
+          col:TYPE_COL[eType]||S.eCol,sz:TYPE_SZ[eType]||18,
+          label:{heavy:'HVY',sniper:'SNP',scout:'SCT',berserker:'RAGE',shielder:'SHD',
+                 phantom:'PHT',bomber:'BMB',shadow:'SHD',brute:'BRT',demon:'DMN',
+                 alien:'👽',swordsman:'🤺',spider_creature:'🕷️',lobster:'🦞',
+                 serpent:'🐍',dragon:'🐉',gorilla:'🦍'}[eType]||'',
+          heavy:eType==='heavy'||eType==='shielder'||eType==='ogre',
+          sniper:eType==='sniper'||eType==='necromancer',
+          scout:eType==='scout'||eType==='phantom'||eType==='imp',
+          isBerserker:eType==='berserker'||eType==='demon',
+          isPhantom:eType==='phantom'||eType==='wraith',
+          isBomber:eType==='bomber',
+          dead:false,flashT:0,deathT:0,burnT:0,
+          aiState:ed.b===1?'berserk':'approach',aiT:0,covPos:null,
+          shootT:20+Math.random()*20,intel:0.75,
+          lastKnownX:P?P.x:WORLD_W*.5,lastKnownY:P?P.y:WORLD_H*.5,alertT:300,
+          flankAngle:Math.random()*Math.PI*2,suppressedT:0,stuckT:0,lastX:ed.x,lastY:ed.y,
+          berserkMode:ed.b===1,berserkHP:ed.hp*.15,sleeping:ed.s===1,sleepT:0,
+          canCling:false,clinging:false,clingTimer:0,clingTarget:null,
+          hasPower:false,powerCD:999,powerType:'fireball',
+          callTimer:999,guardingDownedAt:null,retreating:false,retreatTarget:null,
+          crouching:false,peekT:0,stepPhase:Math.random()*Math.PI*2,isMoving:true,vx:0,vy:0,
+          phantomAlpha:eType==='phantom'||eType==='wraith'?0.25:1,phantomRevealT:0,bombT:999,
+          faction:'alpha',factionShirt:null,factionCol:null,isCommander:false,commanderT:0,
+        };
+        enemies[ed.i]=e;
+      }
+      if(e.dead)return;
+      // Smooth lerp to host position
+      e.x=e.x*0.55+ed.x*0.45;
+      e.y=e.y*0.55+ed.y*0.45;
+      e.angle=ed.a;e.sleeping=ed.s===1;e.berserkMode=ed.b===1;
+      if(ed.hp<=0&&!e.dead){killEnemy(e);}
+      else{e.hp=ed.hp;e.maxHp=ed.mhp;}
+    });
+    // Kill enemies that disappeared from host
+    if(data.aliveCount<enemies.filter(e=>!e.dead).length){
+      enemies.forEach((e,i)=>{
+        if(!e.dead&&!hostIdx.has(i)){e.hp=0;killEnemy(e);}
+      });
+    }
+  }
+  // Sync enemy bullets — clients see enemies shooting
+  if(data.eBullets&&data.eBullets.length){
+    data.eBullets.forEach(hb=>{
+      const exists=eBullets.some(cb=>Math.abs(cb.x-hb.x)<35&&Math.abs(cb.y-hb.y)<35);
+      if(!exists)eBullets.push({x:hb.x,y:hb.y,dx:hb.dx,dy:hb.dy,life:45,dmg:hb.dmg,boss:hb.boss===1});
+    });
+    if(eBullets.length>50)eBullets=eBullets.slice(-50);
+  }
+}
+
+// Client reports a hit to host for authoritative damage
+function _reportHit(targetType,idx,dmg){
+  if(isRoomHost){
+    // Host applies directly
+    if(targetType==='enemy'){
+      const e=enemies[idx];
+      if(e&&!e.dead){
+        e.hp-=dmg;e.flashT=5;
+        if(e.hp<=0){killEnemy(e);ablyPublish('enemy_killed',{idx});}
+      }
+    } else if(targetType==='boss'&&boss&&!boss.dead){
+      boss.hp-=dmg;boss.flashT=5;updateBossHUD();
+      ablyPublish('boss_hp',{hp:boss.hp,mhp:boss.maxHp});
+      if(boss.hp<=0)killBoss();
+    }
+  } else {
+    // Client sends to host
+    ablyPublish('hit_report',{targetType,idx,dmg:Math.round(dmg)});
+  }
+}
+
+// Zara special — broadcast heal to all teammates
+function _broadcastZaraHeal(){
+  if(!ablyReady)return;
+  ablyPublish('zara_heal',{x:Math.round(P.x),y:Math.round(P.y),name:myPlayerName});
+}
 // ── SAVE/LOAD ───────────────────────────────────────
 const SAVE_KEY='squadforce_v9_save';
 const MAX_LIVES=3;
@@ -1731,139 +2174,208 @@ function updateLivesHUD(){
 }
 
 // ── WORLD ───────────────────────────────────────────
+let groundDecals=[];
 let covers=[],barrels=[],fireBombs=[],shockwaves=[];
-
 function genCovers(){
   covers=[];
   const stg=GS?GS.stage:1, rnd=GS?GS.round:1;
-const waveNum=GS?GS.wave||1:1;
-  const layoutSeed=((stg-1)*3+(rnd-1)+(waveNum-1))%9; // changes every wave!
-  // Different wall layouts per stage+round
+  const waveNum=GS?GS.wave||1:1;
+  const layoutSeed=((stg-1)*3+(rnd-1)+(waveNum-1))%9;
+
   const layouts=[
-    // Layout 0: R1S1 — open corridors
+    // Layout 0: R1S1 — wide corridor walls
     ()=>{
-      const cols=8,rows=6,mX=WORLD_W*.08,mY=WORLD_H*.1;
+      const cols=9,rows=7,mX=WORLD_W*.07,mY=WORLD_H*.09;
       const sX=(WORLD_W-mX*2)/cols,sY=(WORLD_H-mY*2)/rows;
       for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
-        if(Math.random()<0.22)continue;
-        const bx=mX+c*sX+sX*.15,by=mY+r*sY+sY*.15;
-        covers.push({x:bx,y:by,w:80,h:20,t:'wall'});
-      }
-    },
-    // Layout 1: R1S2 — bunker clusters
-    ()=>{
-      for(let i=0;i<18;i++){
-        const bx=120+Math.random()*(WORLD_W-240),by=120+Math.random()*(WORLD_H-240);
-        if(dist({x:bx,y:by},PLAYER_BASE)<200)continue;
-        covers.push({x:bx,y:by,w:58,h:58,t:'bunker'});
-        if(Math.random()<.5)covers.push({x:bx+70,y:by,w:58,h:20,t:'wall'});
-        if(Math.random()<.5)covers.push({x:bx,y:by+70,w:20,h:58,t:'wall'});
-      }
-    },
-    // Layout 2: R1S3 — tall vertical walls (maze-like)
-    ()=>{
-      const cols=7,rows=5,mX=WORLD_W*.07,mY=WORLD_H*.1;
-      const sX=(WORLD_W-mX*2)/cols,sY=(WORLD_H-mY*2)/rows;
-      for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
-        if(Math.random()<0.2)continue;
-        const bx=mX+c*sX,by=mY+r*sY;
-        const t=Math.random()<.5?'tall':'wall';
-        if(t==='tall')covers.push({x:bx,y:by,w:20,h:100,t:'wall'});
-        else covers.push({x:bx,y:by,w:100,h:20,t:'wall'});
-      }
-    },
-    // Layout 3: R2S1 — ring formations
-    ()=>{
-      const rings=[{x:WORLD_W*.25,y:WORLD_H*.3},{x:WORLD_W*.75,y:WORLD_H*.3},{x:WORLD_W*.25,y:WORLD_H*.7},{x:WORLD_W*.75,y:WORLD_H*.7},{x:WORLD_W*.5,y:WORLD_H*.5}];
-      rings.forEach(rp=>{
-        for(let i=0;i<6;i++){
-          const a=(i/6)*Math.PI*2,rx=rp.x+Math.cos(a)*120,ry=rp.y+Math.sin(a)*120;
-          covers.push({x:rx-20,y:ry-20,w:40,h:20,t:'wall'});
+        if(Math.random()<0.20)continue;
+        const bx=mX+c*sX+sX*.12,by=mY+r*sY+sY*.12;
+        const horiz=Math.random()<0.5;
+        covers.push({x:bx,y:by,w:horiz?130:28,h:horiz?28:130,t:'wall'});
+        // small companion piece
+        if(Math.random()<0.45){
+          covers.push({x:bx+(horiz?50:30),y:by+(horiz?30:50),w:horiz?60:20,h:horiz?20:60,t:'wall'});
         }
+      }
+    },
+    // Layout 1: bunker clusters
+    ()=>{
+      for(let i=0;i<26;i++){
+        const bx=130+Math.random()*(WORLD_W-260),by=130+Math.random()*(WORLD_H-260);
+        if(dist({x:bx,y:by},PLAYER_BASE)<220)continue;
+        covers.push({x:bx,y:by,w:85,h:85,t:'bunker'});
+        if(Math.random()<.65)covers.push({x:bx+105,y:by+10,w:100,h:28,t:'wall'});
+        if(Math.random()<.65)covers.push({x:bx+10,y:by+105,w:28,h:100,t:'wall'});
+        if(Math.random()<.50)covers.push({x:bx+105,y:by+105,w:70,h:70,t:'bunker'});
+        if(Math.random()<.35)covers.push({x:bx-90,y:by+20,w:70,h:24,t:'wall'});
+      }
+    },
+    // Layout 2: tall vertical maze walls
+    ()=>{
+      const cols=8,rows=6,mX=WORLD_W*.06,mY=WORLD_H*.09;
+      const sX=(WORLD_W-mX*2)/cols,sY=(WORLD_H-mY*2)/rows;
+      for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
+        if(Math.random()<0.18)continue;
+        const bx=mX+c*sX,by=mY+r*sY;
+        const tall=Math.random()<0.55;
+        covers.push({x:bx,y:by,w:tall?28:150,h:tall?150:28,t:'wall'});
+        // L-shaped extension
+        if(Math.random()<0.5){
+          covers.push({x:bx+(tall?28:0),y:by+(tall?0:28),w:tall?80:28,h:tall?28:80,t:'wall'});
+        }
+      }
+    },
+    // Layout 3: ring formations
+    ()=>{
+      const rings=[
+        {x:WORLD_W*.22,y:WORLD_H*.28},{x:WORLD_W*.78,y:WORLD_H*.28},
+        {x:WORLD_W*.22,y:WORLD_H*.72},{x:WORLD_W*.78,y:WORLD_H*.72},
+        {x:WORLD_W*.50,y:WORLD_H*.50},{x:WORLD_W*.50,y:WORLD_H*.22},
+        {x:WORLD_W*.50,y:WORLD_H*.78},
+      ];
+      rings.forEach(rp=>{
+        for(let i=0;i<7;i++){
+          const a=(i/7)*Math.PI*2,rx=rp.x+Math.cos(a)*155,ry=rp.y+Math.sin(a)*155;
+          const tang=a+Math.PI/2;
+          covers.push({x:rx-25,y:ry-10,w:Math.abs(Math.cos(tang))*70+25,h:Math.abs(Math.sin(tang))*70+25,t:'wall'});
+        }
+        // centre bunker
+        covers.push({x:rp.x-40,y:rp.y-40,w:80,h:80,t:'bunker'});
       });
     },
-    // Layout 4: R2S2 — cross/plus patterns
+    // Layout 4: cross/plus + connecting walls
     ()=>{
-      [[.25,.25],[.75,.25],[.5,.5],[.25,.75],[.75,.75]].forEach(([fx,fy])=>{
+      [[.22,.22],[.78,.22],[.50,.50],[.22,.78],[.78,.78],[.50,.22],[.50,.78]].forEach(([fx,fy])=>{
         const cx=fx*WORLD_W,cy=fy*WORLD_H;
-        covers.push({x:cx-90,y:cy-12,w:180,h:24,t:'wall'});
-        covers.push({x:cx-12,y:cy-90,w:24,h:180,t:'wall'});
+        covers.push({x:cx-110,y:cy-14,w:220,h:28,t:'wall'});
+        covers.push({x:cx-14,y:cy-110,w:28,h:220,t:'wall'});
+        // corner nubs
+        [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([sx,sy])=>{
+          if(Math.random()<0.5)
+            covers.push({x:cx+sx*90,y:cy+sy*90,w:55,h:55,t:'bunker'});
+        });
       });
     },
-    // Layout 5: R2S3 — scattered rubble + long walls
+    // Layout 5: scattered rubble + long walls
     ()=>{
-      for(let i=0;i<8;i++){
+      for(let i=0;i<12;i++){
         const bx=100+Math.random()*(WORLD_W-200),by=100+Math.random()*(WORLD_H-200);
-        const w=80+Math.random()*160,h=20;
-        const angle=Math.random()<.5;
-        covers.push({x:bx,y:by,w:angle?h:w,h:angle?w:h,t:'wall'});
+        const horiz=Math.random()<0.5;
+        covers.push({x:bx,y:by,w:horiz?180+Math.random()*100:28,h:horiz?28:180+Math.random()*100,t:'wall'});
       }
-      for(let i=0;i<14;i++){
+      for(let i=0;i<18;i++){
         const bx=80+Math.random()*(WORLD_W-160),by=80+Math.random()*(WORLD_H-160);
-        covers.push({x:bx,y:by,w:30,h:30,t:'bunker'});
+        covers.push({x:bx,y:by,w:55+Math.random()*35,h:55+Math.random()*35,t:'bunker'});
       }
     },
-    // Layout 6: R3S1 — tight corridors (hardest)
+    // Layout 6: tight corridors (hardest)
     ()=>{
-      const cols=5,rows=4,mX=WORLD_W*.06,mY=WORLD_H*.08;
+      const cols=6,rows=5,mX=WORLD_W*.06,mY=WORLD_H*.08;
       const sX=(WORLD_W-mX*2)/cols,sY=(WORLD_H-mY*2)/rows;
       for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
         const bx=mX+c*sX,by=mY+r*sY;
-        covers.push({x:bx,y:by,w:sX*.7,h:20,t:'wall'});
-        covers.push({x:bx,y:by,w:20,h:sY*.7,t:'wall'});
+        covers.push({x:bx,y:by,w:sX*.78,h:28,t:'wall'});
+        covers.push({x:bx,y:by,w:28,h:sY*.78,t:'wall'});
+        if(Math.random()<0.4)
+          covers.push({x:bx+sX*.5,y:by+sY*.5,w:65,h:65,t:'bunker'});
       }
     },
-    // Layout 7: R3S2 — fortress walls
+    // Layout 7: fortress walls
     ()=>{
-      const forts=[{x:WORLD_W*.2,y:WORLD_H*.2,s:180},{x:WORLD_W*.8,y:WORLD_H*.2,s:180},{x:WORLD_W*.2,y:WORLD_H*.8,s:180},{x:WORLD_W*.8,y:WORLD_H*.8,s:180}];
+      const forts=[
+        {x:WORLD_W*.18,y:WORLD_H*.18,s:220},{x:WORLD_W*.82,y:WORLD_H*.18,s:220},
+        {x:WORLD_W*.18,y:WORLD_H*.82,s:220},{x:WORLD_W*.82,y:WORLD_H*.82,s:220},
+        {x:WORLD_W*.50,y:WORLD_H*.50,s:180},
+      ];
       forts.forEach(f=>{
-        covers.push({x:f.x-f.s/2,y:f.y-f.s/2,w:f.s,h:20,t:'wall'});
-        covers.push({x:f.x-f.s/2,y:f.y+f.s/2-20,w:f.s,h:20,t:'wall'});
-        covers.push({x:f.x-f.s/2,y:f.y-f.s/2,w:20,h:f.s,t:'wall'});
-        covers.push({x:f.x+f.s/2-20,y:f.y-f.s/2,w:20,h:f.s,t:'wall'});
+        covers.push({x:f.x-f.s/2,y:f.y-f.s/2,w:f.s,h:28,t:'wall'});
+        covers.push({x:f.x-f.s/2,y:f.y+f.s/2-28,w:f.s,h:28,t:'wall'});
+        covers.push({x:f.x-f.s/2,y:f.y-f.s/2,w:28,h:f.s,t:'wall'});
+        covers.push({x:f.x+f.s/2-28,y:f.y-f.s/2,w:28,h:f.s,t:'wall'});
+        // interior cover
+        covers.push({x:f.x-40,y:f.y-40,w:80,h:80,t:'bunker'});
       });
     },
-    // Layout 8: R3S3 — chaos (mixed everything)
+    // Layout 8: chaos (mixed everything)
     ()=>{
-      for(let i=0;i<24;i++){
+      for(let i=0;i<30;i++){
         const bx=80+Math.random()*(WORLD_W-160),by=80+Math.random()*(WORLD_H-160);
-        if(dist({x:bx,y:by},PLAYER_BASE)<180)continue;
-        const types=[{w:90,h:20},{w:20,h:90},{w:50,h:50},{w:120,h:20},{w:20,h:120}];
-        const t=types[Math.floor(Math.random()*types.length)];
-        covers.push({x:bx,y:by,w:t.w,h:t.h,t:'wall'});
+        if(dist({x:bx,y:by},PLAYER_BASE)<200)continue;
+        const types=[
+          {w:130,h:28},{w:28,h:130},{w:75,h:75},
+          {w:180,h:28},{w:28,h:180},{w:55,h:55},
+        ];
+        const tp=types[Math.floor(Math.random()*types.length)];
+        covers.push({x:bx,y:by,w:tp.w,h:tp.h,t:Math.random()<0.4?'bunker':'wall'});
       }
     },
   ];
 
-  // Run the layout for this stage/round
   (layouts[layoutSeed]||layouts[0])();
 
-  // Always add trees (different counts per stage)
-  const treeCount=6+stg*2;
+  // ── TREES: lots everywhere, every stage, every wave ──
+  const treeCount = 24 + stg*6 + rnd*5;
   for(let i=0;i<treeCount;i++){
-    const tx=(0.1+Math.random()*0.8)*WORLD_W,ty=(0.1+Math.random()*0.8)*WORLD_H;
-    if(dist({x:tx,y:ty},PLAYER_BASE)<200)continue;
-    covers.push({x:tx-13,y:ty-13,w:26,h:26,t:'tree',tx,ty});
+    const tx=(0.06+Math.random()*0.88)*WORLD_W;
+    const ty=(0.06+Math.random()*0.88)*WORLD_H;
+    if(dist({x:tx,y:ty},PLAYER_BASE)<180)continue;
+    // cluster: 60% chance of a companion tree nearby
+    covers.push({x:tx-14,y:ty-14,w:28,h:28,t:'tree',tx,ty});
+    if(Math.random()<0.6){
+      const ox=(Math.random()-.5)*110, oy=(Math.random()-.5)*110;
+      const tx2=clamp(tx+ox,60,WORLD_W-60), ty2=clamp(ty+oy,60,WORLD_H-60);
+      covers.push({x:tx2-14,y:ty2-14,w:28,h:28,t:'tree',tx:tx2,ty:ty2});
+    }
   }
 
-  // Base rocks
-  BASE_POSITIONS.forEach(b=>{for(let i=0;i<5;i++){const a=i*(Math.PI*2/5),rr=80+Math.random()*25;covers.push({x:b.x+Math.cos(a)*rr-12,y:b.y+Math.sin(a)*rr-12,w:24,h:24,t:'rock'});}});
+  // ── UNIVERSAL SCATTER: extra rocks and short walls added to EVERY layout ──
+  const extraCount = 10 + stg*3 + rnd*2;
+  for(let i=0;i<extraCount;i++){
+    const bx=100+Math.random()*(WORLD_W-200);
+    const by=100+Math.random()*(WORLD_H-200);
+    if(dist({x:bx,y:by},PLAYER_BASE)<160)continue;
+    const pick=Math.random();
+    if(pick<0.35)      covers.push({x:bx,y:by,w:110,h:26,t:'wall'});
+    else if(pick<0.65) covers.push({x:bx,y:by,w:26,h:110,t:'wall'});
+    else               covers.push({x:bx,y:by,w:60,h:60,t:'bunker'});
+  }
 
-  // Barrels — more each stage
+  // ── BASE ROCKS (unchanged) ──
+  BASE_POSITIONS.forEach(b=>{
+    for(let i=0;i<6;i++){
+      const a=i*(Math.PI*2/6),rr=90+Math.random()*30;
+      covers.push({x:b.x+Math.cos(a)*rr-14,y:b.y+Math.sin(a)*rr-14,w:28,h:28,t:'rock'});
+    }
+  });
+
+  // ── BARRELS: more per stage ──
   barrels=[];
-  const barrelCount=18+stg*4+rnd*3;
+  const barrelCount = 24 + stg*6 + rnd*4;
   for(let i=0;i<barrelCount;i++){
     const bx=80+Math.random()*(WORLD_W-160),by=80+Math.random()*(WORLD_H-160);
-    if(Math.abs(bx-PLAYER_BASE.x)<130&&Math.abs(by-PLAYER_BASE.y)<130)continue;
+    if(Math.abs(bx-PLAYER_BASE.x)<140&&Math.abs(by-PLAYER_BASE.y)<140)continue;
     barrels.push({x:bx,y:by,hp:40,maxHp:40,dead:false,flashT:0});
   }
+  // ── GROUND DECALS — dirt, craters, cracks, stains ──
+groundDecals=[];
+const decalCount=55+stg*14+rnd*8;
+for(let i=0;i<decalCount;i++){
+  groundDecals.push({
+    x:Math.random()*WORLD_W,
+    y:Math.random()*WORLD_H,
+    type:['dirt','dirt','crater','crack','stain','rubble'][Math.floor(Math.random()*6)],
+    rx:28+Math.random()*90,
+    ry:18+Math.random()*55,
+    angle:Math.random()*Math.PI*2,
+    alpha:0.06+Math.random()*0.13,
+  });
 }
-
+}
 // ── STAGE DEFS ──────────────────────────────────────
 const STAGE_DEFS=[
-  {n:1,name:'STAGE 1',sub:'YELLOW CORPS',  bg:'#0b0e07',eCol:'#ffee00',eColH:'#ffbb00',bossCol:'#ff9900',bossName:'GOLDEN TITAN',   eHp:1.55,eSpd:1.15,eDmg:1.1,eSmart:.68,waves:8,maxOn:15,bossHp:22000},
-  {n:2,name:'STAGE 2',sub:'RED MILITIA',   bg:'#100807',eCol:'#ff2222',eColH:'#ff6666',bossCol:'#cc0000',bossName:'CRIMSON WARLORD',eHp:2.3,eSpd:1.45,eDmg:1.6,eSmart:.85,waves:10,maxOn:19,bossHp:38000},
-  {n:3,name:'STAGE 3',sub:'PHANTOM ELITE', bg:'#050508',eCol:'#ccccdd',eColH:'#4444ff',bossCol:'#aaaaff',bossName:'PHANTOM GOD',    eHp:3.2,eSpd:1.85,eDmg:2.3,eSmart:.99,waves:12,maxOn:24,bossHp:60000},
+  {n:1,name:'STAGE 1',sub:'YELLOW CORPS',  bg:'#0b0e07',eCol:'#ffee00',eColH:'#ffbb00',bossCol:'#ff9900',bossName:'GOLDEN TITAN',   eHp:1.55,eSpd:1.15,eDmg:1.1,eSmart:.68,waves:8,maxOn:22,bossHp:38000},
+  {n:2,name:'STAGE 2',sub:'RED MILITIA',   bg:'#100807',eCol:'#ff2222',eColH:'#ff6666',bossCol:'#cc0000',bossName:'CRIMSON WARLORD',eHp:2.3,eSpd:1.45,eDmg:1.6,eSmart:.85,waves:10,maxOn:30,bossHp:58000},
+  {n:3,name:'STAGE 3',sub:'PHANTOM ELITE', bg:'#050508',eCol:'#ccccdd',eColH:'#4444ff',bossCol:'#aaaaff',bossName:'PHANTOM GOD',    eHp:3.2,eSpd:1.85,eDmg:2.3,eSmart:.99,waves:12,maxOn:38,bossHp:78000},
 ];
 const ROUND_MULT={
   1:{1:{intel:1.0,speed:1.0,hp:1.0,dmg:1.0,bossHp:1.0},2:{intel:1.5,speed:1.25,hp:1.5,dmg:1.35,bossHp:1.7},3:{intel:2.1,speed:1.6,hp:2.1,dmg:1.8,bossHp:2.5}},
@@ -1871,9 +2383,9 @@ const ROUND_MULT={
   3:{1:{intel:1.5,speed:1.4,hp:1.8,dmg:1.7,bossHp:1.6},2:{intel:2.2,speed:1.8,hp:2.5,dmg:2.3,bossHp:2.4},3:{intel:3.0,speed:2.4,hp:3.4,dmg:3.1,bossHp:3.8}},
 };
 const PLAYER_STAGE_BONUS={hpPerStage:120,shieldPerStage:80,speedPerStage:0.12,dmgPerStage:35,squadHpPerStage:160,squadDmgPerStage:1.4};const WEAPONS=[
-{gun:'RIFLE',  ammo:30,reserve:300,rate:1,dmg:55,pwr:'SHADOW',shots:1},
-  {gun:'ASSAULT',ammo:25,reserve:250,rate:1,dmg:85,pwr:'SHADOW',shots:2},
-  {gun:'PLASMA', ammo:15,reserve:150,rate:1,dmg:130,pwr:'SHADOW',shots:3},
+{gun:'RIFLE',  ammo:30,reserve:1200,rate:1,dmg:55,pwr:'SHADOW',shots:1},
+  {gun:'ASSAULT',ammo:25,reserve:1000,rate:1,dmg:85,pwr:'SHADOW',shots:2},
+  {gun:'PLASMA', ammo:15,reserve:800, rate:1,dmg:130,pwr:'SHADOW',shots:3},
 ];
 const DIFF={easy:{mul:0.5,pHp:1200,pShield:800,sqHp:820},medium:{mul:0.75,pHp:950,pShield:620,sqHp:680},hard:{mul:1.1,pHp:720,pShield:460,sqHp:520}};let DC=DIFF.medium;
 const BASE_POSITIONS=[{x:WORLD_W*.12,y:WORLD_H*.5},{x:WORLD_W*.88,y:WORLD_H*.5},{x:WORLD_W*.5,y:WORLD_H*.12},{x:WORLD_W*.5,y:WORLD_H*.88}];
@@ -2007,8 +2519,31 @@ function curStageUpgrades(){
   const sd=(GS.round-1)*3+(GS.stage-1);
   return{hp:DC.pHp+sd*PLAYER_STAGE_BONUS.hpPerStage,shield:DC.pShield+sd*PLAYER_STAGE_BONUS.shieldPerStage,speed:3.9+sd*PLAYER_STAGE_BONUS.speedPerStage,dmg:WEAPONS[Math.min(GS.upgradeLevel,2)].dmg+sd*PLAYER_STAGE_BONUS.dmgPerStage,sqHp:DC.sqHp+sd*PLAYER_STAGE_BONUS.squadHpPerStage,sqDmgBonus:1.3+sd*PLAYER_STAGE_BONUS.squadDmgPerStage};
 }
-
 function initSquad(){
+  if(mpCoopMode){
+    // In co-op: no AI squad — other players fill those roles
+    // Give a single basic AI helper so the player isn't totally alone
+    const up=curStageUpgrades();
+    SQ=[{
+name:'REX', col:'#88bbff',role:'SHIELD',helmetCol:'#3366ff',alive:true,      x:PLAYER_BASE.x,y:PLAYER_BASE.y+60,
+      angle:0,speed:3.2,_baseSpeed:3.2,
+      hp:up.sqHp*0.5,maxHp:up.sqHp*0.5,
+      shield:20,maxShield:20,dmgBonus:0.8,
+      flashT:0,deathT:0,aiState:'follow',aiT:0,covPos:null,
+      stuckT:0,lastX:0,lastY:0,shieldHp:0,shieldMax:0,
+      healT:0,fireBombT:999999,suppressedT:0,lastHitT:0,
+      sosPinged:false,superCD:superCD_max(),peekT:0,crouching:false,
+      dashStrike:false,dashT:0,dashHits:0,basePos:PLAYER_BASE,atBase:false,
+      shootTimer:25,lastSpeakT:0,berserkMode:false,namedCommand:false,
+      stepPhase:0,isMoving:false,vx:0,vy:0,killTarget:null,
+      hidePos:null,spreadPos:null,guardingDownedAt:null,
+      retreating:false,retreatTarget:null,raging:false,rageBlinkT:0,
+      tpCovers:null,tpIdx:0,tpWaitT:0,tpPhase:'move',novaHealT:0,
+    }];
+    updateSquadHUD();
+    return;
+  }
+// --- original initSquad code continues below unchanged ---
   const up=curStageUpgrades();
   SQ=SQ_DEFS.map((def,i)=>({
     name:def.name,col:def.col,role:def.role,helmetCol:def.helmetCol,alive:true,
@@ -2026,20 +2561,50 @@ function initSquad(){
  guardingDownedAt:null,retreating:false,retreatTarget:null,
     raging:false,rageBlinkT:0,
     tpCovers:null,tpIdx:0,tpWaitT:0,tpPhase:'move',
-    novaHealT:0,
-  }));
+novaHealT:0,
+}));
 }
 
 function initPlayer(){
   const up=curStageUpgrades();
   const w=WEAPONS[Math.min(GS.upgradeLevel,2)];
-  P={x:PLAYER_BASE.x,y:PLAYER_BASE.y,angle:0,
-    hp:up.hp,maxHp:up.hp,shield:up.shield,maxShield:up.shield,shieldRegen:0,
-    speed:up.speed*(gameSpeedSetting||1.0),_baseSpeed:up.speed,ammo:w.ammo,maxAmmo:w.ammo,reserve:w.reserve,
-    shootRate:w.rate,dmg:up.dmg,reloading:false,reloadProg:0,reloadSpeed:1,
-dead:false,flashT:0,meleeAnim:0,deadT:0,powerName:w.pwr,
-punchAnim:0,kickAnim:0,punchArm:'right',kickLeg:'right',    hiding:false,crouching:false,dmgMul:1,extraShots:0,lifeSteal:0,critChance:.14,
-    stepPhase:0,isMoving:false,vx:0,vy:0};
+  const role=ROLE_DEFS[myRole]||ROLE_DEFS.commander;
+  const cb=mpCoopMode?1.5:1.0; // co-op boost — no full AI squad
+  const off=window._coopSpawnOffset||{x:0,y:0};
+
+  P={
+    x:PLAYER_BASE.x+off.x+(Math.random()-.5)*40,
+    y:PLAYER_BASE.y+off.y+(Math.random()-.5)*40,
+    angle:0,
+hp:   up.hp   *(mpCoopMode?role.hp  :1)*cb*(mpCoopMode?2.2:1.0),
+    maxHp:up.hp   *(mpCoopMode?role.hp  :1)*cb*(mpCoopMode?2.2:1.0),
+    shield:  up.shield*(mpCoopMode?role.shield:1)*cb*(mpCoopMode?2.5:1.0),
+    maxShield:up.shield*(mpCoopMode?role.shield:1)*cb*(mpCoopMode?2.5:1.0),
+    shieldRegen:0,
+    speed:(up.speed*(mpCoopMode?role.speed:1))*(gameSpeedSetting||1.0),
+    _baseSpeed:up.speed*(mpCoopMode?role.speed:1),
+// Co-op: 4× ammo (less AI squad to cover you), 2× HP/shield (more threats to handle alone)
+    ammo:mpCoopMode?w.ammo*4:w.ammo,
+    maxAmmo:mpCoopMode?w.ammo*4:w.ammo,
+    reserve:mpCoopMode?w.reserve*4:w.reserve,
+    // Bolt fires faster
+    shootRate:myRole==='bolt'?0.4:w.rate,
+    dmg:up.dmg*(mpCoopMode?role.dmg:1),
+    reloading:false,reloadProg:0,
+    reloadSpeed:myRole==='rex'?0.65:1,
+    dead:false,flashT:0,meleeAnim:0,deadT:0,
+    powerName:w.pwr,
+    punchAnim:0,kickAnim:0,punchArm:'right',kickLeg:'right',
+    hiding:false,crouching:false,
+    dmgMul:mpCoopMode?role.dmg:1,
+    extraShots:myRole==='bolt'?1:0,
+    lifeSteal:myRole==='zara'?20:0,
+    critChance:myRole==='bolt'?0.38:myRole==='nova'?0.24:0.14,
+    stepPhase:0,isMoving:false,vx:0,vy:0,
+    role:myRole,
+    roleAbilityCD:0,
+    ROLE_ABILITY_MAX:myRole==='zara'?300:myRole==='rex'?220:280,
+  };
 }
 
 function curStage(){return STAGE_DEFS[Math.min(GS.stage-1,2)];}
@@ -2048,8 +2613,9 @@ function curWeapon(){return WEAPONS[Math.min(GS.upgradeLevel,2)];}
 
 // ── ENEMY SPAWN ─────────────────────────────────────
 function startWave(){
+  if(mpCoopMode&&!isRoomHost)return; // ← Only host manages waves
   const S=curStage(),RM=curRoundMult();GS.waveKills=0;
-const count=Math.min(S.waves*7+(GS.wave-1)*9+GS.stage*5+(GS.round-1)*10,S.maxOn*3+35);GS.waveTarget=count;GS.spawnQ=[];GS.betweenWaves=false;
+const count=Math.min(S.waves*10+(GS.wave-1)*13+GS.stage*8+(GS.round-1)*15,S.maxOn*4+60);GS.waveTarget=count;GS.spawnQ=[];GS.betweenWaves=false;
   // Assign two random factions for this wave
   waveFactionsActive=[ENEMY_FACTIONS[Math.floor(Math.random()*4)],ENEMY_FACTIONS[Math.floor(Math.random()*4)]];
   while(waveFactionsActive[0]===waveFactionsActive[1])waveFactionsActive[1]=ENEMY_FACTIONS[Math.floor(Math.random()*4)];
@@ -2076,9 +2642,10 @@ const count=Math.min(S.waves*7+(GS.wave-1)*9+GS.stage*5+(GS.round-1)*10,S.maxOn*
   const waveName=waveNames[Math.min(GS.wave,8)]||`WAVE ${GS.wave}`;
   const waveCol=GS.wave>=5?'#ff0000':GS.wave>=3?'#ff8800':'#ffd700';
   showBanner(`⚔ WAVE ${GS.wave} — ${waveName}`,threatLine,waveCol);
-  GS.spawnTick=0;updateWaveHUD();sndAlarm();
+ GS.spawnTick=0;updateWaveHUD();sndAlarm();
   aiSay(`Wave ${GS.wave} — ${count} enemies! ${threatLine}`);
-  if(GS.wave>=4)setTimeout(()=>sndVoice(`Wave ${GS.wave}. ${waveName}!`,0.85,0.9),600);
+  if(GS.wave>=4)setTimeout(()=>sndVoice(`Wave ${GS.wave}!`,0.85,0.9),600);
+  if(mpCoopMode&&ablyReady)ablyPublish('wave_start',{wave:GS.wave,stage:GS.stage,round:GS.round,waveTarget:GS.waveTarget});
 }
 const CREATURE_TYPES=['grunt','heavy','sniper','scout','berserker','shielder','phantom','bomber','shadow','brute','alien','swordsman','spider_creature','lobster','serpent','dragon','gorilla'];// ── ENEMY FACTIONS ─────────────────────────────────
 const ENEMY_FACTIONS=[
@@ -2089,6 +2656,7 @@ const ENEMY_FACTIONS=[
 ];
 let waveFactionsActive=[];
 function tickSpawn(){
+  if(mpCoopMode&&!isRoomHost)return; // ← Only host spawns enemies
   if(!GS.spawnQ.length)return;
   if(enemies.filter(e=>!e.dead).length>=curStage().maxOn)return;
   GS.spawnTick--;if(GS.spawnTick>0)return;
@@ -2175,12 +2743,18 @@ const isHeavy=type==='heavy'||type==='shielder'||type==='ogre';
   const eFac=waveFactionsActive.length>0?waveFactionsActive[Math.floor(Math.random()*waveFactionsActive.length)]:ENEMY_FACTIONS[0];
   const isCommander=!heavy&&!isBerserker&&!isPhantom&&Math.random()<0.10;
 
+// Co-op: enemies are weaker (55% HP, 60% dmg, 80% spd) — players have less AI squad support
+  const _coopEMul=mpCoopMode?0.55:1.0;
+// Unique deterministic ID so host and clients can reference the same enemy object
+  if(!window._enemyIdCounter)window._enemyIdCounter=1;
+  const _eid='e'+(window._enemyIdCounter++)+'_'+Date.now();
   enemies.push({
+    id:_eid,
     x,y,angle:0,type,
-    hp:cfg.hp*S.eHp*DC.mul*RM.hp,
-    maxHp:cfg.hp*S.eHp*DC.mul*RM.hp,
-    speed:cfg.spd*S.eSpd*(0.5+(SETTINGS.aiSpeed/10)*1.1)*RM.speed,
-    dmg:cfg.dmg*S.eDmg*DC.mul*RM.dmg,
+    hp:cfg.hp*S.eHp*DC.mul*RM.hp*_coopEMul,
+    maxHp:cfg.hp*S.eHp*DC.mul*RM.hp*_coopEMul,
+    speed:cfg.spd*S.eSpd*(0.5+(SETTINGS.aiSpeed/10)*1.1)*RM.speed*(mpCoopMode?0.78:1.0),
+    dmg:cfg.dmg*S.eDmg*DC.mul*RM.dmg*(mpCoopMode?0.60:1.0),
     col:cfg.col,sz:cfg.sz,label:cfg.label,
     heavy:isHeavy,sniper:isSniper,scout:isScout,
     isBerserker,isPhantom,isBomber,
@@ -2219,7 +2793,16 @@ isCommander,commanderT:0,
 function updateEnemy(e){
   if(e.dead){e.deathT++;return;}
   if(e.flashT>0)e.flashT--;
-  // ── CLING MECHANIC: enemy grabs player and drains HP ──
+  // CO-OP CLIENT: skip all AI, damage, and shooting — host controls everything
+  // Clients were running full enemy AI independently, causing double/triple damage
+  if(mpCoopMode&&!isRoomHost){
+    if(e.sleeping){e.sleepT--;if(e.sleepT<=0){e.sleeping=false;e.aiState='approach';}}
+    if(e.burnT>0)e.burnT--;
+    if(e._meleeCD>0)e._meleeCD--;
+    if(e._combatRushT>0)e._combatRushT--;
+    return; // client renders only — no AI, no shooting, no melee, no damage
+  }
+  // ── CLING MECHANIC: enemy grabs player and drains HP ── 
     if(e.canCling && !e.dead && !e.sleeping && !P.dead){
       if(!e.clinging){
         if(dist(e,P)<28 && Math.random()<0.04){
@@ -2506,8 +3089,7 @@ function eShoot(e,tgt){
   else if(e.type==='alien'){spd=16;bulletCount=1;dmgMul=1.3;}
   for(let i=0;i<bulletCount;i++){
     const shootAngle=as+(i-bulletCount/2+0.5)*(bulletCount>1?0.15:0);
-    eBullets.push({x:e.x+Math.cos(a)*30,y:e.y+Math.sin(a)*30,dx:Math.cos(shootAngle)*spd,dy:Math.sin(shootAngle)*spd,life:155,dmg:e.dmg*dmgMul,boss:false});
-  }
+eBullets.push({x:e.x+Math.cos(a)*30,y:e.y+Math.sin(a)*30,dx:Math.cos(shootAngle)*spd,dy:Math.sin(shootAngle)*spd,life:240,dmg:e.dmg*dmgMul,boss:false});  }
   sndEShoot();
 }
 
@@ -2535,6 +3117,9 @@ setTimeout(()=>sndVoice(`${S.bossName} arrives!`,0.55,0.8),1200);
 
 function updateBoss(){
   if(!boss||boss.dead)return;
+  // CO-OP CLIENT: only host runs boss AI. Clients receive boss state via Ably sync.
+  // Without this guard, clients got hit by boss bullets from BOTH local AI AND host sync.
+  if(mpCoopMode&&!isRoomHost)return;
   if(boss.hp<=0&&!boss.dead){killBoss();return;}
   if(boss.flashT>0)boss.flashT--;boss.aiT++;
   if(boss.teleportCD>0)boss.teleportCD--;
@@ -2542,7 +3127,11 @@ if(boss.hp<boss.maxHp*.5&&boss.phase===1){boss.phase=2;boss.speed*=1.25;boss.rag
  if(boss.hp<boss.maxHp*.22&&boss.phase===2){boss.phase=3;boss.speed*=1.15;document.getElementById('bossPhase').textContent='PHASE 3 — FINAL STAND';sndVoice('I will not fall!',0.45,0.82);}
   if(!boss.berserkMode&&boss.hp<boss.berserkHP){boss.berserkMode=true;boss.speed*=1.7;addKillFeed(`🔴 ${boss.name} BERSERK!`,'b');burst(boss.x,boss.y,'#ff0000',50);shake(20,60);sndVoice('BERSERK!',0.4,1.3);}
   if(boss.rageT>0){boss.rageT--;spark(boss.x,boss.y,boss.col,2);}
-  boss.voiceTimer--;if(boss.voiceTimer<=0){boss.voiceTimer=240+Math.floor(Math.random()*160);const taunts=["I see you!","You can't escape!","Come out and FIGHT!","I'm coming!"];sndVoice(taunts[Math.floor(Math.random()*taunts.length)],0.5,0.9);}
+
+boss.voiceTimer--;
+if(boss.voiceTimer<=0){
+  boss.voiceTimer = 1800; // 30 seconds between boss taunts (was 4-7s)
+}
   const tgt=nearestTarget(boss.x,boss.y);
   if(!tgt){boss.targetLostTimer++;if(boss.targetLostTimer<180){mv(boss,boss.lastTargetX,boss.lastTargetY,boss.speed*1.2);}else{const cx=(SQ.filter(m=>m.alive).reduce((s,m)=>s+m.x,P.x))/(SQ.filter(m=>m.alive).length+1);const cy=(SQ.filter(m=>m.alive).reduce((s,m)=>s+m.y,P.y))/(SQ.filter(m=>m.alive).length+1);mv(boss,cx,cy,boss.speed*1.3);}boss.x=clamp(boss.x,65,WORLD_W-65);boss.y=clamp(boss.y,65,WORLD_H-65);updateBossHUD();return;}
   boss.targetLostTimer=0;boss.lastTargetX=tgt.x;boss.lastTargetY=tgt.y;
@@ -3551,7 +4140,6 @@ function releaseSquad(){
   addKillFeed('🔓 SQUAD RELEASED — Team fighting together again!','h');
   showBanner('🔓 RELEASED','Squad Separated — Fight Together!','#39ff8a');
   aiSay('Squad released! All four back in action — fight together!');
-  setTimeout(()=>sndVoice('Squad released! Together we fight!',1.0,0.95),400);
   updateHealthHUD();updateShieldHUD();updateSquadHUD();
   mergeBoosts={};
 }
@@ -3588,7 +4176,8 @@ function updateMergeMode(){
   }
 }
 function explodeBarrel(b){if(b.dead)return;b.dead=true;sndBarrel();shake(22,42);burst(b.x,b.y,'#ff6600',46);const r=140;enemies.forEach(e=>{if(!e.dead&&dist(e,b)<r){e.hp-=160;e.flashT=15;e.burnT=90;if(e.hp<=0)killEnemy(e);}});
-if(boss&&!boss.dead&&dist(boss,b)<r+45){boss.hp-=220;boss.flashT=16;updateBossHUD();if(boss.hp<=0)killBoss();}if(!P.dead&&dist(P,b)<r){P.hp-=42;updateHealthHUD();flashDeath(.4);if(P.hp<=0)triggerPlayerDeath();}barrels.forEach(b2=>{if(!b2.dead&&b2!==b&&dist(b2,b)<r)setTimeout(()=>{if(!b2.dead){b2.hp=0;explodeBarrel(b2);}},150+Math.random()*200);});addKillFeed('💥 CHAIN EXPLOSION!','p');}
+if(boss&&!boss.dead&&dist(boss,b)<r+45){boss.hp-=220;boss.flashT=16;updateBossHUD();if(boss.hp<=0)killBoss();}
+  if(!P.dead&&dist(P,b)<r){P.hp-=42;updateHealthHUD();flashDeath(.4);if(P.hp<=0)triggerPlayerDeath();}barrels.forEach(b2=>{if(!b2.dead&&b2!==b&&dist(b2,b)<r)setTimeout(()=>{if(!b2.dead){b2.hp=0;explodeBarrel(b2);}},150+Math.random()*200);});addKillFeed('💥 CHAIN EXPLOSION!','p');}
 
 // ── SLEEP / BERSERK ─────────────────────────────────
 function throwSleepBomb(){if(sleepBombCD>0||P.dead)return;sleepBombCD=SLEEP_CD;const tx=mouse.x+camX-shakeX,ty=mouse.y+camY-shakeY;let prog=0;const bi=setInterval(()=>{prog+=0.07;if(prog>=1){clearInterval(bi);sndSleep();burst(tx,ty,'#9944ff',28);shockwaves.push({x:tx,y:ty,radius:0,maxR:240,delay:0,color:'#9944ff'});shake(5,10);enemies.forEach(e=>{if(!e.dead&&!e.berserkMode&&dist(e,{x:tx,y:ty})<200){e.sleeping=true;e.sleepT=SLEEP_DUR+GS.round*30;e.crouching=true;addKillFeed('💤 Enemy SLEEPING!','p');}});aiSay('Sleep bomb! Enemies knocked out!');return;}const cx=(P.x+(tx-P.x)*prog)-camX+shakeX,cy=(P.y+(ty-P.y)*prog)-camY+shakeY;ctx.save();ctx.fillStyle='#aa44ff';ctx.shadowColor='#9944ff';ctx.shadowBlur=16;ctx.beginPath();ctx.arc(cx,cy,8,0,Math.PI*2);ctx.fill();ctx.restore();},16);}
@@ -3694,7 +4283,6 @@ function checkSquadRage(){
   addKillFeed('🔥🔥 SQUAD RAGE ACTIVATED! THEY ARE FURIOUS! 🔥🔥','b');
   showBanner('💢 SQUAD RAGE!','YOUR TEAM IS NOW UNSTOPPABLE!','#ff4444');
   aiSay('SQUAD RAGE! The team has had ENOUGH — watch them go!');
-  setTimeout(()=>sndVoice('Squad rage activated!',0.7,1.1),600);
 
   // Extra shield regeneration burst for player too
   P.shield=P.maxShield;
@@ -3726,8 +4314,134 @@ function updateSquadRageVisual(m,sx,sy,sz){
   ctx.shadowBlur=0;ctx.shadowColor='transparent';
 }
 
-function getSquadRageColor(m){
-  if(!m.raging)return null;
+function triggerAuraPower(m,nearEnemies){
+  if(!m||!m.alive||!GS||!GS.running)return;
+  const ne=nearEnemies||enemies.filter(e=>!e.dead&&!e.sleeping&&dist(m,e)<180);
+  if(!ne.length)return;
+  if(m.name==='ZARA'){
+    ne.slice(0,5).forEach((te,i)=>setTimeout(()=>{if(!te.dead)throwFireBomb(m.x,m.y,te.x+(Math.random()-.5)*50,te.y+(Math.random()-.5)*50);},i*90));
+    burst(m.x,m.y,'#ff4400',45);burst(m.x,m.y,'#ffcc00',25);shake(10,22);sndExplode();
+    addKillFeed('🔥 ZARA Fire Aura ERUPTS — Napalm Volley!','p');
+    showBanner('🔥 ZARA FIRE AURA','Napalm volley!','#ff4400');squadSpeak(m,'berserk','#ff4400');
+  }else if(m.name==='REX'){
+    shockwaves.push({x:m.x,y:m.y,radius:0,maxR:230,delay:0,color:'#aaccff'});
+    ne.forEach(e=>{if(!e.dead&&!e.berserkMode){e.sleeping=true;e.sleepT=110+GS.stage*28;e.suppressedT=220;e.flashT=14;}});
+    burst(m.x,m.y,'#aaccff',42);burst(m.x,m.y,'#ffffff',22);shake(12,25);sndSleep();
+    addKillFeed('☁️ REX Cloud Burst — Enemies STUNNED!','p');
+    showBanner('☁️ REX CLOUD AURA','Stun cloud!','#aaccff');squadSpeak(m,'berserk','#aaccff');
+  }else if(m.name==='NOVA'){
+    ne.slice(0,6).forEach((te,i)=>setTimeout(()=>{
+      if(!te.dead){const ldmg=(230+GS.stage*58+GS.round*42)*m.dmgBonus;te.hp-=ldmg;te.flashT=14;te.suppressedT=120;burst(te.x,te.y,'#ffff44',22);spawnBlood(te.x,te.y,6);shake(5,8);const sp2=w2s(te.x,te.y);showFloat(sp2.x,sp2.y-28,`⚡-${Math.floor(ldmg)}`,'#ffff44',11);if(te.hp<=0)killEnemy(te);}
+    },i*68));
+    if(boss&&!boss.dead&&dist(m,boss)<240)setTimeout(()=>{if(boss&&!boss.dead){boss.hp-=(320+GS.stage*85)*m.dmgBonus;boss.flashT=14;updateBossHUD();if(boss.hp<=0)killBoss();}},500);
+    burst(m.x,m.y,'#ffff44',52);burst(m.x,m.y,'#ffffff',28);shake(14,28);sndSuper();
+    addKillFeed('⚡ NOVA Thunder Chain — Lightning Strike!','p');
+    showBanner('⚡ NOVA THUNDER AURA','Chain lightning!','#ffff44');squadSpeak(m,'berserk','#ffff44');
+  }else if(m.name==='BOLT'){
+    const origX=m.x,origY=m.y;
+    ne.slice(0,4).forEach((te,i)=>setTimeout(()=>{
+      if(!te.dead){const a2=Math.atan2(te.y-origY,te.x-origX);m.x=clamp(te.x+Math.cos(a2+Math.PI/2)*38,18,WORLD_W-18);m.y=clamp(te.y+Math.sin(a2+Math.PI/2)*38,18,WORLD_H-18);const sdmg=(190+GS.stage*48+GS.round*38)*m.dmgBonus;te.hp-=sdmg;te.flashT=12;burst(te.x,te.y,'#ffff44',18);spawnBlood(te.x,te.y,5);shake(4,8);const sp3=w2s(te.x,te.y);showFloat(sp3.x,sp3.y-26,`-${Math.floor(sdmg)}`,'#ffff44',11);if(te.hp<=0)killEnemy(te);sndMelee();}
+    },i*55));
+    setTimeout(()=>{m.x=origX;m.y=origY;},ne.length*55+90);
+    burst(m.x,m.y,'#ffff44',36);burst(m.x,m.y,'#aaffff',20);shake(10,20);sndSuper();
+    addKillFeed('⚡ BOLT Speed Rush — Dash Strike all!','p');
+    showBanner('⚡ BOLT SPEED AURA','Dash strike!','#ffff44');squadSpeak(m,'berserk','#ffff44');
+  }
+}
+
+function drawSquadAura(m,sx,sy,sz){
+  if(!m.alive)return;
+  const t=Date.now()*.001;
+  ctx.save();
+  ctx.shadowBlur=0;ctx.globalAlpha=1;
+
+  if(m.name==='ZARA'){
+    // 🔥 FIRE AURA — dancing flames orbiting Zara
+    for(let i=0;i<8;i++){
+      const a=(i/8)*Math.PI*2+t*1.8;
+      const flicker=0.7+0.3*Math.sin(t*4+i*1.3);
+      const r=sz*1.6+Math.sin(t*3+i)*sz*.4;
+      const fx=sx+Math.cos(a)*r,fy=sy+Math.sin(a)*r;
+      const h=sz*(.8+Math.sin(t*5+i)*.4)*flicker;
+      ctx.globalAlpha=0.55+0.35*Math.sin(t*3+i);
+      ctx.fillStyle=i%2===0?'#ff4400':'#ff8800';
+      ctx.shadowColor='#ff4400';ctx.shadowBlur=14;
+      ctx.beginPath();
+      ctx.moveTo(fx-sz*.15,fy+h*.4);
+      ctx.quadraticCurveTo(fx+sz*.2,fy,fx,fy-h);
+      ctx.quadraticCurveTo(fx-sz*.2,fy,fx-sz*.15,fy+h*.4);
+      ctx.fill();
+    }
+    ctx.globalAlpha=0.22+0.12*Math.sin(t*2);
+    ctx.strokeStyle='#ff6600';ctx.lineWidth=3;ctx.shadowColor='#ff4400';ctx.shadowBlur=20;
+    ctx.beginPath();ctx.arc(sx,sy,sz*2.1+Math.sin(t*2.5)*4,0,Math.PI*2);ctx.stroke();
+
+  }else if(m.name==='REX'){
+    // ☁️ CLOUD AURA — misty blue shield clouds orbiting Rex
+    for(let i=0;i<5;i++){
+      const a=(i/5)*Math.PI*2+t*.7;
+      const r=sz*1.8+Math.sin(t+i)*sz*.3;
+      const cx2=sx+Math.cos(a)*r,cy2=sy+Math.sin(a)*r;
+      const puff=sz*.45;
+      ctx.globalAlpha=0.28+0.18*Math.sin(t*1.5+i);
+      ctx.fillStyle='#aaccff';ctx.shadowColor='#88aaff';ctx.shadowBlur=12;
+      ctx.beginPath();ctx.arc(cx2,cy2,puff,0,Math.PI*2);ctx.fill();
+      ctx.globalAlpha*=0.7;
+      ctx.beginPath();ctx.arc(cx2+puff*.55,cy2,puff*.7,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(cx2-puff*.55,cy2,puff*.7,0,Math.PI*2);ctx.fill();
+    }
+    ctx.globalAlpha=0.18+0.10*Math.sin(t*1.8);
+    ctx.strokeStyle='#4488ff';ctx.lineWidth=4;ctx.shadowColor='#4488ff';ctx.shadowBlur=18;
+    ctx.setLineDash([8,5]);
+    ctx.beginPath();ctx.arc(sx,sy,sz*2.4,0,Math.PI*2);ctx.stroke();
+    ctx.setLineDash([]);
+
+  }else if(m.name==='NOVA'){
+    // ⚡ THUNDER AURA — flickering lightning bolts around Nova
+    for(let i=0;i<6;i++){
+      const phase=t*3.5+i*(Math.PI*2/6);
+      if(Math.sin(phase)>0.2){
+        const a=(i/6)*Math.PI*2+t*.9;
+        const r=sz*1.7+Math.sin(t*4+i)*sz*.35;
+        const lx=sx+Math.cos(a)*r,ly=sy+Math.sin(a)*r;
+        ctx.globalAlpha=0.55+0.4*Math.sin(phase);
+        ctx.strokeStyle='#ffff44';ctx.lineWidth=2;ctx.shadowColor='#ffff00';ctx.shadowBlur=16;
+        ctx.beginPath();
+        ctx.moveTo(sx+Math.cos(a)*sz*.8,sy+Math.sin(a)*sz*.8);
+        ctx.lineTo(sx+Math.cos(a)*r*.45+(Math.random()-.5)*sz*.35,sy+Math.sin(a)*r*.45+(Math.random()-.5)*sz*.35);
+        ctx.lineTo(lx,ly);ctx.stroke();
+        ctx.fillStyle='#ffffff';ctx.shadowBlur=20;ctx.globalAlpha=0.8;
+        ctx.beginPath();ctx.arc(lx,ly,3,0,Math.PI*2);ctx.fill();
+      }
+    }
+    ctx.globalAlpha=0.15+0.10*Math.abs(Math.sin(t*4));
+    ctx.strokeStyle='#ffff44';ctx.lineWidth=2;ctx.shadowColor='#ffff00';ctx.shadowBlur=22;
+    ctx.setLineDash([3,4]);
+    ctx.beginPath();ctx.arc(sx,sy,sz*2.2+Math.sin(t*5)*3,0,Math.PI*2);ctx.stroke();
+    ctx.setLineDash([]);
+
+  }else if(m.name==='BOLT'){
+    // 🌀 SPEED POWER AURA — spiraling energy rings around Bolt
+    for(let i=0;i<6;i++){
+      const a=t*2.5+i*(Math.PI*2/6);
+      const r=sz*(1.5+i*.2)+Math.sin(t*4+i)*sz*.25;
+      ctx.globalAlpha=0.40-i*.04;
+      ctx.strokeStyle=i%2===0?'#ffff44':'#ffffff';
+      ctx.lineWidth=2-i*.2;ctx.shadowColor='#ffff44';ctx.shadowBlur=12;
+      ctx.beginPath();ctx.arc(sx,sy,r,a,a+Math.PI*.55);ctx.stroke();
+      const px=sx+Math.cos(a)*r,py=sy+Math.sin(a)*r;
+      ctx.fillStyle='#ffff88';ctx.shadowBlur=16;ctx.globalAlpha=0.7;
+      ctx.beginPath();ctx.arc(px,py,2.5,0,Math.PI*2);ctx.fill();
+    }
+    ctx.globalAlpha=0.12+0.08*Math.abs(Math.sin(t*5));
+    ctx.fillStyle='#ffff44';ctx.shadowColor='#ffff00';ctx.shadowBlur=28;
+    ctx.beginPath();ctx.arc(sx,sy,sz*1.4,0,Math.PI*2);ctx.fill();
+  }
+
+  ctx.restore();ctx.shadowBlur=0;ctx.globalAlpha=1;ctx.setLineDash([]);
+}
+
+function getSquadRageColor(m){  if(!m.raging)return null;
   const t=Date.now();
   const blink=Math.sin(t*.012)>.15;
   if(blink)return '#ff2200';
@@ -3738,14 +4452,22 @@ function getSquadRageColor(m){
 function updateSquadMember(m){
   if(!m.alive){if(m.deathT<200)m.deathT++;return;}
   if(m.flashT>0)m.flashT--;if(m.lastHitT>0)m.lastHitT--;if(m.suppressedT>0)m.suppressedT--;
-  m.aiT++;if(m.superCD>0)m.superCD--;m.lastSpeakT++;
-
+m.aiT++;if(m.superCD>0)m.superCD--;m.lastSpeakT++;
+  if(!m._auraPCD)m._auraPCD=0;
+  if(m._auraPCD>0)m._auraPCD--;
+  if(GS&&GS.running&&m.alive&&!m._autoCombat&&m._auraPCD<=0){
+    const nearE=enemies.filter(e=>!e.dead&&!e.sleeping&&dist(m,e)<165);
+    const bossNearM=boss&&!boss.dead&&dist(m,boss)<200;
+    if(nearE.length>=2||(nearE.length>=1&&bossNearM)){
+      triggerAuraPower(m,nearE);
+      m._auraPCD=300+GS.stage*35+(GS.round-1)*50;
+    }
+  }
   // ══════════════════════════════════════════════
   // AUTONOMOUS SQUAD BRAIN — runs every frame
   // They act on their own, no commands needed
   // ══════════════════════════════════════════════
-  if(GS&&GS.running&&m.alive&&frameN%18===SQ.indexOf(m)*4){
-    const ne=nearestEnemy(m.x,m.y);
+if(GS&&GS.running&&m.alive&&frameN%18===SQ.indexOf(m)*4&&m.aiState!=='run_revive'){    const ne=nearestEnemy(m.x,m.y);
     const neDist=ne?dist(m,ne):9999;
     const bossNear=boss&&!boss.dead&&dist(m,boss)<600;
     const playerLow=!P.dead&&P.hp<P.maxHp*0.38;
@@ -3862,8 +4584,21 @@ function updateSquadMember(m){
         mv(m,downed.x,downed.y,m.speed*1.1);
       }
     }
-    if(m._reviveCD>0)m._reviveCD--;
+if(m._reviveCD>0)m._reviveCD--;
 
+  // Periodic check: ensure every dead member has a reviver assigned
+  if(m.alive&&m.aiState!=='run_revive'&&m._reviveCD<=0&&frameN%60===SQ.indexOf(m)*15){
+    const unattended=SQ.find(dead=>
+      !dead.alive&&dead!==m&&dead.deathT<300&&
+      !SQ.some(s=>s.alive&&s.aiState==='run_revive'&&s.reviveTarget===dead)
+    );
+    if(unattended){
+      m.aiState='run_revive';
+      m.reviveTarget=unattended;
+      m._autoReviveProg=0;
+      addKillFeed(`⚡ ${m.name} reassigned to revive ${unattended.name}!`,'h');
+    }
+  }
     // ── 7. GO TO BASE when no enemies and game is quiet ──
     if(noEnemies&&!GS.betweenWaves===false&&m.aiState!=='base_order'){
       if(dist(m,BASE_POSITIONS[SQ.indexOf(m)]||PLAYER_BASE)>150){
@@ -3963,8 +4698,56 @@ m.shootTimer=(m.role==='RAPID'?5:(berserkActive?6:10))+(m.crouching?5:0);    let
     case'kill_order':{const tgtE=m.killTarget&&!m.killTarget.dead?m.killTarget:nearestEnemy(m.x,m.y);if(!tgtE){m.aiState='engage';break;}if(dist(m,tgtE)>80)mv(m,tgtE.x,tgtE.y,m.speed*1.3);m.angle=Math.atan2(tgtE.y-m.y,tgtE.x-m.x);if(m.hp<m.maxHp*.15)m.aiState='seek_cover';break;}
     case'protect_order':{const d2=dist(m,P);if(d2>50)mv(m,P.x,P.y,m.speed*1.2);if(ne2)m.angle=Math.atan2(ne2.y-m.y,ne2.x-m.x);break;}
     case'retreat_order':{if(!ne2){m.aiState='follow';break;}const awayAng=Math.atan2(m.y-ne2.y,m.x-ne2.x);m.x+=Math.cos(awayAng)*m.speed*1.2;m.y+=Math.sin(awayAng)*m.speed*1.2;m.angle=Math.atan2(ne2.y-m.y,ne2.x-m.x);break;}
-  case'surround_order':{if(!ne2){m.aiState='engage';break;}const angOffset=(i/SQ.length)*Math.PI*2;const tx=ne2.x+Math.cos(angOffset)*100,ty=ne2.y+Math.sin(angOffset)*100;mv(m,tx,ty,m.speed*1.15);m.angle=Math.atan2(ne2.y-m.y,ne2.x-m.x);break;}
-    // ── TACTICAL PATROL — cover to cover stealth sweep ──────────
+case'surround_order':{if(!ne2){m.aiState='engage';break;}const angOffset=(i/SQ.length)*Math.PI*2;const tx=ne2.x+Math.cos(angOffset)*100,ty=ne2.y+Math.sin(angOffset)*100;mv(m,tx,ty,m.speed*1.15);m.angle=Math.atan2(ne2.y-m.y,ne2.x-m.x);break;}
+
+  case'run_revive':{
+    const rv=m.reviveTarget;
+    // Target already revived or invalid — return to normal
+    if(!rv||rv.alive){
+      m.reviveTarget=null;m._autoReviveProg=0;m.aiState='follow';break;
+    }
+    const dToRv=dist(m,rv);
+    if(dToRv>42){
+      // Sprint toward downed member — shoot enemies along the way
+      mv(m,rv.x,rv.y,m.speed*1.55);
+      m.angle=Math.atan2(rv.y-m.y,rv.x-m.x);
+      // Still return fire while running
+      if(ne2&&!ne2.dead&&dist(m,ne2)<220){
+        if(m.shootTimer<=0){squadShoot(m,ne2);m.shootTimer=16;}
+      }
+    }else{
+      // In range — perform the revive
+      m._autoReviveProg=(m._autoReviveProg||0)+1;
+      m.angle=Math.atan2(rv.y-m.y,rv.x-m.x);
+      m.crouching=true; // crouch while reviving
+      // Protect reviver: shoot back if hit during revive
+      if(ne2&&!ne2.dead&&dist(m,ne2)<160){
+        if(m.shootTimer<=0){squadShoot(m,ne2);m.shootTimer=14;}
+      }
+      if(m._autoReviveProg>=95){
+        // Revive complete!
+        rv.alive=true;
+        rv.hp=Math.floor(rv.maxHp*0.48);
+        rv.shield=Math.floor(rv.maxShield*0.35);
+        rv.deathT=0;rv.aiState='follow';
+        rv.sosPinged=false;rv.killTarget=null;
+        rv.hidePos=null;rv.spreadPos=null;rv.crouching=false;
+        rv.raging=false;rv._autoReviveProg=0;
+        burst(rv.x,rv.y,'#39ff8a',40);
+        burst(rv.x,rv.y,'#ffffff',22);
+        burst(rv.x,rv.y,m.col,18);
+        sndRevive();shake(7,14);sndPickup();
+        addKillFeed(`✚ ${m.name} REVIVED ${rv.name}! Back in action!`,'h');
+        showBanner(`✚ ${rv.name} REVIVED`,`${m.name} brought them back!`,'#39ff8a');
+        squadSpeak(rv,'idle',rv.col);
+        aiSay(`${rv.name} is back! ${m.name} revived them mid-battle!`,true);
+        m.reviveTarget=null;m._autoReviveProg=0;
+        m.crouching=false;m._reviveCD=500;m.aiState='follow';
+        updateSquadHUD();
+      }
+    }
+    break;
+  }    // ── TACTICAL PATROL — cover to cover stealth sweep ──────────
     case'tactical_patrol':{
       // Patrol: always chase visible enemies — range increased
       if(ne2&&ned2<600){
@@ -4066,16 +4849,36 @@ m.shootTimer=(m.role==='RAPID'?5:(berserkActive?6:10))+(m.crouching?5:0);    let
   m.x=clamp(m.x,18,WORLD_W-18);m.y=clamp(m.y,18,WORLD_H-18);
 }
 
-function squadShoot(m,te){if(!te)return;const dmgMul=berserkActive?2.8:1.0;const a=Math.atan2(te.y-m.y,te.x-m.x)+(Math.random()-.5)*.08;m.angle=a;const spd=15+GS.upgradeLevel*.8,dmg=(65+GS.upgradeLevel*18)*m.dmgBonus*dmgMul;  bullets.push({x:m.x+Math.cos(a)*22,y:m.y+Math.sin(a)*22,dx:Math.cos(a)*spd,dy:Math.sin(a)*spd,life:100,dmg,owner:'squad'});if(m.role==='RAPID')setTimeout(()=>{if(m.alive&&te&&!te.dead){const a2=Math.atan2(te.y-m.y,te.x-m.x)+(Math.random()-.5)*.11;bullets.push({x:m.x+Math.cos(a2)*22,y:m.y+Math.sin(a2)*22,dx:Math.cos(a2)*spd,dy:Math.sin(a2)*spd,life:100,dmg:dmg*.65,owner:'squad'});}},65);sndEShoot();}
+function squadShoot(m,te){if(!te)return;const dmgMul=berserkActive?2.8:1.0;const a=Math.atan2(te.y-m.y,te.x-m.x)+(Math.random()-.5)*.08;m.angle=a;const spd=15+GS.upgradeLevel*.8,dmg=(65+GS.upgradeLevel*18)*m.dmgBonus*dmgMul; bullets.push({x:m.x+Math.cos(a)*22,y:m.y+Math.sin(a)*22,dx:Math.cos(a)*spd,dy:Math.sin(a)*spd,life:180,dmg,owner:'squad'});if(m.role==='RAPID')setTimeout(()=>{if(m.alive&&te&&!te.dead){const a2=Math.atan2(te.y-m.y,te.x-m.x)+(Math.random()-.5)*.11;bullets.push({x:m.x+Math.cos(a2)*22,y:m.y+Math.sin(a2)*22,dx:Math.cos(a2)*spd,dy:Math.sin(a2)*spd,life:180,dmg:dmg*.65,owner:'squad'});}},65);sndEShoot();}
 
 // ── PLAYER SHOOTING ─────────────────────────────────
 function pShoot(){
   if(P.reloading||P.dead)return;
   if(P.ammo<=0){
-    // Out of ammo — auto-reload if reserve available
     if(P.reserve>0&&!P.reloading)startReload();
     return;
-  }P.ammo--;updateAmmoHUD();  const w=curWeapon();const bersMul=berserkActive?2.2:1;const total=w.shots+(P.extraShots||0)+(berserkActive?1:0);for(let i=0;i<total;i++){const crit=Math.random()<(P.critChance||.14)+(berserkActive?.12:0);const a=P.angle+(i-total/2+.5)*(total>1?.1:0)+(Math.random()-.5)*.03;const spd=14+GS.upgradeLevel;const dmg=(P.dmg||w.dmg)*(P.dmgMul||1)*bersMul*(crit?2.2:1);bullets.push({x:P.x+Math.cos(P.angle)*28,y:P.y+Math.sin(P.angle)*28,dx:Math.cos(a)*spd,dy:Math.sin(a)*spd,life:85,dmg,owner:'player',crit});if(crit)sndCrit();}spark(P.x+Math.cos(P.angle)*28,P.y+Math.sin(P.angle)*28,'#ffd700',4);sndShoot();
+  }
+  P.ammo--;updateAmmoHUD();
+  const w=curWeapon();const bersMul=berserkActive?2.2:1;const total=w.shots+(P.extraShots||0)+(berserkActive?1:0);
+  const newBullets=[];
+  for(let i=0;i<total;i++){
+    const crit=Math.random()<(P.critChance||.14)+(berserkActive?.12:0);
+    const a=P.angle+(i-total/2+.5)*(total>1?.1:0)+(Math.random()-.5)*.03;
+    const spd=14+GS.upgradeLevel;const dmg=(P.dmg||w.dmg)*(P.dmgMul||1)*bersMul*(crit?2.2:1);
+const blt={x:P.x+Math.cos(P.angle)*28,y:P.y+Math.sin(P.angle)*28,dx:Math.cos(a)*spd,dy:Math.sin(a)*spd,life:220,dmg,owner:'player',crit};    bullets.push(blt);newBullets.push(blt);
+    if(crit)sndCrit();
+  }
+  spark(P.x+Math.cos(P.angle)*28,P.y+Math.sin(P.angle)*28,'#ffd700',4);sndShoot();
+  // Broadcast your bullets so teammates see them
+  if(mpCoopMode&&ablyReady&&newBullets.length){
+newBullets.forEach(b=>{
+      ablyPublish('bullet_fired',{
+        x:Math.round(b.x),y:Math.round(b.y),
+        vx:+b.dx.toFixed(2),vy:+b.dy.toFixed(2),
+        dmg:Math.round(b.dmg),crit:b.crit?1:0,
+        life:b.life||60,color:myPlayerColor
+      });
+    });  }
 }
 function startReload(){
   if(!P)return;
@@ -4505,10 +5308,21 @@ function toggleFastForward(){
 }
 
 
-let _invisTimer=0,_invisActive=false;
+let _invisTimer=0,_invisActive=false,shadowUsedThisStage=false;
 function activatePower(){
-  if(powerCD>0||P.dead)return;
+  if(P.dead)return;
+  if(shadowUsedThisStage){
+    showFeedback('▶ SHADOW already used this stage — resets next stage!');
+    addKillFeed('🥷 Shadow power used up for this stage','s');
+    shake(4,8);
+    return;
+  }
+  if(powerCD>0){
+    showFeedback(`▶ Shadow recharging... (${Math.ceil(powerCD/60)}s)`);
+    return;
+  }
   powerCD=PMAX;
+  shadowUsedThisStage=true;
   _invisActive=true;_invisTimer=900; // 15 seconds at 60fps
   P.dmgMul=(P.dmgMul||1)*2.2; // bonus dmg while invisible
   burst(P.x,P.y,'#8800ff',45);burst(P.x,P.y,'#000000',30);
@@ -4570,9 +5384,8 @@ function onKill(){
     addKillFeed(`🔥 ${txt}`,'mp');
     // Voice shoutout on big streaks
     const voices={2:'Double kill!',3:'Triple kill! On fire!',4:'Quadra kill! Unstoppable!',5:'PENTA KILL! LEGENDARY!'};
-    const spreeVoices=['Nobody can stop me!','They never stood a chance!','Is that all you got?','DOMINATING!'];
-    if(voices[quickKills])setTimeout(()=>sndVoice(voices[quickKills],1.1,1.0),200);
-    else if(quickKills>5&&quickKills%3===0)setTimeout(()=>sndVoice(spreeVoices[Math.floor(Math.random()*spreeVoices.length)],1.1,1.1),200);
+const spreeVoices=['Outstanding teamwork!','You are on fire, keep it up!','Incredible skill, stay focused!','Absolutely dominating, well done!'];   
+if(GS.wave>=4)setTimeout(()=>sndVoice(`Wave ${GS.wave}!`,0.85,0.9),600);
   }
   // Rage meter fill
   rageCharge=Math.min(RAGE_MAX,rageCharge+RAGE_PER_KILL);updateRageMeter();
@@ -4585,11 +5398,27 @@ function killEnemy(e){
   const pts=Math.floor(base*comboMult()*(1+GS.round*.38));GS.score+=pts;updateScoreHUD();updateWaveHUD();
   burst(e.x,e.y,curStage().eCol,20);sndExplode();shake(8,18);enemyScream();
   addKillFeed(`☠ ${e.heavy?'HEAVY':e.sniper?'SNIPER':e.scout?'SCOUT':'Enemy'} DOWN! +${pts}`,'e');
+  // Role-specific kill bonuses
+  if(mpCoopMode){
+    if(myRole==='zara'&&P.lifeSteal>0){
+      P.hp=Math.min(P.maxHp,P.hp+P.lifeSteal);updateHealthHUD();
+    }
+    if(myRole==='nova'&&P.critChance>0&&Math.random()<0.3){
+      // NOVA gets extra score on kills
+      GS.score+=Math.floor(pts*0.25);updateScoreHUD();
+    }
+    if(myRole==='rex'){
+      // REX gets shield back on kills
+      P.shield=Math.min(P.maxShield,P.shield+12);updateShieldHUD();
+    }
+  }else{
+    if(P.lifeSteal>0){P.hp=Math.min(P.maxHp,P.hp+P.lifeSteal);updateHealthHUD();}
+  }
 if(Math.random()<.78){
   const r=Math.random();
   const t=r<.08?'life':r<.45?'health':'ammo';
   pickups.push({x:e.x+(Math.random()-.5)*28,y:e.y+(Math.random()-.5)*28,type:t,life:900});
-}  if(P.lifeSteal>0){P.hp=Math.min(P.maxHp,P.hp+P.lifeSteal);updateHealthHUD();}
+}
   const sp=w2s(e.x,e.y);showFloat(sp.x,sp.y-26,`+${pts}`,comboMult()>=3?'#ff8800':'#ffd700',13);
   onKill();
 }
@@ -4649,12 +5478,34 @@ function killBoss(){
     }
   },12000);
 }
-function killSquadMember(m){m.alive=false;m.deathT=0;burst(m.x,m.y,'#fff',20);sndExplode();shake(12,26);addKillFeed(`💀 ${m.name} KIA — Q to revive!`,'s');aiSay(`${m.name} down! Press Q near them to revive!`);updateSquadHUD();}
+function killSquadMember(m){
+  m.alive=false;m.deathT=0;
+  burst(m.x,m.y,'#fff',20);sndExplode();shake(12,26);
+  addKillFeed(`💀 ${m.name} KIA — Squad rushing to revive!`,'s');
 
+  // Find nearest alive member not already on a revive mission
+  const candidates=SQ.filter(s=>s.alive&&s!==m&&s.aiState!=='run_revive');
+  if(candidates.length>0){
+    const reviver=candidates.reduce((best,cur)=>dist(cur,m)<dist(best,m)?cur:best);
+    reviver.aiState='run_revive';
+    reviver.reviveTarget=m;
+    reviver._autoReviveProg=0;
+    burst(reviver.x,reviver.y,reviver.col,18);
+    addKillFeed(`⚡ ${reviver.name} RUSHING to revive ${m.name}!`,'h');
+    aiSay(`${reviver.name} sprinting to revive ${m.name}!`,true);
+    squadSpeak(reviver,'kill_order',reviver.helmetCol);
+  }else{
+    aiSay(`${m.name} down — no one left to revive! Press Q to help!`);
+  }
+  updateSquadHUD();
+}
 // ── RESPAWN SYSTEM ───────────────────────────────────
 function triggerPlayerDeath(){
   if(P.dead)return;P.dead=true;P.hp=0;burst(P.x,P.y,'#ff4444',40);
-  if(isOnline)P._mpDiedFlag=true; // broadcast death to other players
+  if(isOnline){
+    P._mpDiedFlag=true;
+    if(ablyReady)ablyPublish('player_event',{type:'died',name:myPlayerName,color:myPlayerColor,role:myRole,lives:Math.max(0,stageLives-1)});
+  }
   flashDeath(1);sndPlayerDeath();shake(24,58);updateHealthHUD();
 stageLives--;updateLivesHUD();saveProgress();
   if(isOnline)setTimeout(()=>mpWrite(),200); // immediate death broadcast
@@ -4685,7 +5536,11 @@ function showDeathScreen(){
 
 function doRespawn(){
   document.getElementById('deathScreen').style.display='none';
-  if(isOnline)P._mpRespawnedFlag=true; // broadcast respawn to others
+  if(isOnline){
+    P._mpRespawnedFlag=true;
+    P._deadBroadcastDone=false;
+    if(ablyReady)ablyPublish('player_event',{type:'respawned',name:myPlayerName,color:myPlayerColor,role:myRole});
+  }
   const up=curStageUpgrades();const w=curWeapon();
   P.dead=false;P.hp=up.hp*.5;P.maxHp=up.hp;P.shield=up.shield*.35;P.maxShield=up.shield;
   P.x=PLAYER_BASE.x+(Math.random()-.5)*80;P.y=PLAYER_BASE.y+(Math.random()-.5)*80;
@@ -4728,7 +5583,13 @@ function doRestartStage(){
   aiSay(`Stage ${GS.stage} restarted — 3 lives restored!`);
   GS.running=true;startMusic();
   if(loopId)cancelAnimationFrame(loopId);
-setTimeout(startWave,2200);
+// Co-op: 8 seconds so players can orient, sync establishes, and Ably stabilises
+  const _waveDelay=mpCoopMode?8000:2200;
+  if(mpCoopMode){
+    showBanner('⚔ BATTLE STARTING','Enemies incoming in 8 seconds — get ready!','#ffd700');
+    aiSay('Co-op mode: 8 second grace period! Sync with teammates now!');
+  }
+  setTimeout(startWave,_waveDelay);
   loopId=requestAnimationFrame(gameLoop);
   // Immediately save so Resume always works
   setTimeout(saveProgress,500);
@@ -4736,10 +5597,28 @@ setTimeout(startWave,2200);
 
 // ── BULLETS ─────────────────────────────────────────
 function processBullets(){
-  function proc(arr,isEnemy){const keep=[];for(const b of arr){b.x+=b.dx;b.y+=b.dy;b.life--;if(b.life<=0||b.x<0||b.x>WORLD_W||b.y<0||b.y>WORLD_H)continue;let hit=false;for(const c of covers){if(crRect(b.x,b.y,4,c.x,c.y,c.w,c.h)){spark(b.x,b.y,'#aa8844',2);hit=true;break;}}if(hit)continue;if(!isEnemy){for(const bar of barrels){if(!bar.dead&&dist(b,bar)<18){bar.hp-=b.dmg*.5;bar.flashT=6;if(bar.hp<=0)explodeBarrel(bar);hit=true;break;}}if(hit)continue;}if(isEnemy){if(!P.dead&&dist(b,P)<24){if(P.shield>0){P.shield-=b.dmg*.5;if(P.shield<0)P.shield=0;updateShieldHUD();spark(b.x,b.y,'#4488ff',4);}else{const dmg=b.dmg*(inCov(P.x,P.y)?.27:1)*(berserkActive?.65:1);P.hp-=dmg;P.flashT=6;P.shieldRegen=0;spawnBlood(b.x,b.y,4);flashDeath(.28);updateHealthHUD();sndHit();shake(6,12);if(P.hp<=0)triggerPlayerDeath();}hit=true;}if(!hit)for(const m of SQ){if(!m.alive)continue;if(dist(b,m)<20){if(m.role==='SHIELD'&&m.shieldHp>0){m.shieldHp-=b.dmg*.7;spark(b.x,b.y,'#4488ff',4);}else{m.hp-=b.dmg*(inCov(m.x,m.y)?.12:.32);m.flashT=5;m.lastHitT=100;m.suppressedT=70;spawnBlood(b.x,b.y,3);updateSquadHUD();if(m.hp<=0)killSquadMember(m);}hit=true;break;}}}else{if(!hit)for(const e of enemies){if(!e.dead&&!e.sleeping&&dist(b,e)<(e.heavy?26:18)){e.hp-=b.dmg*(inCov(e.x,e.y)&&!e.berserkMode?.48:1);e.flashT=5;e.suppressedT=80;spawnBlood(b.x,b.y,5);if(b.crit)burst(b.x,b.y,'#ff4444',8);if(e.hp<=0)killEnemy(e);hit=true;break;}}
-if(!hit&&boss&&!boss.dead&&dist(b,boss)<boss.size){if(boss.shieldActive){spark(b.x,b.y,'#4488ff',6);hit=true;}else{const hitWeak=boss._weakX&&dist(b,{x:boss._weakX,y:boss._weakY})<18;const dmgMul=hitWeak?3.0:0.9;boss.hp-=b.dmg*dmgMul;boss.flashT=hitWeak?12:4;if(hitWeak){burst(boss.x,boss.y,'#ff6600',22);shake(10,18);addKillFeed('🎯 WEAKPOINT HIT! 3× DAMAGE!','b');boss.weakAngle+=Math.PI;}spark(b.x,b.y,boss.col,3);updateBossHUD();if(boss.hp<=0)killBoss();hit=true;}}}
+  function proc(arr,isEnemy){const keep=[];for(const b of arr){b.x+=b.dx;b.y+=b.dy;b.life--;if(b.life<=0||b.x<0||b.x>WORLD_W||b.y<0||b.y>WORLD_H)continue;let hit=false;for(const c of covers){if(crRect(b.x,b.y,4,c.x,c.y,c.w,c.h)){spark(b.x,b.y,'#aa8844',2);hit=true;break;}}if(hit)continue;if(!isEnemy){for(const bar of barrels){if(!bar.dead&&dist(b,bar)<18){bar.hp-=b.dmg*.5;bar.flashT=6;if(bar.hp<=0)explodeBarrel(bar);hit=true;break;}}if(hit)continue;}if(isEnemy){if(!P.dead&&dist(b,P)<24){if(P.shield>0){P.shield-=b.dmg*.5;if(P.shield<0)P.shield=0;updateShieldHUD();spark(b.x,b.y,'#4488ff',4);}else{const dmg=b.dmg*(inCov(P.x,P.y)?.27:1)*(berserkActive?.65:1);P.hp-=dmg;P.flashT=6;P.shieldRegen=0;spawnBlood(b.x,b.y,4);flashDeath(.28);updateHealthHUD();sndHit();shake(6,12);if(P.hp<=0)triggerPlayerDeath();}hit=true;}
+  if(!hit)for(const m of SQ){if(!m.alive)continue;if(dist(b,m)<20){if(m.role==='SHIELD'&&m.shieldHp>0){m.shieldHp-=b.dmg*.7;spark(b.x,b.y,'#4488ff',4);}else{m.hp-=b.dmg*(inCov(m.x,m.y)?.12:.32);m.flashT=5;m.lastHitT=100;m.suppressedT=70;spawnBlood(b.x,b.y,3);updateSquadHUD();if(m.hp<=0)killSquadMember(m);}hit=true;break;}}}
+  else{
+if(!hit)for(const e of enemies){if(!e.dead&&!e.sleeping&&dist(b,e)<(e.heavy?26:18)){
+  const hitDmg=b.dmg*(inCov(e.x,e.y)&&!e.berserkMode?.48:1);
+  e.flashT=5;e.suppressedT=80;spawnBlood(b.x,b.y,5);if(b.crit)burst(b.x,b.y,'#ff4444',8);
+  if(mpCoopMode&&b.owner!=='remote'){
+    _reportHit('enemy',enemies.indexOf(e),hitDmg); // host applies damage authoritatively
+  }else if(!mpCoopMode){
+    e.hp-=hitDmg;
+    if(e.hp<=0)killEnemy(e);
+  }
+  hit=true;break;}}
+if(!hit&&boss&&!boss.dead&&dist(b,boss)<boss.size){if(boss.shieldActive){spark(b.x,b.y,'#4488ff',6);hit=true;}else{const hitWeak=boss._weakX&&dist(b,{x:boss._weakX,y:boss._weakY})<18;const dmgMul=hitWeak?3.0:0.9;
+if(mpCoopMode){
+  _reportHit('boss',-1,b.dmg*dmgMul);
+}else{
+  boss.hp-=b.dmg*dmgMul;boss.flashT=hitWeak?12:4;
+}if(hitWeak){burst(boss.x,boss.y,'#ff6600',22);shake(10,18);addKillFeed('🎯 WEAKPOINT HIT! 3× DAMAGE!','b');boss.weakAngle+=Math.PI;}spark(b.x,b.y,boss.col,3);
+updateBossHUD();if(boss.hp<=0)killBoss();hit=true;}}}
   if(hit)continue;const bsx=b.x-camX+shakeX,bsy=b.y-camY+shakeY;if(bsx<-25||bsx>W+25||bsy<-25||bsy>H+25){keep.push(b);continue;}
-const col=isEnemy?(b.boss?curStage().bossCol:'#ff3300'):(b.owner==='squad'?'#44ffaa':(b.crit?'#ff4444':(berserkActive?'#ff8800':'#00ddff')));  ctx.save();ctx.translate(bsx,bsy);ctx.rotate(Math.atan2(b.dy,b.dx));ctx.fillStyle=col;ctx.shadowColor=col;ctx.shadowBlur=b.crit?18:10;ctx.beginPath();ctx.ellipse(0,0,b.crit?11:8,b.crit?4:3,0,0,Math.PI*2);ctx.fill();ctx.restore();keep.push(b);}return keep;}
+const col=isEnemy?(b.boss?curStage().bossCol:'#ff3300'):(b.owner==='remote'?(b.remoteColor||'#ff88ff'):b.owner==='squad'?'#44ffaa':(b.crit?'#ff4444':(berserkActive?'#ff8800':'#00ddff')));ctx.save();ctx.translate(bsx,bsy);ctx.rotate(Math.atan2(b.dy,b.dx));ctx.fillStyle=col;ctx.shadowColor=col;ctx.shadowBlur=b.crit?18:10;ctx.beginPath();ctx.ellipse(0,0,b.crit?11:8,b.crit?4:3,0,0,Math.PI*2);ctx.fill();ctx.restore();keep.push(b);}return keep;}
   bullets=proc(bullets,false);eBullets=proc(eBullets,true);
 }
 
@@ -4840,6 +5719,92 @@ function drawGround(){
   for(let x=gx;x<W;x+=60){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
   for(let y=gy;y<H;y+=60){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
   ctx.strokeStyle='rgba(255,80,80,.3)';ctx.lineWidth=3;ctx.strokeRect(-camX+shakeX+3,-camY+shakeY+3,WORLD_W-6,WORLD_H-6);
+  // ── GROUND DECALS ──
+groundDecals.forEach(d=>{
+  const sx=d.x-camX+shakeX,sy=d.y-camY+shakeY;
+  if(sx<-200||sx>W+200||sy<-200||sy>H+200)return;
+  ctx.save();
+  ctx.globalAlpha=d.alpha;
+  ctx.translate(sx,sy);
+  ctx.rotate(d.angle);
+  if(d.type==='dirt'){
+    ctx.fillStyle='#1c1a0a';
+    ctx.beginPath();
+    ctx.ellipse(0,0,d.rx,d.ry,0,0,Math.PI*2);
+    ctx.fill();
+    // inner darker core
+    ctx.fillStyle='#0e0d05';
+    ctx.beginPath();
+    ctx.ellipse(0,0,d.rx*.5,d.ry*.5,0,0,Math.PI*2);
+    ctx.fill();
+  }else if(d.type==='crater'){
+    // outer ring
+    ctx.strokeStyle='#0a0a08';
+    ctx.lineWidth=4;
+    ctx.beginPath();
+    ctx.ellipse(0,0,d.rx,d.ry,0,0,Math.PI*2);
+    ctx.stroke();
+    // dark pit
+    ctx.fillStyle='rgba(0,0,0,0.55)';
+    ctx.beginPath();
+    ctx.ellipse(0,0,d.rx*.55,d.ry*.55,0,0,Math.PI*2);
+    ctx.fill();
+    // rim highlight
+    ctx.strokeStyle='rgba(80,70,40,0.2)';
+    ctx.lineWidth=2;
+    ctx.beginPath();
+    ctx.ellipse(0,0,d.rx*.9,d.ry*.9,0,0,Math.PI*2);
+    ctx.stroke();
+  }else if(d.type==='crack'){
+    ctx.strokeStyle='rgba(0,0,0,0.45)';
+    ctx.lineWidth=2;
+    ctx.lineCap='round';
+    // main crack
+    ctx.beginPath();
+    ctx.moveTo(-d.rx,0);
+    ctx.lineTo(0,d.ry*.3);
+    ctx.lineTo(d.rx,0);
+    ctx.stroke();
+    // branch cracks
+    for(let b=0;b<3;b++){
+      const bx=(b-1)*d.rx*.4,by=d.ry*.3*(b%2?-1:1);
+      ctx.lineWidth=1;
+      ctx.beginPath();
+      ctx.moveTo(bx,0);
+      ctx.lineTo(bx+d.rx*.3*(Math.random()-.5),by);
+      ctx.stroke();
+    }
+  }else if(d.type==='stain'){
+    // dried blood / oil stain
+    const col=berserkActive?'rgba(60,0,0,1)':'rgba(22,6,6,1)';
+    ctx.fillStyle=col;
+    ctx.beginPath();
+    ctx.ellipse(0,0,d.rx*.7,d.ry*.4,0,0,Math.PI*2);
+    ctx.fill();
+    // splash drops
+    for(let s=0;s<4;s++){
+      ctx.beginPath();
+      ctx.arc(
+        (Math.random()-.5)*d.rx*1.2,
+        (Math.random()-.5)*d.ry*1.2,
+        3+Math.random()*7,0,Math.PI*2
+      );
+      ctx.fill();
+    }
+  }else if(d.type==='rubble'){
+    // scattered debris squares
+    ctx.fillStyle='rgba(30,28,20,0.7)';
+    for(let r=0;r<5;r++){
+      const rx2=(Math.random()-.5)*d.rx*1.6;
+      const ry2=(Math.random()-.5)*d.ry*1.6;
+      const rs=4+Math.random()*14;
+      ctx.fillRect(rx2-rs/2,ry2-rs/2,rs,rs);
+    }
+  }
+  ctx.restore();
+  ctx.globalAlpha=1;
+  ctx.shadowBlur=0;
+});
   BASE_POSITIONS.forEach((b,i)=>{const sx=b.x-camX+shakeX,sy=b.y-camY+shakeY;if(sx<-95||sx>W+95||sy<-95||sy>H+95)return;ctx.save();ctx.strokeStyle='rgba(68,136,255,.3)';ctx.lineWidth=2;ctx.setLineDash([8,6]);ctx.beginPath();ctx.arc(sx,sy,80,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='rgba(68,136,255,.6)';ctx.font='8px Courier New';ctx.textAlign='center';ctx.fillText(SQ_DEFS[i].name+' BASE',sx,sy-86);ctx.restore();});
   const pbx=PLAYER_BASE.x-camX+shakeX,pby=PLAYER_BASE.y-camY+shakeY;
   if(pbx>-105&&pbx<W+105&&pby>-105&&pby<H+105){ctx.save();ctx.strokeStyle='rgba(68,255,136,.25)';ctx.lineWidth=2;ctx.setLineDash([10,6]);ctx.beginPath();ctx.arc(pbx,pby,98,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='rgba(68,255,136,.5)';ctx.font='9px Courier New';ctx.textAlign='center';ctx.fillText('CMD BASE',pbx,pby-103);ctx.restore();}
@@ -5368,12 +6333,13 @@ SQ.forEach(m=>{
     updateHealthHUD();updateShieldHUD();updateProgressionBadge();saveProgress();setTimeout(startWave,3200);}
   else if(GS.round<3){GS.round++;GS.stage=1;GS.upgradeLevel=0;const roundName=GS.round===2?'HARD':'ELITE';const roundCol=GS.round===2?'#ff8800':'#ff0000';showBanner(`ROUND ${GS.round} — ${roundName}!`,`ENEMIES SCALE UP`,roundCol);sndVoice(`Round ${GS.round}! ${roundName}!`,0.9,0.9);const medals=loadMedals(myPlayerName);if(GS.round===2)medals.bronze++;else medals.silver++;saveMedals(myPlayerName,medals);resetForNewStage();const w=curWeapon();document.getElementById('gunLabel').textContent=w.gun;P.maxAmmo=w.ammo;P.ammo=w.ammo;P.reserve=w.reserve;P.shootRate=w.rate;P.hp=P.maxHp;P.shield=P.maxShield;updateHealthHUD();updateShieldHUD();updateProgressionBadge();saveProgress();setTimeout(startWave,3500);}
   else{const medals=loadMedals(myPlayerName);medals.gold++;saveMedals(myPlayerName,medals);GS.score+=8888;updateScoreHUD();aiSay('ALL 9 BATTLES WON! LEGENDARY!');showBanner('👑 LEGENDARY!','All 3 Rounds Conquered!','#ffd700');sndVoice('Legendary!',1.0,0.85);
-clearProgress();stopMusic();_sess.won=true;_sess.kills=pvpKills||0;_sess.roundReached=GS.round;_sess.stageReached=GS.stage;submitScore();setTimeout(()=>showResults([{name:myPlayerName,score:GS.score,kills:pvpKills,medals:loadMedals(myPlayerName),color:myPlayerColor}]),3200);}}
+clearProgress();stopMusic();_sess.won=true;_sess.kills=pvpKills||0;_sess.roundReached=GS.round;_sess.stageReached=GS.stage;
+submitScore();setTimeout(()=>showResults([{name:myPlayerName,score:GS.score,kills:pvpKills,medals:loadMedals(myPlayerName),color:myPlayerColor}]),3200);}}
 
 function resetForNewStage(){
   enemies=[];boss=null;eBullets=[];bullets=[];fireBombs=[];shockwaves=[];supplyDrops=[]; GS.bossSpawned=false;GS.bossAlive=false;GS.stageAdvancing=false;GS.spawnQ=[];
   GS.wave=1;GS.waveKills=0;GS.waveTarget=0;GS.betweenWaves=false;
-berserkActive=false;berserkTimer=0;document.getElementById('berserkOverlay').style.opacity='0';document.getElementById('berserkLabel').style.display='none';document.getElementById('berserkBar').style.display='none';
+berserkActive=false;berserkTimer=0;shadowUsedThisStage=false;document.getElementById('berserkOverlay').style.opacity='0';document.getElementById('berserkLabel').style.display='none';document.getElementById('berserkBar').style.display='none';
   squadRageTriggered=false;
     genCovers();
   const up=curStageUpgrades();
@@ -5396,8 +6362,7 @@ async function refreshOnlinePlayers(){
     if(!found.length){list.innerHTML='<div style="font-size:10px;color:#444;text-align:center;padding:14px">No active soldiers. Open game in another tab!</div>';rooms.innerHTML='';return;}
     list.innerHTML=found.map(p=>`<div class="onlineEntry"><div class="oe-dot" style="background:${p.color||'#39ff8a'}"></div><span class="oe-name" style="color:${p.color||'#fff'}">${(p.name||'?').slice(0,14)}</span><span class="oe-room">R${p.round||1}S${p.stage||1} ★${p.score||0}</span></div>`).join('');
     const roomsFound={};found.forEach(p=>{if(p.room&&p.room!=='solo'&&p.room!=='open')roomsFound[p.room]=(roomsFound[p.room]||0)+1;});
-    rooms.innerHTML=Object.keys(roomsFound).length>0?'<div style="font-size:9px;color:#444;letter-spacing:2px;margin-bottom:6px;">OPEN ROOMS</div>'+Object.entries(roomsFound).map(([rid,cnt])=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;background:rgba(255,255,255,.03);border-radius:4px;margin-bottom:4px;"><span style="flex:1;font-size:10px;color:#aaa">${rid}</span><span style="font-size:9px;color:#555">${cnt} player${cnt>1?'s':''}</span><button class="btn blue" style="font-size:9px;padding:3px 8px;" onclick="joinOnlineRoom('${rid}')">JOIN</button></div>`).join(''):'';
-  }catch(e){list.innerHTML='<div style="font-size:10px;color:#444;text-align:center;padding:14px">Storage unavailable — play solo</div>';}
+rooms.innerHTML=Object.keys(roomsFound).length>0?'<div style="font-size:9px;color:#444;letter-spacing:2px;margin-bottom:6px;">OPEN ROOMS</div>'+Object.entries(roomsFound).map(([rid,cnt])=>{const isFull=cnt>=5;return`<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;background:rgba(255,255,255,.03);border-radius:4px;margin-bottom:4px;border-left:3px solid ${isFull?'#ff4444':'#1a3a1a'};"><span style="flex:1;font-size:10px;color:${isFull?'#ff4444':'#aaa'}">${rid}</span><span style="font-size:9px;color:${isFull?'#ff4444':'#555'}">${cnt}/5${isFull?' ⛔':''}</span>${isFull?'<span style="font-size:9px;color:#ff4444;padding:3px 8px;border:1px solid #ff444466;border-radius:3px;">FULL</span>':`<button class="btn blue" style="font-size:9px;padding:3px 8px;" onclick="joinOnlineRoom('${rid}')">JOIN →</button>`}</div>`;}).join(''):'';  }catch(e){list.innerHTML='<div style="font-size:10px;color:#444;text-align:center;padding:14px">Storage unavailable — play solo</div>';}
 }
 function manualJoinRoom(){
   const input=document.getElementById('roomCodeInput');
@@ -5415,21 +6380,99 @@ async function joinOnlineRoom(room){
 renderLiveScoreboard();
 }
 function updateLobbyPlayers(){
-  const list=document.getElementById('playerList');list.innerHTML='';
-  const me=document.createElement('div');me.className='ply';const myMedals=loadMedals(myPlayerName);
-  me.innerHTML=`<div class="ply-dot" style="background:${myPlayerColor}"></div><span class="ply-name" style="color:${myPlayerColor}">${myPlayerName} (YOU)</span><span class="ply-status">IN LOBBY</span><span class="ply-medals">${myMedals.gold?'🥇'.repeat(myMedals.gold):''}${myMedals.silver?'🥈'.repeat(myMedals.silver):''}${myMedals.bronze?'🥉'.repeat(myMedals.bronze):''}</span>`;
-  list.appendChild(me);
-  const now=Date.now();let roomCount=0;
-  for(const k in onlinePlayers){const p=onlinePlayers[k];if(p.room===roomId&&(now-p.ts)<12000){roomCount++;const div=document.createElement('div');div.className='ply';div.innerHTML=`<div class="ply-dot" style="background:${p.color||'#888'}"></div><span class="ply-name" style="color:${p.color||'#fff'}">${(p.name||'?').slice(0,14)}</span><span class="ply-status">${p.inLobby?'IN LOBBY':'IN GAME'}</span>`;list.appendChild(div);}}
-  document.getElementById('waitMsg').textContent=roomCount>0?`${roomCount+1} soldiers ready! Hit READY to start!`:'Waiting for others... (Share room code!)';
+  const list=document.getElementById('playerList');
+  if(!list)return;
+  list.innerHTML='';
+
+  // Self
+  const myDef=ROLE_DEFS[myRole]||ROLE_DEFS.commander;
+  const meDiv=document.createElement('div');
+  meDiv.className='ply';
+  meDiv.innerHTML=`
+    <div class="ply-dot" style="background:${myDef.color}"></div>
+    <span style="font-size:18px">${myDef.icon}</span>
+    <span class="ply-name" style="color:${myDef.color}">${myPlayerName} (YOU)</span>
+    <span class="ply-status" style="color:${myDef.color}">${myDef.name}</span>
+    ${isRoomHost?'<span style="color:#ffd700;font-size:8px;">👑HOST</span>':''}
+  `;
+  list.appendChild(meDiv);
+
+  // Others
+  const now=Date.now();let count=1;
+  Object.values(onlinePlayers).forEach(p=>{
+    if(now-p.ts>12000)return;
+    if(count>=5)return; // max 5
+    count++;
+    const pDef=ROLE_DEFS[p.role]||ROLE_DEFS.commander;
+    const div=document.createElement('div');div.className='ply';
+    div.innerHTML=`
+      <div class="ply-dot" style="background:${pDef.color}"></div>
+      <span style="font-size:18px">${pDef.icon}</span>
+      <span class="ply-name" style="color:${pDef.color}">${(p.name||'?').slice(0,14)}</span>
+      <span class="ply-status" style="color:${pDef.color}">${pDef.name}</span>
+      ${p.isHost?'<span style="color:#ffd700;font-size:8px;">👑HOST</span>':''}
+    `;
+    list.appendChild(div);
+  });
+
+ const slots=5-count;
+  const wm=document.getElementById('waitMsg');
+  if(wm){
+    if(count>5){wm.textContent='⛔ ROOM FULL (5/5) — Cannot join!';}
+    else if(slots>0){wm.textContent=`${count}/5 players · ${slots} slot${slots>1?'s':''} open · Share room code!`;}
+    else{wm.textContent='Room full (5/5) — Hit READY to start!';}
+  }
+  // ── Mark taken roles so others see what's available ──
+  const takenRoles=new Set();
+  if(myRole)takenRoles.add(myRole);
+  Object.values(onlinePlayers).forEach(p=>{if(Date.now()-p.ts<12000&&p.role)takenRoles.add(p.role);});
+  document.querySelectorAll('.roleCard2').forEach(card=>{
+    const r=card.dataset.role;
+    const isMine=r===myRole;
+    const isTaken=takenRoles.has(r)&&!isMine;
+    card.style.opacity=isTaken?'0.28':'1';
+    card.style.pointerEvents=isTaken?'none':'all';
+    card.style.cursor=isTaken?'not-allowed':'pointer';
+    card.style.filter=isTaken?'grayscale(0.7)':'';
+    let badge=card.querySelector('.roleTakenBadge');
+    if(isTaken){
+      if(!badge){
+        badge=document.createElement('div');
+        badge.className='roleTakenBadge';
+        badge.style.cssText='font-size:7px;color:#ff4444;letter-spacing:1px;font-family:monospace;text-align:center;margin-top:2px;';
+        badge.textContent='TAKEN';
+        card.appendChild(badge);
+      }
+    }else if(badge){badge.remove();}
+  });
+  // ── Room full: block the ready button ──────────────
+  const rdyBtn=document.getElementById('readyBtn');
+  if(rdyBtn){
+    if(count>5&&!isRoomHost){
+      rdyBtn.disabled=true;rdyBtn.textContent='⛔ ROOM FULL';
+      rdyBtn.style.borderColor='#ff4444';rdyBtn.style.color='#ff4444';
+    }else if(rdyBtn.disabled){
+      rdyBtn.disabled=false;rdyBtn.textContent='✓ READY';
+      rdyBtn.style.borderColor='';rdyBtn.style.color='';
+    }
+  }
 }
 
 // ── CAMERA ───────────────────────────────────────────
 function updateCamera(){
   if(!P)return;
   if(shakeDur>0){shakeDur--;shakeX=(Math.random()-.5)*2*shakeMag;shakeY=(Math.random()-.5)*2*shakeMag;shakeMag*=.86;if(shakeDur<=0){shakeX=0;shakeY=0;}}
-  const target=spectating?SQ.filter(m=>m.alive)[0]||P:P;
-  camX=clamp(target.x-W/2,0,WORLD_W-W);camY=clamp(target.y-H/2,0,WORLD_H-H);
+let _spectTarget=P;
+  if(spectating){
+    if(isOnline){
+      const onAlive=Object.values(onlinePlayers).filter(op=>op.alive!==false&&!op.dead&&Date.now()-op.ts<8000);
+      if(onAlive.length>0){
+        const best=onAlive.sort((a,b)=>(b.score||0)-(a.score||0))[0];
+        _spectTarget={x:best._rx||best.x||P.x,y:best._ry||best.y||P.y};
+      }else _spectTarget=SQ.filter(m=>m.alive)[0]||P;
+    }else _spectTarget=SQ.filter(m=>m.alive)[0]||P;
+  }
+  const target=_spectTarget;  camX=clamp(target.x-W/2,0,WORLD_W-W);camY=clamp(target.y-H/2,0,WORLD_H-H);
 }
 
 // ── GAME START ───────────────────────────────────────
@@ -5488,7 +6531,7 @@ function startGame(round=1,stage=1,savedScore=0){
 GS={running:true,round,stage,wave:1,waveKills:0,waveTarget:0,score:savedScore,spawnQ:[],spawnTick:0,bossSpawned:false,bossAlive:false,betweenWaves:false,upgradeLevel:Math.min(stage-1,2),stageAdvancing:false};enemies=[];bullets=[];eBullets=[];parts=[];pickups=[];fireBombs=[];shockwaves=[];supplyDrops=[];boss=null;  ownedPerks=[];sosPings=[];pvpKills=0;shootCD=0;meleeCD=0;powerCD=0;frameN=0;
 
   comboCount=0;comboTimer=0;quickKills=0;quickKillTimer=0;reviving=false;reviveTarget=null;reviveProg=0;
-  berserkActive=false;berserkTimer=0;berserkCooldown=0;sleepBombCD=0;shakeMag=0;shakeDur=0;spectating=false;
+berserkActive=false;berserkTimer=0;berserkCooldown=0;sleepBombCD=0;shadowUsedThisStage=false;  shakeMag=0;shakeDur=0;spectating=false;
   stageLives=MAX_LIVES;
 ['loginScreen','lobbyScreen','resultsScreen','deathScreen'].forEach(id=>document.getElementById(id).style.display='none');
   const _qcEl=document.getElementById('quickCmds');if(_qcEl)_qcEl.style.display='flex';  document.getElementById('perkTray').innerHTML='';document.getElementById('aiChat').innerHTML='';
@@ -5499,18 +6542,27 @@ document.getElementById('bossBar').style.display='none';document.getElementById(
   const _cp=document.getElementById('cmdPanel');if(_cp){_cp.style.display='none';}  document.getElementById('berserkLabel').style.display='none';document.getElementById('berserkBar').style.display='none';
   document.getElementById('spectateBar').style.display='none';document.getElementById('noLivesMsg').style.display='none';
   speechBubbles.forEach(b=>b.parentNode&&b.remove());speechBubbles=[];
-const isMobile=('ontouchstart' in window)||navigator.maxTouchPoints>0||window.matchMedia('(pointer:coarse)').matches;
+const isMobile=('ontouchstart' in window)||navigator.maxTouchPoints>0||window.matchMedia('(pointer:coarse)').matches||/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   const mc2=document.getElementById('mobileControls');
   if(mc2){
     mc2.style.display=isMobile?'block':'none';
+    mc2.style.pointerEvents='all';
+    mc2.style.zIndex='400';
     if(isMobile){
-      // Force all child buttons to be touchable
       mc2.querySelectorAll('.mBtn').forEach(b=>{
         b.style.pointerEvents='all';
         b.style.touchAction='manipulation';
         b.style.webkitUserSelect='none';
         b.style.zIndex='420';
+        b.style.position='relative';
       });
+      // Force joystick zone active
+      const jz=document.getElementById('joystickZone');
+      if(jz){jz.style.pointerEvents='all';jz.style.zIndex='410';}
+      const msz=document.getElementById('mobileShootZone');
+      if(msz){msz.style.pointerEvents='all';msz.style.zIndex='405';}
+      const mrp=document.getElementById('mobileRightPanel');
+      if(mrp){mrp.style.pointerEvents='all';mrp.style.zIndex='410';}
     }
   }
   genCovers();initPlayer();initSquad();
@@ -5554,6 +6606,10 @@ function gameLoop(ts){
   _frameAccum=Math.min(_frameAccum,targetStep*3);// cap catch-up
   _frameAccum-=targetStep;
   frameN++;
+// CO-OP: host broadcasts game state, all players broadcast position
+if(mpCoopMode&&ablyReady){
+    if(frameN%5===0) _broadcastMyPos();
+  }
   if(GS.bossCinematic){
     GS.cinematicTimer++;
     ctx.clearRect(0,0,W,H);
@@ -5621,8 +6677,9 @@ covers.forEach(c=>{
 if(P.flashT>0)P.flashT--;
 if(P.meleeAnim>0)P.meleeAnim--;
 if(P.punchAnim>0)P.punchAnim--;
-if(P.kickAnim>0)P.kickAnim--;    if(meleeCD>0)meleeCD--;if(powerCD>0)powerCD--;
-P.shieldRegen++;if(P.shieldRegen>90&&P.shield<P.maxShield){P.shield=Math.min(P.maxShield,P.shield+0.55);updateShieldHUD();}  
+if(P.kickAnim>0)P.kickAnim--;    if(meleeCD>0)meleeCD--;
+if(powerCD>0)powerCD--;
+    if(P.roleAbilityCD>0)P.roleAbilityCD--;P.shieldRegen++;if(P.shieldRegen>90&&P.shield<P.maxShield){P.shield=Math.min(P.maxShield,P.shield+0.55);updateShieldHUD();}  
 if(shootCD>0)shootCD--;
 // Reload watchdog — force-complete if stuck
 if(P.reloading){
@@ -5638,8 +6695,14 @@ if(P.reloading){
     updateAmmoHUD();
     addKillFeed('✓ Reload forced complete!','h');
   }
-}else{P._reloadWatchdog=0;}  if(mouse.down&&!P.reloading&&!knifeMode&&!bladeMode&&!combatMode){
-      if(shootCD<=0){pShoot();shootCD=berserkActive?1:Math.max(1,P.shootRate);}
+}else{P._reloadWatchdog=0;} 
+if(mouse.down&&!P.reloading&&!knifeMode&&!bladeMode&&!combatMode){
+      if(shootCD<=0){
+        pShoot();
+        // BOLT fires faster — minimum cooldown 6 frames vs normal minimum 10
+        const baseCool=myRole==='bolt'&&mpCoopMode?6:10;
+        shootCD=berserkActive?1:Math.max(baseCool===6?6:1,P.shootRate*baseCool);
+      }
     }
 if(P.reloading){
 P.reloadProg+=(P.reloadSpeed||1)*(berserkActive?0.08:0.032);  const fillEl=document.getElementById('reloadFill');
@@ -5680,7 +6743,38 @@ addKillFeed('🔪 KNIFE SLASH!','p');
   }
 
   // Online players
-  for(const k in onlinePlayers){const op=onlinePlayers[k];if(op.x&&op.y&&op.alive&&(Date.now()-op.ts<12000)){const sx=op.x-camX+shakeX,sy=op.y-camY+shakeY;if(sx>-80&&sx<W+80&&sy>-80&&sy<H+80){drawStickFigure(sx,sy,op.angle||0,op.color||'#ff88ff',18,false,0,false,false,false,false,op.isMoving||false,op.stepPhase||0,op.color||'#ff88ff',false);ctx.fillStyle=op.color||'#ff88ff';ctx.font='bold 8px Courier New';ctx.textAlign='center';ctx.fillText('['+((op.name||'?').slice(0,8))+']',sx,sy-46);}}}
+for(const k in onlinePlayers){const op=onlinePlayers[k];if(op.x&&op.y&&op.alive&&(Date.now()-op.ts<12000)){
+    op._rx=op._rx!==undefined?op._rx+(op._tx-op._rx)*0.20:op.x;
+    op._ry=op._ry!==undefined?op._ry+(op._ty-op._ry)*0.20:op.y;
+    const sx=op._rx-camX+shakeX,sy=op._ry-camY+shakeY;  if(sx>-80&&sx<W+80&&sy>-80&&sy<H+80){drawStickFigure(sx,sy,op.angle||0,op.color||'#ff88ff',18,false,0,false,false,false,false,op.isMoving||false,op.stepPhase||0,op.color||'#ff88ff',false);ctx.fillStyle=op.color||'#ff88ff';ctx.font='bold 8px Courier New';ctx.textAlign='center';
+const _opDef=ROLE_DEFS[op.role||'commander']||ROLE_DEFS.commander;
+// Show actual player callsign prominently; role name is the smaller subtitle
+const _dispName=(op.name&&op.name.length>1&&op.name!==_opDef.name)?op.name:('P-'+op.role||'?');
+ctx.shadowColor=_opDef.color;ctx.shadowBlur=5;
+ctx.fillStyle=_opDef.color;ctx.font='bold 10px monospace';ctx.textAlign='center';
+ctx.fillText(_dispName.slice(0,12),sx,sy-46);
+ctx.shadowBlur=0;
+ctx.fillStyle='rgba(160,160,160,0.75)';ctx.font='7px monospace';
+ctx.fillText(`${_opDef.icon} ${_opDef.name}`,sx,sy-36);
+if(op.hp!=null&&op.maxHp>0){
+  const _hpPct=Math.max(0,Math.min(1,op.hp/op.maxHp));
+  ctx.fillStyle='#0a0a0a';ctx.fillRect(sx-22,sy-28,44,5);
+  ctx.fillStyle=_hpPct>0.6?'#39ff8a':_hpPct>0.3?'#ffd700':'#ff4444';
+  ctx.fillRect(sx-22,sy-28,44*_hpPct,5);
+}}}}
+function enterSpectateMode(){
+  document.getElementById('deathScreen').style.display='none';
+  spectating=true;
+  document.getElementById('spectateBar').style.display='block';
+  document.getElementById('spectateBar').textContent='👁 SPECTATING — Watching the battle! Game ends normally.';
+  GS.running=true;
+  if(ablyReady)ablyPublish('player_event',{type:'spectating',name:myPlayerName,color:myPlayerColor,role:myRole});
+  addKillFeed('👁 You are SPECTATING — watching until the game ends','s');
+  // Cancel any stale loop handle and restart cleanly
+  if(loopId){cancelAnimationFrame(loopId);loopId=null;}
+  _lastFrameTime=0;_frameAccum=0;
+  loopId=requestAnimationFrame(gameLoop);
+}
 
   // Draw player
     ctx.globalAlpha=1;ctx.shadowBlur=0;ctx.shadowColor='transparent';ctx.setLineDash([]);
@@ -5806,10 +6900,13 @@ if(P.dead)P.deadT=(P.deadT||0)+1;if(!P.dead){
       const sh=m.role==='SHIELD'&&m.shieldHp>0;
       const sz=m.raging?20:18;
 
-      // Draw rage aura BEHIND the figure, fully isolated
+// Draw rage aura BEHIND the figure, fully isolated
       if(m.raging){
         updateSquadRageVisual(m,spx,spy,sz);
       }
+
+      // ── UNIQUE SQUAD AURAS ──
+      if(!mpCoopMode)drawSquadAura(m,spx,spy,sz);
 
       // Draw the stick figure — shadow fully reset before this
       ctx.shadowBlur=0;ctx.shadowColor='transparent';
@@ -5851,7 +6948,7 @@ if(P.dead)P.deadT=(P.deadT||0)+1;if(!P.dead){
         ctx.restore();
       }
 
-      // Kill target line
+    // Kill target line
       if(m.killTarget&&!m.killTarget.dead){
         const tsp=w2s(m.killTarget.x,m.killTarget.y);
         ctx.save();
@@ -5862,6 +6959,46 @@ if(P.dead)P.deadT=(P.deadT||0)+1;if(!P.dead){
         ctx.beginPath();ctx.moveTo(spx,spy);ctx.lineTo(tsp.x,tsp.y);ctx.stroke();
         ctx.setLineDash([]);
         ctx.restore();
+      }
+
+      // Revive beam — pulsing green line from reviver to downed member
+      if(m.aiState==='run_revive'&&m.reviveTarget&&!m.reviveTarget.alive){
+        const dvsp=w2s(m.reviveTarget.x,m.reviveTarget.y);
+        const pulse=0.45+0.45*Math.sin(frameN*0.22);
+        ctx.save();
+        // Beam line
+        ctx.strokeStyle=`rgba(57,255,138,${0.35+pulse*0.45})`;
+        ctx.lineWidth=2.5;
+        ctx.setLineDash([6,4]);
+        ctx.shadowColor='#39ff8a';
+        ctx.shadowBlur=10;
+        ctx.beginPath();ctx.moveTo(spx,spy);ctx.lineTo(dvsp.x,dvsp.y);ctx.stroke();
+        ctx.setLineDash([]);
+        // Reviver icon above reviver
+        ctx.fillStyle=`rgba(57,255,138,${0.7+pulse*0.3})`;
+        ctx.font='bold 11px monospace';
+        ctx.textAlign='center';
+        ctx.shadowColor='#39ff8a';
+        ctx.shadowBlur=14;
+        ctx.fillText('✚',spx,spy-38);
+        // Progress bar above dead member when close enough
+        if((m._autoReviveProg||0)>0){
+          const pct=Math.min(1,m._autoReviveProg/95);
+          ctx.shadowBlur=0;
+          ctx.fillStyle='rgba(0,0,0,0.85)';
+          ctx.fillRect(dvsp.x-30,dvsp.y-60,60,9);
+          ctx.fillStyle='#39ff8a';
+          ctx.shadowColor='#39ff8a';
+          ctx.shadowBlur=10;
+          ctx.fillRect(dvsp.x-30,dvsp.y-60,60*pct,9);
+          ctx.fillStyle='#ffffff';
+          ctx.shadowBlur=0;
+          ctx.font='bold 7px monospace';
+          ctx.textAlign='center';
+          ctx.fillText('REVIVING '+Math.floor(pct*100)+'%',dvsp.x,dvsp.y-64);
+        }
+        ctx.restore();
+        ctx.shadowBlur=0;ctx.globalAlpha=1;
       }
 
     } else {
@@ -5952,8 +7089,8 @@ ctx.shadowBlur=0;
 
   pickups=pickups.filter(pk=>{pk.life--;if(!P.dead&&dist(pk,P)<28){
 if(pk.type==='ammo'){
-  const addAmt=P.maxAmmo*3; // adds 3 full mags worth
-  P.reserve=Math.min(P.maxAmmo*10, P.reserve+addAmt);
+  const addAmt=P.maxAmmo*8;
+  P.reserve=Math.min(P.maxAmmo*50, P.reserve+addAmt);
   updateAmmoHUD();
   showFloat(pk.x-camX+shakeX,pk.y-camY-22+shakeY,`+${addAmt} AMMO`,'#ffd700',13);
   addKillFeed(`📦 Ammo picked up! Reserve: ${P.reserve}`,'h');
@@ -5967,13 +7104,29 @@ else if(pk.type==='life'){stageLives=Math.min(stageLives+1,MAX_LIVES+2);updateLi
 else{P.hp=Math.min(P.maxHp,P.hp+85+GS.stage*10+GS.round*14);updateHealthHUD();showFloat(pk.x-camX+shakeX,pk.y-camY-22+shakeY,'+HP','#39ff8a',11);}
 sndPickup();spark(pk.x,pk.y,pk.type==='ammo'?'#ffd700':pk.type==='life'?'#ff4444':'#39ff8a',10);    return false;}drawPickup(pk);return pk.life>0;});
   enemies=enemies.filter(e=>!(e.dead&&e.deathT>115));
+  // ── KILLER WAVE CHECK: boss spawns the instant last killer falls ──
+if(GS.killerWaveActive && GS.killersAllSpawned && !GS.bossSpawned && !GS._bossQueued){
+  const killersAlive=enemies.filter(e=>!e.dead&&e._isKiller).length;
+  if(killersAlive===0){
+    GS._bossQueued=true;
+    GS.killerWaveActive=false;
+    // Dramatic 2-second pause then boss arrives
+    showBanner('💀 ALL KILLERS FALLEN','THE BOSS AWAKENS...','#ff0000');
+    sndAlarm();shake(22,55);
+    addKillFeed('💀 KILLERS ELIMINATED — BOSS INCOMING!','b');
+    aiSay('All killers down! BOSS is coming — get ready NOW!');
+    setTimeout(()=>{
+      if(GS&&GS.running&&!GS.bossSpawned)spawnBoss();
+    },2000);
+  }
+}
 // Safety net: boss destroyed but stage advance was missed
-  if(GS.bossSpawned&&!GS.bossAlive&&!GS.stageAdvancing&&!boss){
+  if((!mpCoopMode||isRoomHost)&&GS.bossSpawned&&!GS.bossAlive&&!GS.stageAdvancing&&!boss){
     GS.stageAdvancing=true;
     const r=GS.round,s=GS.stage;
     setTimeout(()=>{if(GS&&GS.running)showCongrats(r,s);},600);
   }
-if(!GS.bossSpawned){const alive2=enemies.filter(e=>!e.dead).length;
+if(!GS.bossSpawned&&(!mpCoopMode||isRoomHost)){const alive2=enemies.filter(e=>!e.dead).length;
   const done=GS.waveKills>=GS.waveTarget&&GS.spawnQ.length===0&&alive2===0;
 if(done&&!GS.betweenWaves){GS.betweenWaves=true;
   genCovers();
@@ -5988,63 +7141,107 @@ if(done&&!GS.betweenWaves){GS.betweenWaves=true;
     else if(t<0.66)covers.push({x:bx,y:by,w:20,h:90+Math.random()*60,t:'wall'});
     else covers.push({x:bx,y:by,w:50+Math.random()*30,h:50+Math.random()*30,t:'bunker'});
   }
-  if(GS.wave>=curStage().waves){
-    
-    GS.score+=700;updateScoreHUD();sndAlarm();
-  aiSay('⚠ KILLERS deployed before the boss! Survive them first!');
-  showBanner('🤺 KILLERS INCOMING','Survive to face the BOSS!','#ff0000');
+ if(GS.wave>=curStage().waves){
+  GS.score+=700;updateScoreHUD();sndAlarm();
+  aiSay('⚠ KILLERS deployed before the boss! Kill them ALL to summon the BOSS!');
+  showBanner('🤺 KILLERS INCOMING','Kill every last one — then the BOSS rises!','#ff0000');
   shake(18,40);
-  // Spawn wave of elite killers (3 types)
+
   const killerTypes=['swordsman','shadow','necromancer'];
-  const killerCount=3+GS.stage+GS.round;
+  const killerCount=20+GS.stage*5+GS.round*4;
+
+  // Track killer wave state
+  GS.killerWaveActive=true;
+  GS.killersAllSpawned=false;
+  GS._bossQueued=false;
+  let _spawnedSoFar=0;
+
   for(let ki=0;ki<killerCount;ki++){
     setTimeout(()=>{
+      if(!GS||!GS.running)return;
       const ktype=killerTypes[ki%3];
-      // Spawn from random edges
       const edge=Math.floor(Math.random()*4);
       let kx,ky;
       if(edge===0){kx=Math.random()*WORLD_W;ky=-45;}
       else if(edge===1){kx=WORLD_W+45;ky=Math.random()*WORLD_H;}
       else if(edge===2){kx=Math.random()*WORLD_W;ky=WORLD_H+45;}
       else{kx=-45;ky=Math.random()*WORLD_H;}
-      const S=curStage(),RM=curRoundMult();
+      const S2=curStage(),RM=curRoundMult();
       const killerStats={
-        swordsman:{hp:1200+GS.stage*300,spd:4.5,dmg:180+GS.stage*40,sz:22},
-        shadow:    {hp:800+GS.stage*200, spd:7.0,dmg:140+GS.stage*30,sz:18},
-        necromancer:{hp:1000+GS.stage*250,spd:3.0,dmg:160+GS.stage*35,sz:19},
+        swordsman:{hp:6000+GS.stage*800,spd:4.5,dmg:180+GS.stage*40,sz:22},
+        shadow:   {hp:4500+GS.stage*600,spd:7.0,dmg:140+GS.stage*30,sz:18},
+        necromancer:{hp:5500+GS.stage*700,spd:3.0,dmg:160+GS.stage*35,sz:19},
       }[ktype];
       enemies.push({
         x:kx,y:ky,angle:0,type:ktype,
-        hp:killerStats.hp*DC.mul*RM.hp,maxHp:killerStats.hp*DC.mul*RM.hp,
-        speed:killerStats.spd*S.eSpd*RM.speed,
+        hp:killerStats.hp*DC.mul*RM.hp,
+        maxHp:killerStats.hp*DC.mul*RM.hp,
+        speed:killerStats.spd*S2.eSpd*RM.speed,
         dmg:killerStats.dmg*DC.mul*RM.dmg,
         col:ktype==='swordsman'?'#ffaa00':ktype==='shadow'?'#222233':'#440066',
-        sz:killerStats.sz,label:ktype==='swordsman'?'🤺':ktype==='shadow'?'🥷':'🪰',
-        heavy:false,sniper:false,scout:false,isBerserker:true,isPhantom:false,isBomber:false,
-        dead:false,flashT:0,deathT:0,burnT:0,aiState:'berserk',
-        aiT:0,covPos:null,shootT:8+Math.random()*12,intel:0.98,
-        lastKnownX:P.x,lastKnownY:P.y,alertT:999,
-        flankAngle:Math.random()*Math.PI*2,suppressedT:0,stuckT:0,
-        lastX:kx,lastY:ky,berserkMode:true,berserkHP:0,sleeping:false,sleepT:0,
+        sz:killerStats.sz,
+        label:ktype==='swordsman'?'🤺':ktype==='shadow'?'🥷':'🪰',
+        heavy:false,sniper:false,scout:false,
+        isBerserker:true,isPhantom:false,isBomber:false,
+        dead:false,flashT:0,deathT:0,burnT:0,
+        aiState:'berserk',aiT:0,covPos:null,
+        shootT:8+Math.random()*12,intel:0.98,
+        lastKnownX:P?P.x:WORLD_W*.5,lastKnownY:P?P.y:WORLD_H*.5,
+        alertT:999,flankAngle:Math.random()*Math.PI*2,
+        suppressedT:0,stuckT:0,lastX:kx,lastY:ky,
+        berserkMode:true,berserkHP:0,sleeping:false,sleepT:0,
         canCling:ktype==='shadow',clinging:false,clingTimer:0,clingTarget:null,
-        hasPower:true,powerType:ktype==='necromancer'?'poison':ktype==='shadow'?'teleport_dash':'ground_slam',
+        hasPower:true,
+        powerType:ktype==='necromancer'?'poison':ktype==='shadow'?'teleport_dash':'ground_slam',
         powerCD:60+Math.floor(Math.random()*80),
         callTimer:9999,guardingDownedAt:null,retreating:false,retreatTarget:null,
-        crouching:false,peekT:0,stepPhase:Math.random()*Math.PI*2,isMoving:true,vx:0,vy:0,
+        crouching:false,peekT:0,
+        stepPhase:Math.random()*Math.PI*2,isMoving:true,vx:0,vy:0,
         phantomAlpha:ktype==='shadow'?0.45:1,phantomRevealT:0,bombT:9999,
-        faction:'alpha',factionShirt:null,factionCol:null,isCommander:false,commanderT:0,
-        _isKiller:true,
+        faction:'alpha',factionShirt:null,factionCol:null,
+        isCommander:false,commanderT:0,
+        _isKiller:true,  // ← tagged so we can detect when all are dead
       });
-      addKillFeed(`🤺 KILLER ${ktype.toUpperCase()} has entered the battlefield!`,'b');
-    },ki*900);
+      addKillFeed(`🤺 KILLER ${ktype.toUpperCase()} has arrived!`,'b');
+
+      // Mark fully spawned after last one
+      _spawnedSoFar++;
+      if(_spawnedSoFar>=killerCount){
+        GS.killersAllSpawned=true;
+      }
+    },ki*700); // slightly faster spawn cadence (was 900ms)
   }
   // Boss comes AFTER all killers are announced
-  setTimeout(spawnBoss,killerCount*900+3500);}else{GS.wave++;GS.score+=450;updateScoreHUD();aiSay(`Wave cleared! Wave ${GS.wave} incoming!`);if(GS.wave%2===0)setTimeout(triggerSupplyDrop,1200);setTimeout(startWave,2400);}}}
+setTimeout(spawnBoss,600000);}else{GS.wave++;GS.score+=450;updateScoreHUD();aiSay(`Wave cleared! Wave ${GS.wave} incoming!`);if(GS.wave%2===0)setTimeout(triggerSupplyDrop,1200);setTimeout(startWave,2400);}}}
 if(frameN%30===0){updatePowerBars();}
-  if(frameN%45===0){renderLiveScoreboard();}  drawCursor();drawMinimap();
+if(frameN%15===0){renderLiveScoreboard();}   drawCursor();drawMinimap();
 
-mpSyncT++;if(mpSyncT>=18){mpSyncT=0;if(isOnline)mpWrite();}
-  mpReadT++;if(mpReadT>=90){mpReadT=0;if(isOnline)mpRead();} // read every 1.5s instead of 3s
+// Always write to storage when online — was previously blocked in co-op, breaking the online badge
+mpSyncT++;
+if(mpSyncT>=3&&isOnline&&mpCoopMode&&isRoomHost){
+  mpSyncT=0;
+  // Host serialises the FULL enemy array and broadcasts it — this is the single source of truth
+  const _enemySnap=enemies.map(e=>({
+    id:e.id,x:Math.round(e.x),y:Math.round(e.y),
+    angle:+e.angle.toFixed(2),type:e.type,
+    hp:e.hp,maxHp:e.maxHp,dead:e.dead,deathT:e.deathT||0,
+    flashT:e.flashT||0,aiState:e.aiState||'idle',
+    sleeping:e.sleeping||false,
+    vx:+(e.vx||0).toFixed(2),vy:+(e.vy||0).toFixed(2)
+  }));
+  const _bossSnap=boss&&!boss.dead?{
+    x:Math.round(boss.x),y:Math.round(boss.y),
+    angle:+boss.angle.toFixed(2),
+    hp:boss.hp,maxHp:boss.maxHp,phase:boss.phase||1,
+    dead:boss.dead,flashT:boss.flashT||0
+  }:null;
+ablyChannel&&ablyChannel.publish('world_state',{
+    enemies:_enemySnap,
+    boss:_bossSnap,
+    wave:GS.wave,
+    ts:Date.now()
+  });}
+if(mpSyncT>=18){mpSyncT=0;if(isOnline&&!mpCoopMode)mpWrite();}   mpReadT++;if(mpReadT>=90){mpReadT=0;if(isOnline&&!mpCoopMode)mpRead();}// read every 1.5s instead of 3s
 
   loopId=requestAnimationFrame(gameLoop);
 }
@@ -6061,6 +7258,8 @@ CV.addEventListener('mousedown',e=>{
   if(knifeMode){knifeFireCD=0;}
   if(bladeMode){bladeFireCD=0;}
 });
+// Prevent canvas from swallowing mobile button touches
+CV.style.touchAction='none';
 // Touchpad: pointer events catch trackpad tap-to-click reliably
 CV.addEventListener('pointerdown',e=>{
   if(e.pointerType==='mouse'&&e.button===0){return;}// handled by mousedown
@@ -6096,9 +7295,77 @@ if(k==='r'&&P&&!P.reloading){
   }
 }
 
-if(k==='f')pMelee();if(k==='e')activatePower();
-  if(k==='q'&&GS&&GS.running&&!P.dead&&!reviving)tryRevive();
-if(k==='z'&&GS&&GS.running)throwSleepBomb();
+if(k==='f')pMelee();
+if(k==='e'){
+  if(mpCoopMode&&myRole==='nova'){
+    // NOVA: E throws napalm bombs at nearby enemies
+    if(P.roleAbilityCD>0){
+      showFeedback(`🔥 Napalm cooling down — ${Math.ceil(P.roleAbilityCD/60)}s`);
+    }else{
+      P.roleAbilityCD=P.ROLE_ABILITY_MAX;
+      const targets=enemies.filter(e=>!e.dead).slice(0,5);
+      const bombTargets=targets.length>0?targets:[{x:P.x+Math.cos(P.angle)*200,y:P.y+Math.sin(P.angle)*200}];
+      bombTargets.forEach((te,i)=>{
+        setTimeout(()=>throwFireBomb(P.x,P.y,te.x+(Math.random()-.5)*60,te.y+(Math.random()-.5)*60),i*120);
+      });
+      burst(P.x,P.y,'#ff8800',35);shake(10,20);sndSuper();
+      addKillFeed('🔥 NOVA: NAPALM BARRAGE!','b');
+      showBanner('🔥 NAPALM','Bombs away!','#ff8800');
+    }
+  }else if(mpCoopMode&&myRole==='bolt'){
+    // BOLT: E gives speed burst toward mouse
+    if(P.roleAbilityCD>0){
+      showFeedback(`⚡ Dash cooling down — ${Math.ceil(P.roleAbilityCD/60)}s`);
+    }else{
+      P.roleAbilityCD=P.ROLE_ABILITY_MAX;
+      const dashAng=Math.atan2(mouse.y+camY-P.y,mouse.x+camX-P.x);
+      const dashDist=220;
+      P.x=clamp(P.x+Math.cos(dashAng)*dashDist,18,WORLD_W-18);
+      P.y=clamp(P.y+Math.sin(dashAng)*dashDist,18,WORLD_H-18);
+      burst(P.x,P.y,'#ffff44',28);shake(6,12);sndSuper();
+      addKillFeed('⚡ BOLT: SPEED DASH!','b');
+      showBanner('⚡ DASH','Blink forward!','#ffff44');
+    }
+  }else{
+    activatePower(); // COMMANDER and others get shadow
+  }
+}if(k==='q'&&GS&&GS.running&&!P.dead){
+  if(mpCoopMode){
+    if(P.roleAbilityCD>0){
+      showFeedback(`▶ ${(ROLE_DEFS[myRole]||{}).name||''} ability — ${Math.ceil(P.roleAbilityCD/60)}s cooldown`);
+    } else if(myRole==='rex'){
+      P.roleAbilityCD=P.ROLE_ABILITY_MAX;
+      let hits=0;
+      enemies.forEach(e=>{
+        if(!e.dead&&dist(P,e)<150){
+          const a=Math.atan2(e.y-P.y,e.x-P.x);
+          e.x=clamp(e.x+Math.cos(a)*180,18,WORLD_W-18);
+          e.y=clamp(e.y+Math.sin(a)*180,18,WORLD_H-18);
+          _reportHit('enemy',enemies.indexOf(e),420+GS.stage*90);
+          hits++;
+        }
+      });
+      if(boss&&!boss.dead&&dist(P,boss)<200){_reportHit('boss',-1,700);hits++;}
+      burst(P.x,P.y,'#4488ff',55);shake(18,35);sndSuper();
+      addKillFeed(`🛡️ REX SHIELD BASH — ${hits} enemies knocked back!`,'b');
+      showBanner('🛡️ SHIELD BASH','Enemies scattered!','#4488ff');
+    } else if(myRole==='zara'){
+      P.roleAbilityCD=P.ROLE_ABILITY_MAX;
+      P.hp=Math.min(P.maxHp,P.hp+P.maxHp*0.55);
+      P.shield=P.maxShield;
+      updateHealthHUD();updateShieldHUD();
+      burst(P.x,P.y,'#39ffcc',48);sndRevive();shake(6,12);
+      shockwaves.push({x:P.x,y:P.y,radius:0,maxR:380,delay:0,color:'#39ffcc',heal:true});
+      addKillFeed('✚ ZARA MASS HEAL — all nearby players restored!','h');
+      showBanner('✚ ZARA HEAL','Teammates healed!','#39ffcc');
+      _broadcastZaraHeal();
+    } else {
+      tryRevive(); // commander/bolt/nova use normal revive
+    }
+  } else {
+    if(!reviving)tryRevive();
+  }
+}if(k==='z'&&GS&&GS.running)throwSleepBomb();
   if(k==='x'&&GS&&GS.running)activateBerserk();
   if(k==='v'&&GS&&GS.running)activateRage();
   
@@ -6208,8 +7475,8 @@ function _collectLoginInfo(){
     const ci=document.getElementById('countryInput');
     inputName=(ni?ni.value.trim():'');
     inputCountry=(ci&&ci.value?ci.value:'Unknown');
-    if(!inputName){alert('Please save your profile first — enter a name and click SAVE PROFILE.');return false;}
-    if(!inputCountry||inputCountry===''){alert('Please select your country.');return false;}
+if(!inputName){const ef=document.getElementById('profileEditForm');if(ef)ef.style.display='flex';const pb=document.getElementById('profileSavedBanner');if(pb)pb.style.display='none';alert('Enter your callsign name above first!');return false;}    // Country optional — default to Unknown if not selected
+    if(!inputCountry)inputCountry='Unknown';
     _saveIdentity(inputName,inputCountry);
     refreshProfileUI();
   }
@@ -6280,7 +7547,9 @@ document.getElementById('createRoomBtn').addEventListener('click',()=>{
   if(_collectLoginInfo()===false)return;
   showGameModeModal('room');
 });
-document.getElementById('browseRoomsBtn').addEventListener('click',()=>{
+// browseRoomsBtn removed — multiplayer coming soon
+const _browseBtn = document.getElementById('browseRoomsBtn');
+if(_browseBtn) _browseBtn.addEventListener('click',()=>{
   const name=document.getElementById('nameInput').value.trim()||'SOLDIER';
   myPlayerName=name;myPlayerColor=selectedColor;
   localStorage.setItem('sqfv9_lastName',name);
@@ -6288,17 +7557,60 @@ document.getElementById('browseRoomsBtn').addEventListener('click',()=>{
 });
 
 document.getElementById('readyBtn').addEventListener('click',async()=>{
-  if(!isOnline){await goOnline(myPlayerName,myPlayerColor,roomId||'open');}
+  if(!myRole){alert('Please pick a role first!');return;}
+  if(!isOnline){
+    await goOnline(myPlayerName,myPlayerColor,roomId||'open');
+  }
+
+  mpCoopMode=true;
+  rankedMode=true; // multiplayer is always ranked — everyone earns leaderboard points
+
+  // Spread spawn positions so players don't overlap
+  const spawnOffsets={
+    commander:{x:0,   y:0  },
+    rex:      {x:-120,y:-80},
+    zara:     {x:120, y:-80},
+    bolt:     {x:-120,y:80 },
+    nova:     {x:120, y:80 },
+  };
+  const off=spawnOffsets[myRole]||{x:0,y:0};
+  window._coopSpawnOffset=off; // used in initPlayer
+
+  // Announce game start to room
+  ablyPublish('lobby',{name:myPlayerName,color:myPlayerColor,role:myRole,inLobby:false,isHost:isRoomHost});
+
   document.getElementById('lobbyScreen').style.display='none';
   startGame(1,1,0);
+
+  // Show role banner
+  setTimeout(()=>{
+    const def=ROLE_DEFS[myRole];
+    showBanner(`${def.icon} ${def.name}`,`${def.desc} · ${def.ability}`,def.color);
+    addKillFeed(`${def.icon} Playing as ${def.name} in CO-OP!`,'b');
+    if(isRoomHost)addKillFeed('👑 You are HOST — enemies and waves run on your game','p');
+    else addKillFeed('📡 You are CLIENT — syncing with host','p');
+    updateSquadHUD();
+  },1500);
 });
 
 document.getElementById('leaveBtn').addEventListener('click',async()=>{
+  // Submit any score before leaving
+  if(GS&&GS.running){
+    _sess.won=false;
+    _sess.kills=pvpKills||0;
+    _sess.roundReached=GS.round||1;
+    _sess.stageReached=GS.stage||1;
+    _sess.wavesSurvived=Math.max(_sess.wavesSurvived,(GS.wave||1)-1);
+    submitScore();
+  }
   await mpCleanup();
+  if(GS)GS.running=false;
+  if(loopId){cancelAnimationFrame(loopId);loopId=null;}
+  stopMusic();
   document.getElementById('lobbyScreen').style.display='none';
   document.getElementById('loginScreen').style.display='flex';
   saveProgress();
-setTimeout(refreshResumeBtn, 200);
+  setTimeout(refreshResumeBtn,200);
 });
 
 document.getElementById('refreshOnlineBtn').addEventListener('click',refreshOnlinePlayers);
@@ -6445,7 +7757,26 @@ window.addEventListener('load',()=>{
 });
 
 window.addEventListener('beforeunload',()=>{mpCleanup();});
-// ══════════════════════════════════════════════════
+// ── TAB FREEZE FIX ─────────────────────────────────────
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden){
+    try{_lastFrameTime=0;_frameAccum=0;}catch(e){}
+    if(GS&&GS.running&&!loopId&&!gamePaused){
+      loopId=requestAnimationFrame(gameLoop);
+    }
+  }else{
+    // Tab hidden — cancel loop to prevent frame backlog
+    if(loopId){cancelAnimationFrame(loopId);loopId=null;}
+  }
+});
+window.addEventListener('focus',()=>{
+  try{_lastFrameTime=0;_frameAccum=0;}catch(e){}
+});
+window.addEventListener('blur',()=>{
+  // On blur save progress and pause accumulator
+  try{_lastFrameTime=0;_frameAccum=0;}catch(e){}
+  if(GS&&GS.running)saveProgress();
+});// ══════════════════════════════════════════════════
 // MOBILE TOUCH CONTROLS
 // ══════════════════════════════════════════════════
 
@@ -6834,7 +8165,7 @@ function calcRating(sess, prev){
   const killPts    = sess.kills        * 85;
   const bossPts    = sess.bossKills    * 1100;
   const comboPts   = sess.comboMax     * 140;
-  const kdr        = sess.kills / Math.max(1, sess.deaths);
+const kdr = sess.kills / Math.max(1, sess.deaths + sess.losses);
   const kdrPts     = Math.min(kdr * 280, 3000);
   const revivePts  = sess.revives      * 220;
   const wavePts    = sess.wavesSurvived* 95;
@@ -6862,10 +8193,10 @@ function calcRating(sess, prev){
   ) / 480);
 
   let outcome;
-  if(sess.won){
-    // WIN: big flat bonus + style reward
-    outcome = 2200 + stylePts;
-  } else if(sess.kills === 0 && sess.wavesSurvived === 0){
+  if(sess.won || sess.bossKills >= 1){
+  const bossBonus = sess.bossKills * 800;
+  outcome = 1200 + bossBonus + stylePts;
+}else if(sess.kills === 0 && sess.wavesSurvived === 0){
     // Instant quit doing nothing — small sting
 
 
@@ -6891,9 +8222,9 @@ function calcRating(sess, prev){
   // New players swing fast, veterans change slowly — fair for everyone
   const weight   = Math.max(0.08, Math.min(0.40, 1.2 / Math.sqrt(games)));
   const prevRat  = p.rating || 0;
-  const newRat   = Math.max(0, Math.round(
-    prevRat * (1 - weight) + sessionRating * weight + games * 14
-  ));
+const newRat = Math.max(0, Math.round(
+  prevRat * (1 - weight) + sessionRating * weight
+));
 
   return { sessionRating, newRating: newRat };
 }
@@ -6936,11 +8267,18 @@ async function submitScore(){
     const funToast=document.createElement('div');
     funToast.style.cssText='position:fixed;bottom:120px;left:50%;transform:translateX(-50%);background:rgba(0,10,20,.95);border:1px solid #4488ff;border-radius:8px;padding:8px 18px;font-family:monospace;font-size:10px;color:#4488ff;letter-spacing:1px;z-index:999;pointer-events:none;';
     funToast.textContent='🎮 Fun mode — no leaderboard change';
-    document.body.appendChild(funToast);
+document.body.appendChild(funToast);
     setTimeout(()=>funToast.remove(),2800);
+    return; // ← THIS LINE WAS MISSING — closes the fun mode block
+  }
+
+  // Block multiplayer from leaderboard (MP coming soon)
+  if(isOnline || mpCoopMode){
+    console.log('MP leaderboard tracking disabled — coming soon');
     return;
   }
-  if(!myPlayerName||_lbSaving)return;
+
+  if(!myPlayerName||_lbSaving)return; 
   // Guarantee name is saved before submitting
   if(!_playerIdentity||!_playerIdentity.name){
     _saveIdentity(myPlayerName,_playerIdentity?.country||'Unknown');
@@ -7168,6 +8506,55 @@ window.addEventListener('beforeunload',()=>{
     navigator.sendBeacon&&console.log('Game closed — score queued');
   }
   mpCleanup();
+});
+// ══════════════════════════════════════════════════════
+// MULTIPLAYER — COMING SOON
+// ══════════════════════════════════════════════════════
+function showMultiplayerComingSoon(){
+  const modal = document.createElement('div');
+  modal.id = 'mpComingSoonModal';
+  modal.style.cssText = `
+    position:fixed;inset:0;background:rgba(0,0,0,0.96);
+    z-index:800;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:18px;
+    font-family:'Share Tech Mono',monospace;
+  `;
+  modal.innerHTML = `
+    <div style="font-size:48px;">🌐</div>
+    <div style="font-size:22px;font-weight:900;color:#4488ff;letter-spacing:4px;text-shadow:0 0 30px #4488ff88;">
+      MULTIPLAYER
+    </div>
+    <div style="font-size:28px;font-weight:900;color:#ffd700;letter-spacing:6px;text-shadow:0 0 30px #ffd70088;">
+      COMING SOON
+    </div>
+    <div style="font-size:10px;color:#555;letter-spacing:2px;text-align:center;max-width:380px;line-height:2;">
+      Real-time co-op and PvP is under development.<br>
+      Solo mode is fully playable — ranked scores count!<br>
+      <span style="color:#4488ff;">Follow for updates when it drops.</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px;align-items:center;font-size:9px;color:#333;letter-spacing:1px;border:1px solid #1a1a1a;border-radius:8px;padding:12px 24px;">
+      <span style="color:#2a4a2a;">PLANNED FEATURES</span>
+      <span>👥 2–5 Player Co-op</span>
+      <span>⚔ Role-based team combat</span>
+      <span>🏆 Shared leaderboard rankings</span>
+      <span>📡 Real-time enemy sync</span>
+    </div>
+    <button onclick="document.getElementById('mpComingSoonModal').remove()"
+      style="background:#0a1a0a;border:2px solid #4488ff;color:#4488ff;
+      font-family:'Share Tech Mono',monospace;font-size:12px;letter-spacing:2px;
+      padding:10px 28px;border-radius:7px;cursor:pointer;margin-top:8px;">
+      ← BACK TO SOLO
+    </button>
+  `;
+  document.body.appendChild(modal);
+}
+
+// Disable the browse rooms button completely
+document.addEventListener('DOMContentLoaded', ()=>{
+  const browseBtn = document.getElementById('browseRoomsBtn');
+  if(browseBtn){
+    browseBtn.style.display='none'; // hide entirely
+  }
 });
 </script>
 
