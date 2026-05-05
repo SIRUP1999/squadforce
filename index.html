@@ -441,14 +441,14 @@ body{background:var(--bg);color:#fff;font-family:'Share Tech Mono','Courier New'
   position:fixed;inset:0;
   pointer-events:none;
   z-index:400;
-  display:none!important;
+  display:none;
   isolation:isolate;
   width:100%;
   height:100%;
 }
 #mobileControls.active{
   display:flex!important;
-  pointer-events:all!important;
+  pointer-events:none!important;
 }
 /* Hide mobile controls when not in game */
 body:not(.game-running) #mobileControls,
@@ -466,6 +466,8 @@ body:not(.game-running) #quickCmds,
 @media(max-width:900px),(pointer:coarse){
   body{cursor:default;}
   canvas{cursor:default;}
+  #mobileControls{display:block!important;}
+  #mobileControls.active{display:flex!important;}
   #sqPanel{display:block!important;right:4px!important;top:60px!important;min-width:160px!important;font-size:9px!important;padding:6px!important;}
   #powerBars{display:none!important;}
   #onlineSidePanel{display:none!important;}
@@ -709,6 +711,10 @@ body:not(.game-running) #quickCmds,
     max-width:calc(100vw - 20px)!important;
     gap:3px!important;
     flex-wrap:wrap!important;
+    display:flex!important;
+  }
+  body.game-running #quickCmds{
+    display:flex!important;
   }
   #quickCmds .qc{
     font-size:7px!important;
