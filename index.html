@@ -219,12 +219,12 @@ body{background:var(--bg);color:#fff;font-family:'Share Tech Mono','Courier New'
 .cchip{width:30px;height:30px;border-radius:6px;cursor:pointer;border:2px solid transparent;transition:all .15s;}
 .cchip.sel{border-color:#fff;transform:scale(1.2);box-shadow:0 0 12px currentColor;}
 @keyframes rotate90{0%{transform:rotate(0deg);}50%{transform:rotate(90deg);}100%{transform:rotate(0deg);}}
-.btn{background:#0a1a0a;border:2px solid var(--green);color:var(--green);font-family:'Courier New',monospace;font-size:12px;letter-spacing:2px;padding:10px 16px;border-radius:7px;cursor:pointer;transition:all .2s;text-align:center;touch-action:manipulation!important;-webkit-tap-highlight-color:rgba(57,255,138,0.25);pointer-events:all!important;-webkit-touch-callout:none;user-select:none;position:relative;z-index:10;width:100%;}
+.btn{background:#0a1a0a;border:2px solid var(--green);color:var(--green);font-family:'Courier New',monospace;font-size:12px;letter-spacing:2px;padding:10px 16px;border-radius:7px;cursor:pointer;transition:all .2s;text-align:center;touch-action:manipulation!important;-webkit-tap-highlight-color:rgba(57,255,138,0.25);pointer-events:all!important;-webkit-touch-callout:none;user-select:none;position:relative;z-index:10;width:100%;flex:1;min-width:60px;}
 .btn:hover,.btn:active{background:#1a3a1a;transform:scale(1.03);}
 .btn.red{border-color:var(--red);color:var(--red);}.btn.red:hover{background:#1a0a0a;}
 .btn.gold{border-color:var(--gold);color:var(--gold);}.btn.gold:hover{background:#1a1400;}
 .btn.blue{border-color:#4488ff;color:#4488ff;}.btn.blue:hover{background:#0a1a3a;}
-.row{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;}
+.row{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;flex:1;}
 .medals-stored{font-size:9px;color:#888;text-align:center;letter-spacing:1px;margin-top:2px;}
 .profile-saved-badge{display:inline-block;background:rgba(57,255,138,0.1);border:1px solid #39ff8a44;border-radius:4px;padding:3px 10px;font-size:8px;color:#39ff8a;letter-spacing:2px;margin-top:4px;}#lobbyBox{background:rgba(0,15,0,.95);border:1px solid #1a2a1a;border-radius:12px;padding:24px;width:580px;max-width:96vw;}
 #lobbyBox h2{font-size:13px;color:var(--green);letter-spacing:3px;text-align:center;margin-bottom:14px;}
@@ -795,9 +795,9 @@ body{background:var(--bg);color:#fff;font-family:'Share Tech Mono','Courier New'
         <button class="btn red" id="dHard">HARD</button>
       </div>
     </div>
-    <button class="btn" id="soloBtn" style="margin-top:4px;font-size:14px;" onclick="showGameModeModal('solo')">▶ PLAY SOLO</button>
-    <button class="btn" id="resumeBtn" style="border-color:#ff8800;color:#ff8800;display:none;">↩ RESUME SAVED GAME</button>
-<button class="btn blue" id="createRoomBtn" onclick="showMultiplayerComingSoon()">🌐 MULTIPLAYER</button>
+    <button class="btn" id="soloBtn" style="margin-top:8px;font-size:14px;" onclick="showGameModeModal('solo')">▶ PLAY SOLO</button>
+    <button class="btn" id="resumeBtn" style="border-color:#ff8800;color:#ff8800;display:none;margin-top:4px;">↩ RESUME SAVED GAME</button>
+<button class="btn blue" id="createRoomBtn" style="margin-top:4px;" onclick="showMultiplayerComingSoon()">🌐 MULTIPLAYER</button>
 <div id="mpComingSoonBadge" style="text-align:center;font-size:8px;color:#4488ff;letter-spacing:2px;margin-top:-4px;animation:blink 1.5s infinite;">⚡ COMING SOON — Online Co-op & PvP</div>
 <div class="medals-stored" id="storedMedals"></div>
     <!-- FIX: leaderboard button hardcoded, no JS injection needed -->
@@ -808,7 +808,7 @@ body{background:var(--bg);color:#fff;font-family:'Share Tech Mono','Courier New'
   </div>
 </div>
 <div id="onlineNowList" style="display:flex;flex-direction:column;gap:3px;max-height:90px;overflow-y:auto;margin-bottom:4px;"></div>
-<button class="btn gold" id="lbOpenBtn" style="font-size:12px;">🏆 WORLD LEADERBOARD</button>    <div class="row" style="justify-content:center;margin-top:2px;">
+<button class="btn gold" id="lbOpenBtn" style="font-size:12px;margin-top:4px;">🏆 WORLD LEADERBOARD</button>    <div class="row" style="justify-content:center;margin-top:2px;">
       <button class="btn" style="font-size:9px;border-color:#2a4a2a;color:#4a8a4a;" id="openSettingsLogin">⚙ SETTINGS</button>
     </div>
   </div>
