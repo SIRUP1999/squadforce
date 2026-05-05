@@ -446,6 +446,19 @@ body{background:var(--bg);color:#fff;font-family:'Share Tech Mono','Courier New'
   width:100%;
   height:100%;
 }
+
+/* Show mobile controls on touch devices */
+@media(max-width:900px),(pointer:coarse){
+  #mobileControls{
+    display:flex!important;
+  }
+}
+
+/* Hide mobile controls when not in game */
+body:not(.game-running) #mobileControls{
+  display:none!important;
+}
+
 #mobileControls.active{
   display:flex!important;
   pointer-events:none!important;
@@ -466,8 +479,11 @@ body:not(.game-running) #quickCmds,
 @media(max-width:900px),(pointer:coarse){
   body{cursor:default;}
   canvas{cursor:default;}
-  #mobileControls{display:block!important;}
+  
+  /* Force mobile controls to show on mobile devices */
+  #mobileControls{display:flex!important;}
   #mobileControls.active{display:flex!important;}
+  
   #sqPanel{display:block!important;right:4px!important;top:60px!important;min-width:160px!important;font-size:9px!important;padding:6px!important;}
   #powerBars{display:none!important;}
   #onlineSidePanel{display:none!important;}
@@ -683,6 +699,14 @@ body:not(.game-running) #quickCmds,
   pointer-events:all;
   max-width:calc(100vw - 180px);
 }
+
+/* Show quick commands on mobile during game */
+@media(max-width:900px),(pointer:coarse){
+  body.game-running #quickCmds{
+    display:flex!important;
+  }
+}
+
 #quickCmds .qc{
   background:rgba(0,20,0,0.92);
   border:1.5px solid #39ff8a55;
@@ -711,10 +735,15 @@ body:not(.game-running) #quickCmds,
     max-width:calc(100vw - 20px)!important;
     gap:3px!important;
     flex-wrap:wrap!important;
-    display:flex!important;
   }
+  /* Show quick commands when game is running */
   body.game-running #quickCmds{
     display:flex!important;
+  }
+  /* Hide when on menu screens */
+  #loginScreen:not([style*="display: none"]) ~ #quickCmds,
+  #lobbyScreen:not([style*="display: none"]) ~ #quickCmds{
+    display:none!important;
   }
   #quickCmds .qc{
     font-size:7px!important;
