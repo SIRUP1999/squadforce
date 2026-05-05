@@ -595,45 +595,74 @@ body:not(.game-running) #quickCmds,
 #mBtnPause{background:rgba(68,136,255,0.12);border-color:#4488ff;color:#4488ff;box-shadow:0 0 10px rgba(68,136,255,0.2);}
 
 /* ── LANDSCAPE COMPACT MODE ── */
-@media screen and (orientation:landscape) and (max-height:500px){
-  /* Joystick — left side, compact */
-  #joystickZone{width:110px!important;height:110px!important;bottom:10px!important;left:10px!important;}
-  #joystickBase{width:110px!important;height:110px!important;}
-  #joystickKnob{width:44px!important;height:44px!important;}
+/* Covers all mobile landscape: phones up to 700px height in landscape */
+@media screen and (orientation:landscape) and (pointer:coarse),
+       screen and (orientation:landscape) and (max-height:700px) and (max-width:1024px){
 
-  /* Right panel — compact stacked */
-  #mobileRightPanel{bottom:8px!important;right:8px!important;gap:6px!important;align-items:flex-end!important;}
-  #mobileRow1{gap:7px!important;}
-  #mobileRow2{gap:7px!important;}
-  .mBtn{width:44px!important;height:44px!important;font-size:7px!important;gap:0px!important;}
-  #mBtnFire{width:68px!important;height:68px!important;font-size:12px!important;}
+  /* Force controls visible in landscape */
+  #mobileControls{
+    display:flex!important;
+    pointer-events:none!important;
+  }
+  #joystickZone,#mobileRightPanel,#mobileShootZone{
+    pointer-events:all!important;
+  }
 
-  /* Shoot zone — between joystick and right buttons */
-  #mobileShootZone{left:130px!important;right:180px!important;top:0!important;bottom:0!important;}
+  /* Joystick — bottom-left, compact */
+  #joystickZone{width:115px!important;height:115px!important;bottom:8px!important;left:8px!important;}
+  #joystickBase{width:115px!important;height:115px!important;}
+  #joystickKnob{width:46px!important;height:46px!important;}
+
+  /* Right panel — bottom-right, compact */
+  #mobileRightPanel{bottom:6px!important;right:6px!important;gap:5px!important;align-items:flex-end!important;}
+  #mobileRow1{gap:6px!important;}
+  #mobileRow2{gap:6px!important;}
+  .mBtn{width:46px!important;height:46px!important;font-size:7px!important;gap:0px!important;}
+  #mBtnFire{width:72px!important;height:72px!important;font-size:13px!important;}
+
+  /* Shoot zone — full middle area between joystick and buttons */
+  #mobileShootZone{left:135px!important;right:200px!important;top:0!important;bottom:0!important;}
 
   /* Hide overlays that crowd landscape */
-#minimap{display:none!important;}
+  #minimap{display:none!important;}
   #sqPanel{display:none!important;}
   #powerBars{display:none!important;}
-  #killFeed{top:40px!important;bottom:auto!important;left:130px!important;max-width:220px!important;}
+  #killFeed{top:38px!important;bottom:auto!important;left:135px!important;max-width:200px!important;}
   .km{font-size:7px!important;padding:2px 4px!important;}
-  #bossBar{width:200px!important;top:36px!important;}
+  #bossBar{width:200px!important;top:34px!important;}
 
   /* Top HUD — smaller */
   #topBar{padding:3px 6px!important;}
   .hv{font-size:10px!important;}
-  .bar{width:65px!important;height:7px!important;}
+  .bar{width:62px!important;height:7px!important;}
   #hpNum{font-size:9px!important;}
   #livesHUD{font-size:9px!important;}
 
-  /* Command strip — float above joystick */
-  #cmdPanel{position:fixed!important;bottom:125px!important;left:125px!important;right:185px!important;transform:none!important;width:auto!important;max-width:none!important;}
+  /* Command panel — float in middle area */
+  #cmdPanel{position:fixed!important;bottom:130px!important;left:135px!important;right:210px!important;transform:none!important;width:auto!important;max-width:none!important;}
 
   /* Y-hint — hide on mobile */
   #cmdHint{display:none!important;}
 
   /* Combo box — reposition */
-  #comboBox{bottom:120px!important;left:130px!important;}
+  #comboBox{bottom:130px!important;left:135px!important;}
+
+  /* Quick commands — show in landscape above joystick area */
+  body.game-running #quickCmds{
+    display:flex!important;
+    left:135px!important;
+    right:210px!important;
+    bottom:8px!important;
+    max-width:calc(100vw - 350px)!important;
+    gap:3px!important;
+    flex-wrap:wrap!important;
+    max-height:60px!important;
+    overflow:hidden!important;
+  }
+  body.game-running #quickCmds .qc{
+    font-size:6px!important;
+    padding:3px 6px!important;
+  }
 }
 
 /* Hide Y command hint on ALL mobile/touch devices */
@@ -641,7 +670,8 @@ body:not(.game-running) #quickCmds,
   #cmdHint{display:none!important;}
 }
 /* ── LOGIN SCREEN LANDSCAPE ── */
-@media screen and (orientation:landscape) and (max-height:500px){
+@media screen and (orientation:landscape) and (pointer:coarse),
+       screen and (orientation:landscape) and (max-height:700px) and (max-width:1024px){
   #loginScreen{
     justify-content:flex-start!important;
     overflow-y:auto!important;
@@ -757,12 +787,14 @@ body:not(.game-running) #quickCmds,
 }
 
 /* Landscape compact mode for quick commands */
-@media screen and (orientation:landscape) and (max-height:500px){
+@media screen and (orientation:landscape) and (pointer:coarse),
+       screen and (orientation:landscape) and (max-height:700px) and (max-width:1024px){
+  /* Quick commands handled inside the main landscape block above */
   #quickCmds{
-    left:130px!important;
-    right:185px!important;
-    bottom:125px!important;
-    max-width:calc(100vw - 320px)!important;
+    bottom:8px!important;
+    left:135px!important;
+    right:210px!important;
+    max-width:calc(100vw - 350px)!important;
     gap:2px!important;
   }
   #quickCmds .qc{
