@@ -210,7 +210,7 @@ body{background:var(--bg);color:#fff;font-family:'Share Tech Mono','Courier New'
 .logo{font-size:48px;font-weight:900;letter-spacing:6px;line-height:1;text-align:center;margin-bottom:4px;}
 .logo .r{color:var(--red);}.logo .g{color:var(--green);font-size:26px;}
 .tagline{font-size:9px;color:#444;letter-spacing:3px;margin-bottom:20px;}
-.form-box{background:rgba(0,20,0,.88);border:1px solid #1a3a1a;border-radius:12px;padding:22px 28px;width:460px;max-width:96vw;display:flex;flex-direction:column;gap:11px;}
+.form-box{background:rgba(0,20,0,.88);border:1px solid #1a3a1a;border-radius:12px;padding:16px 20px;width:95vw;max-width:500px;display:flex;flex-direction:column;gap:8px;}
 .form-box h2{font-size:11px;color:var(--green);letter-spacing:3px;text-align:center;margin-bottom:3px;}
 .fl{display:flex;flex-direction:column;gap:3px;}.fl label{font-size:9px;color:#555;letter-spacing:2px;}
 .fi{background:#020a02;border:1px solid #1a2a1a;color:#fff;font-family:'Courier New',monospace;font-size:13px;padding:8px 12px;border-radius:5px;outline:none;transition:border-color .2s;}
@@ -219,12 +219,12 @@ body{background:var(--bg);color:#fff;font-family:'Share Tech Mono','Courier New'
 .cchip{width:30px;height:30px;border-radius:6px;cursor:pointer;border:2px solid transparent;transition:all .15s;}
 .cchip.sel{border-color:#fff;transform:scale(1.2);box-shadow:0 0 12px currentColor;}
 @keyframes rotate90{0%{transform:rotate(0deg);}50%{transform:rotate(90deg);}100%{transform:rotate(0deg);}}
-.btn{background:#0a1a0a;border:2px solid var(--green);color:var(--green);font-family:'Courier New',monospace;font-size:12px;letter-spacing:2px;padding:10px 20px;border-radius:7px;cursor:pointer;transition:all .2s;text-align:center;touch-action:manipulation!important;-webkit-tap-highlight-color:rgba(57,255,138,0.25);pointer-events:all!important;-webkit-touch-callout:none;user-select:none;position:relative;z-index:10;}
+.btn{background:#0a1a0a;border:2px solid var(--green);color:var(--green);font-family:'Courier New',monospace;font-size:12px;letter-spacing:2px;padding:10px 16px;border-radius:7px;cursor:pointer;transition:all .2s;text-align:center;touch-action:manipulation!important;-webkit-tap-highlight-color:rgba(57,255,138,0.25);pointer-events:all!important;-webkit-touch-callout:none;user-select:none;position:relative;z-index:10;width:100%;}
 .btn:hover,.btn:active{background:#1a3a1a;transform:scale(1.03);}
 .btn.red{border-color:var(--red);color:var(--red);}.btn.red:hover{background:#1a0a0a;}
 .btn.gold{border-color:var(--gold);color:var(--gold);}.btn.gold:hover{background:#1a1400;}
 .btn.blue{border-color:#4488ff;color:#4488ff;}.btn.blue:hover{background:#0a1a3a;}
-.row{display:flex;gap:8px;flex-wrap:wrap;}
+.row{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;}
 .medals-stored{font-size:9px;color:#888;text-align:center;letter-spacing:1px;margin-top:2px;}
 .profile-saved-badge{display:inline-block;background:rgba(57,255,138,0.1);border:1px solid #39ff8a44;border-radius:4px;padding:3px 10px;font-size:8px;color:#39ff8a;letter-spacing:2px;margin-top:4px;}#lobbyBox{background:rgba(0,15,0,.95);border:1px solid #1a2a1a;border-radius:12px;padding:24px;width:580px;max-width:96vw;}
 #lobbyBox h2{font-size:13px;color:var(--green);letter-spacing:3px;text-align:center;margin-bottom:14px;}
@@ -5675,6 +5675,13 @@ function drawParticle(p){const sx=p.x-camX+shakeX,sy=p.y-camY+shakeY;if(sx<-14||
 
 // ── STICK FIGURE ─────────────────────────────────────
 function drawStickFigure(x,y,angle,col,sz=18,dead=false,dt=0,crouching=false,shieldOn=false,berserkEyes=false,sleeping=false,isMoving=false,stepPhase=0,helmetColor=null,isBoss=false){
+  // On mobile: only rotate when aiming at enemies, otherwise face up
+  if(isMobileDevice && !isBoss && !dead) {
+    const nearE = nearestEnemy(x, y);
+    if(!nearE || dist({x,y}, nearE) > 400) {
+      angle = -Math.PI/2; // Face up
+    }
+  }
   ctx.save();ctx.globalAlpha=dead?Math.max(.1,1-dt/140):1;
   ctx.translate(x,y);if(dead){ctx.rotate(angle+Math.PI/2);}else ctx.rotate(angle);
   if(shieldOn){ctx.shadowColor='#4488ff';ctx.shadowBlur=20;}
@@ -7705,6 +7712,11 @@ document.getElementById('settingsBtn').addEventListener('click',()=>{const sp=do
 document.getElementById('closeSettings').addEventListener('click',()=>{document.getElementById('settingsPanel').style.display='none';});
 document.getElementById('openSettingsLogin').addEventListener('click',()=>{document.getElementById('settingsPanel').style.display='block';});
 document.getElementById('lbOpenBtn')?.addEventListener('click',()=>{ if(typeof openLeaderboard==='function')openLeaderboard(); });
+document.getElementById('soloBtn')?.addEventListener('click', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  showGameModeModal('solo');
+});
 var cmdPanelOpen=false; // var hoists globally — avoids temporal dead zone crash
 function toggleCmdPanel(){
   if(!GS||!GS.running)return;
