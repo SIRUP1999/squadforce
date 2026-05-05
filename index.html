@@ -203,8 +203,12 @@ function saveProfile(){const name=document.getElementById('nameInput').value.tri
 *{margin:0;padding:0;box-sizing:border-box;}
 :root{--green:#39ff8a;--red:#ff3a3a;--gold:#ffd700;--blue:#4af;--bg:#050608;--border:#1a2a1a;}
 body{background:var(--bg);color:#fff;font-family:'Share Tech Mono','Courier New',monospace;overflow:hidden;user-select:none;}
-.logo,.form-box h2,.fl label,.btn,.hv,.hl,.hb,.smr,.sn,.ss,.pn,.pd,.rEntry,.ply-name,.ply-status,.rEntry *{font-family:'Share Tech Mono','Courier New',monospace!important;}canvas{display:block;cursor:none;position:relative;z-index:1;touch-action:none;}
-.screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;}
+.logo,.form-box h2,.fl label,.btn,.hv,.hl,.hb,.smr,.sn,.ss,.pn,.pd,.rEntry,.ply-name,.ply-status,.rEntry *{font-family:'Share Tech Mono','Courier New',monospace!important;}
+canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:none;}
+@media(max-width:900px) and (pointer:coarse){
+  canvas{cursor:none;}
+  body{cursor:none;}
+}.screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;}
 #loginScreen{background:radial-gradient(ellipse at 50% 30%,#0a1a0a 0%,#000 70%);}
 #lobbyScreen,#resultsScreen,#onlineScreen{background:rgba(0,0,0,0.97);display:none;}
 .logo{font-size:48px;font-weight:900;letter-spacing:6px;line-height:1;text-align:center;margin-bottom:4px;}
@@ -6028,8 +6032,50 @@ if(c.t==='tree'){
 }  else if(c.t==='rock'){const rg=ctx.createRadialGradient(sx+c.w/2,sy+c.h/2,2,sx+c.w/2,sy+c.h/2,c.w/2);rg.addColorStop(0,'#5a5a5a');rg.addColorStop(1,'#2a2a2a');ctx.fillStyle=rg;ctx.beginPath();ctx.arc(sx+c.w/2,sy+c.h/2,c.w/2,0,Math.PI*2);ctx.fill();}else{const g=ctx.createLinearGradient(sx,sy,sx+c.w,sy+c.h);g.addColorStop(0,'#2e3a2e');g.addColorStop(1,'#465846');ctx.fillStyle=g;ctx.strokeStyle='#586858';ctx.lineWidth=1.5;rrect(sx,sy,c.w,c.h,c.t==='bunker'?5:3);ctx.fill();ctx.stroke();}}
 function drawBarrel(b){if(b.dead)return;const sp=w2s(b.x,b.y);if(sp.x<-34||sp.x>W+34||sp.y<-34||sp.y>H+34)return;if(b.flashT>0)b.flashT--;ctx.save();ctx.fillStyle='#330000';rrect(sp.x-10,sp.y-14,20,28,4);ctx.fill();ctx.fillStyle=b.flashT>0?'#fff':'#ff3300';rrect(sp.x-9,sp.y-12,18,10,2);ctx.fill();ctx.fillStyle='#ff6600';rrect(sp.x-9,sp.y-1,18,10,2);ctx.fill();ctx.fillStyle='#ffcc00';ctx.font='bold 11px monospace';ctx.textAlign='center';ctx.fillText('!',sp.x,sp.y+10);ctx.restore();}
 function drawPickup(pk){const sp=w2s(pk.x,pk.y);if(sp.x<-24||sp.x>W+24||sp.y<-24||sp.y>H+24)return;ctx.save();ctx.translate(sp.x,sp.y);ctx.rotate(Date.now()*.002);const col=pk.type==='ammo'?'#ffd700':'#39ff8a';ctx.fillStyle=col;ctx.shadowColor=col;ctx.shadowBlur=12+Math.sin(Date.now()*.005)*4;rrect(-10,-10,20,20,4);ctx.fill();ctx.fillStyle='#000';ctx.font='bold 11px monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(pk.type==='ammo'?'A':'♥',0,0);ctx.restore();}
-function drawCursor(){const mx=mouse.x,my=mouse.y;const cc=berserkActive?'rgba(255,80,80,.8)':'rgba(255,255,255,.35)';ctx.strokeStyle=cc;ctx.lineWidth=1;ctx.beginPath();ctx.arc(mx,my,13,0,Math.PI*2);ctx.stroke();ctx.strokeStyle=berserkActive?'rgba(255,50,50,.9)':'rgba(255,255,255,.65)';ctx.lineWidth=1.2;[[mx-20,my,mx-7,my],[mx+7,my,mx+20,my],[mx,my-20,mx,my-7],[mx,my+7,mx,my+20]].forEach(pts=>{ctx.beginPath();ctx.moveTo(pts[0],pts[1]);ctx.lineTo(pts[2],pts[3]);ctx.stroke();});ctx.fillStyle=berserkActive?'rgba(255,80,80,.9)':'rgba(255,255,255,.85)';ctx.beginPath();ctx.arc(mx,my,2,0,Math.PI*2);ctx.fill();}
+function drawCursor(){
+  const mx=mouse.x,my=mouse.y;
+  ctx.save();
+  // Hard reset — prevents bleed from shadowBlur/globalAlpha of previous draws
+  ctx.globalAlpha=1;
+  ctx.shadowBlur=0;
+  ctx.shadowColor='transparent';
+  ctx.setLineDash([]);
 
+  const isBeserking=berserkActive;
+  const ringCol   =isBeserking?'#ff5050':'#39ff8a';
+  const crossCol  =isBeserking?'#ff2222':'#ffffff';
+  const dotCol    =isBeserking?'#ff8080':'#39ff8a';
+
+  // Outer glow ring
+  ctx.shadowColor=ringCol;
+  ctx.shadowBlur=10;
+  ctx.strokeStyle=ringCol;
+  ctx.lineWidth=1.5;
+  ctx.globalAlpha=0.85;
+  ctx.beginPath();ctx.arc(mx,my,13,0,Math.PI*2);ctx.stroke();
+
+  // Cross-hair lines
+  ctx.shadowColor=crossCol;
+  ctx.shadowBlur=8;
+  ctx.strokeStyle=crossCol;
+  ctx.lineWidth=1.5;
+  ctx.globalAlpha=1;
+  [[mx-20,my,mx-7,my],
+   [mx+7, my,mx+20,my],
+   [mx,my-20,mx,my-7],
+   [mx,my+7, mx,my+20]].forEach(p=>{
+    ctx.beginPath();ctx.moveTo(p[0],p[1]);ctx.lineTo(p[2],p[3]);ctx.stroke();
+  });
+
+  // Centre dot
+  ctx.shadowColor=dotCol;
+  ctx.shadowBlur=12;
+  ctx.fillStyle=dotCol;
+  ctx.globalAlpha=1;
+  ctx.beginPath();ctx.arc(mx,my,2.5,0,Math.PI*2);ctx.fill();
+
+  ctx.restore();
+}
 // ── MINIMAP ──────────────────────────────────────────
 function drawMinimap(){
   const mw=130,mh=130,sx=mw/WORLD_W,sy=mh/WORLD_H;
