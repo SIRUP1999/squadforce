@@ -271,7 +271,7 @@ body{background:var(--bg);color:#fff;font-family:'Share Tech Mono','Courier New'
 #medkitBar{width:140px;height:4px;background:#0a0a0a;border-radius:2px;margin-top:4px;overflow:hidden;}
 #medkitFill{height:100%;background:var(--green);width:0%;transition:width .1s;}
 #qHint{position:absolute;pointer-events:none;z-index:40;display:none;font-size:9px;color:var(--green);background:rgba(0,0,0,.9);border:1px solid var(--green);border-radius:4px;padding:3px 8px;letter-spacing:1px;animation:blink .5s infinite;}
-#deathScreen{position:absolute;inset:0;background:rgba(0,0,0,.92);z-index:150;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;}
+#deathScreen{position:absolute;inset:0;background:rgba(0,0,0,.92);z-index:9500;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;}
 #deathTitle{font-size:72px;font-weight:900;color:#ff2222;letter-spacing:6px;text-shadow:0 0 60px #ff0000;animation:deathPulse 1s infinite;}
 #killedMsg{font-size:18px;color:#ff8888;letter-spacing:3px;}
 #killerInfo{font-size:13px;color:#888;letter-spacing:2px;}
@@ -632,9 +632,9 @@ body{background:var(--bg);color:#fff;font-family:'Share Tech Mono','Courier New'
 .clbl{font-size:8px;color:#39ff8a;letter-spacing:2px;margin:6px 0 4px;text-transform:uppercase;border-bottom:1px solid #1a3a1a;padding-bottom:3px;}/* ── FLOATING QUICK COMMANDS (always visible during game) ── */
 #quickCmds{
   position:fixed;
-  left:50%;
-  bottom:185px;
-  transform:translateX(-50%);
+  left:170px;
+  bottom:170px;
+  transform:none;
   display:none;
   gap:4px;
   z-index:440;
@@ -5501,6 +5501,9 @@ function killSquadMember(m){
 // ── RESPAWN SYSTEM ───────────────────────────────────
 function triggerPlayerDeath(){
   if(P.dead)return;P.dead=true;P.hp=0;burst(P.x,P.y,'#ff4444',40);
+  // Hide all mobile overlays so death screen buttons are tappable
+  const _mc=document.getElementById('mobileControls');if(_mc)_mc.style.display='none';
+  const _qc=document.getElementById('quickCmds');if(_qc)_qc.style.display='none';
   if(isOnline){
     P._mpDiedFlag=true;
     if(ablyReady)ablyPublish('player_event',{type:'died',name:myPlayerName,color:myPlayerColor,role:myRole,lives:Math.max(0,stageLives-1)});
@@ -5535,6 +5538,9 @@ function showDeathScreen(){
 
 function doRespawn(){
   document.getElementById('deathScreen').style.display='none';
+  const _isMob=('ontouchstart' in window)||navigator.maxTouchPoints>0;
+  const _mc=document.getElementById('mobileControls');if(_mc)_mc.style.display=_isMob?'flex':'none';
+  const _qc=document.getElementById('quickCmds');if(_qc)_qc.style.display=_isMob?'flex':'none';
   if(isOnline){
     P._mpRespawnedFlag=true;
     P._deadBroadcastDone=false;
@@ -5556,6 +5562,9 @@ loopId=requestAnimationFrame(gameLoop);
 }
 function doRestartStage(){
   document.getElementById('deathScreen').style.display='none';
+  const _isMob2=('ontouchstart' in window)||navigator.maxTouchPoints>0;
+  const _mc2=document.getElementById('mobileControls');if(_mc2)_mc2.style.display=_isMob2?'flex':'none';
+  const _qc2=document.getElementById('quickCmds');if(_qc2)_qc2.style.display=_isMob2?'flex':'none';
   stageLives=MAX_LIVES;
 
   // Fully reinitialize the player so P.dead is cleared
@@ -6525,6 +6534,13 @@ function resumeGame(){
 }
 function startGame(round=1,stage=1,savedScore=0){
   initAudio();DC=DIFF[difficulty];
+  // Request fullscreen to remove browser chrome on mobile
+  (async()=>{try{
+    const el=document.documentElement;
+    if(el.requestFullscreen)await el.requestFullscreen();
+    else if(el.webkitRequestFullscreen)await el.webkitRequestFullscreen();
+  }catch(e){}})();
+  setTimeout(resizeCanvas,300); // resize after fullscreen kicks in
   // Re-attempt landscape lock when game starts
   (async()=>{try{if(screen.orientation&&screen.orientation.lock)await screen.orientation.lock('landscape');}catch(e){}})(  );
 GS={running:true,round,stage,wave:1,waveKills:0,waveTarget:0,score:savedScore,spawnQ:[],spawnTick:0,bossSpawned:false,bossAlive:false,betweenWaves:false,upgradeLevel:Math.min(stage-1,2),stageAdvancing:false};enemies=[];bullets=[];eBullets=[];parts=[];pickups=[];fireBombs=[];shockwaves=[];supplyDrops=[];boss=null;  ownedPerks=[];sosPings=[];pvpKills=0;shootCD=0;meleeCD=0;powerCD=0;frameN=0;
@@ -7831,17 +7847,21 @@ function forceMainMenu(){
 // FULLSCREEN MOBILE ENGINE
 // ══════════════════════════════════════════════════
 function resizeCanvas(){
-  const vw=window.innerWidth;
-  const vh=window.innerHeight;
-  CV.width=vw;CV.height=vh;
-  W=vw;H=vh;
-  mouse.x=W/2;mouse.y=H/2;
-  // Force canvas focus
-  CV.style.width='100%';
-  CV.style.height='100%';
+  const vw = window.visualViewport ? window.visualViewport.width  : window.innerWidth;
+  const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+  CV.width=vw; CV.height=vh;
+  W=vw; H=vh;
+  mouse.x=W/2; mouse.y=H/2;
+  CV.style.position='fixed';
+  CV.style.top='0'; CV.style.left='0';
+  CV.style.width=vw+'px'; CV.style.height=vh+'px';
   CV.style.touchAction='none';
 }
 resizeCanvas();
+if(window.visualViewport){
+  window.visualViewport.addEventListener('resize', resizeCanvas);
+  window.visualViewport.addEventListener('scroll', resizeCanvas);
+}
 // Replace the original resize listener too (remove old one if present)
 window.removeEventListener('resize',()=>{});
 window.addEventListener('resize',resizeCanvas);
