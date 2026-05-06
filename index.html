@@ -7910,7 +7910,11 @@ document.getElementById('leaveBtn').addEventListener('click',async()=>{
   stopMusic();
   // Remove mobile controls when returning to menu
   const _mcReturn = document.getElementById('mobileControls');
-  if(_mcReturn) _mcReturn.classList.remove('active');
+  if(_mcReturn){_mcReturn.classList.remove('active');_mcReturn.style.display='none';_mcReturn.style.visibility='hidden';_mcReturn.style.zIndex='-999';}
+  document.getElementById('quickCmds').style.display='none';
+  document.body.classList.remove('game-running');
+  document.body.style.overflow='auto';
+  document.body.style.cursor='';
   
   document.getElementById('lobbyScreen').style.display='none';
   document.getElementById('loginScreen').style.display='flex';
@@ -7923,19 +7927,23 @@ document.getElementById('closeOnlineBtn').addEventListener('click',()=>{document
 document.getElementById('onlineBtn').addEventListener('click',()=>{if(isOnline)showOnlineBrowser();});
 
 document.getElementById('playAgainBtn').addEventListener('click',()=>{
-  // Remove mobile controls when returning to menu from results
   const _mcPlayAgain = document.getElementById('mobileControls');
-  if(_mcPlayAgain) _mcPlayAgain.classList.remove('active');
-  
+  if(_mcPlayAgain){_mcPlayAgain.classList.remove('active');_mcPlayAgain.style.display='none';_mcPlayAgain.style.visibility='hidden';_mcPlayAgain.style.zIndex='-999';}
+  document.getElementById('quickCmds').style.display='none';
+  document.body.classList.remove('game-running');
+  document.body.style.overflow='auto';
+  document.body.style.cursor='';
   document.getElementById('resultsScreen').style.display='none';
   document.getElementById('loginScreen').style.display='flex';
   const saved=loadProgress();if(saved)document.getElementById('resumeBtn').style.display='block';
 });
 document.getElementById('mainMenuBtn').addEventListener('click',()=>{
-  // Remove mobile controls when returning to main menu
   const _mcMainMenu = document.getElementById('mobileControls');
-  if(_mcMainMenu) _mcMainMenu.classList.remove('active');
-  
+  if(_mcMainMenu){_mcMainMenu.classList.remove('active');_mcMainMenu.style.display='none';_mcMainMenu.style.visibility='hidden';_mcMainMenu.style.zIndex='-999';}
+  document.getElementById('quickCmds').style.display='none';
+  document.body.classList.remove('game-running');
+  document.body.style.overflow='auto';
+  document.body.style.cursor='';
   document.getElementById('resultsScreen').style.display='none';
   document.getElementById('loginScreen').style.display='flex';
 });
@@ -7945,9 +7953,14 @@ document.getElementById('respawnBtn').addEventListener('click',()=>{if(stageLive
 document.getElementById('restartStageBtn').addEventListener('click',doRestartStage);
 document.getElementById('mainMenuDeathBtn').addEventListener('click',async()=>{
   document.getElementById('deathScreen').style.display='none';
-  document.getElementById('mobileControls').style.display='none';
+  const _mcDeath=document.getElementById('mobileControls');
+  if(_mcDeath){_mcDeath.classList.remove('active');_mcDeath.style.display='none';_mcDeath.style.visibility='hidden';_mcDeath.style.zIndex='-999';}
+  document.getElementById('quickCmds').style.display='none';
+  document.body.classList.remove('game-running');
+  document.body.style.overflow='auto';
+  document.body.style.cursor='';
   if(loopId){cancelAnimationFrame(loopId);loopId=null;}
-  if(GS){GS.running=false;saveProgress();}// save before checking
+  if(GS){GS.running=false;saveProgress();}
   _sess.won=false;
   _sess.kills=pvpKills||0;
   _sess.roundReached=GS?GS.round:1;
@@ -8130,7 +8143,13 @@ function forceMainMenu(){
   _sess.stageReached=GS?GS.stage:1;
   submitScore();
   mpCleanup();
-  document.getElementById('mobileControls').style.display='none';
+  // Hide mobile controls and restore menu scrolling
+  const _mc=document.getElementById('mobileControls');
+  if(_mc){_mc.classList.remove('active');_mc.style.display='none';_mc.style.visibility='hidden';_mc.style.zIndex='-999';}
+  document.getElementById('quickCmds').style.display='none';
+  document.body.classList.remove('game-running');
+  document.body.style.overflow='auto';
+  document.body.style.cursor='';
   document.getElementById('loginScreen').style.display='flex';
   setTimeout(refreshResumeBtn,400);
 }
@@ -8752,21 +8771,25 @@ setInterval(()=>{
   
   console.groupEnd();
   
-  // 7. Create CSS override for visibility guarantee
+  // 7. CSS override only applies when game is active (.active class)
   const style = document.createElement('style');
   style.textContent = `
-    #mobileControls {
+    #mobileControls.active {
       display: flex !important;
-      pointer-events: all !important;
+      visibility: visible !important;
+      pointer-events: none !important;
       z-index: 400 !important;
     }
-    .mBtn, #joystickZone, #mobileRightPanel, #mobileShootZone {
+    #mobileControls.active .mBtn,
+    #mobileControls.active #joystickZone,
+    #mobileControls.active #mobileRightPanel,
+    #mobileControls.active #mobileShootZone {
       pointer-events: all !important;
       touch-action: none !important;
     }
   `;
   document.head.appendChild(style);
-  console.log('✅ CSS overrides applied');
+  console.log('✅ CSS overrides applied (game-active only)');
 })();
 
 // ═══════════════════════════════════════════════════════
@@ -8777,36 +8800,25 @@ setInterval(()=>{
     return;
   }
   
+  // On mobile: controls start HIDDEN — only shown when game is active via .active class
   if(isMobileDevice) {
-    mc.style.display = 'flex';
-    mc.style.pointerEvents = 'all';
-    mc.style.zIndex = '400';
-    mc.style.position = 'fixed';
-    mc.style.inset = '0';
+    mc.style.display = 'none';
+    mc.style.visibility = 'hidden';
+    mc.style.zIndex = '-999';
+    mc.style.pointerEvents = 'none';
     
-    // Ensure all child elements are clickable
+    // Ensure all child elements are set up but not yet active
     mc.querySelectorAll('.mBtn, #joystickZone, #mobileShootZone, #mobileRightPanel').forEach(el => {
-      el.style.pointerEvents = 'all !important';
       el.style.touchAction = 'none';
       el.style.userSelect = 'none';
     });
     
-    // Debug: add visible borders to touch zones during development
-    if(window.location.search.includes('debug')) {
-      document.getElementById('joystickZone').style.border = '2px dashed red';
-      document.getElementById('mobileShootZone').style.border = '2px dashed blue';
-      document.getElementById('mobileRightPanel').style.border = '2px dashed green';
-    }
-    
-    console.log('✅ Mobile controls ENABLED and visible');
-    console.log('  - Joystick:', document.getElementById('joystickZone') ? 'OK' : 'MISSING');
-    console.log('  - Fire button:', document.getElementById('mBtnFire') ? 'OK' : 'MISSING');
-    console.log('  - Right panel:', document.getElementById('mobileRightPanel') ? 'OK' : 'MISSING');
+    console.log('✅ Mobile controls ready (hidden until game starts)');
   } else {
     mc.style.display = 'none';
     console.log('ℹ️ Mobile controls hidden (desktop detected)');
   }
-})();</script>
+})()</script>
  
 <!-- GLOBAL LEADERBOARD PANEL -->
 <div id="leaderboardPanel" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.97);z-index:600;flex-direction:column;align-items:center;padding-top:28px;overflow-y:auto;">
