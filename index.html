@@ -440,42 +440,39 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
 @keyframes deathPulse{0%,100%{opacity:1;text-shadow:0 0 60px #ff0000}50%{opacity:.7;text-shadow:0 0 120px #ff0000}}
 @keyframes dmgFly{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-60px)}}
-/* ── MOBILE CONTROLS — ALWAYS VISIBLE ON MOBILE ══ */
+/* ── MOBILE CONTROLS — HIDDEN BY DEFAULT ══ */
 #mobileControls{
   position:fixed;inset:0;
   pointer-events:none;
-  z-index:400;
+  z-index:1;
   display:none;
   isolation:isolate;
   width:100vw;
   height:100vh;
 }
 
-/* SHOW mobile controls ONLY during game on touch devices */
+/* Only show on touch devices during game */
 @media(max-width:900px),(pointer:coarse){
   #mobileControls{
-    display:none;
+    display:none !important;
+    pointer-events:none !important;
   }
-  /* Enable ONLY when game is running */
-  body.game-running #mobileControls{
-    display:flex!important;
-    pointer-events:all!important;
-    position:fixed!important;
-    inset:0!important;
-    width:100vw!important;
-    height:100vh!important;
-    z-index:400!important;
+  /* Enable only when game is active */
+  #mobileControls.active{
+    display:flex !important;
+    pointer-events:all !important;
+    z-index:400 !important;
   }
 }
 
-/* Ensure child elements are touchable during game */
-body.game-running #mobileControls * {
-  pointer-events:all!important;
+/* Ensure child elements are touchable when active */
+#mobileControls.active * {
+  pointer-events:all !important;
 }
-body.game-running #joystickZone,
-body.game-running #mobileRightPanel,
-body.game-running #mobileShootZone{
-  pointer-events:all!important;
+#mobileControls.active #joystickZone,
+#mobileControls.active #mobileRightPanel,
+#mobileControls.active #mobileShootZone{
+  pointer-events:all !important;
 }
 @media(max-width:900px),(pointer:coarse){
   body{cursor:default;}
