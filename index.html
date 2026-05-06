@@ -440,42 +440,33 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
 @keyframes deathPulse{0%,100%{opacity:1;text-shadow:0 0 60px #ff0000}50%{opacity:.7;text-shadow:0 0 120px #ff0000}}
 @keyframes dmgFly{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-60px)}}
-/* ── MOBILE CONTROLS — CLEAN SYSTEM ══ */
+/* ── MOBILE CONTROLS — ALWAYS VISIBLE ON MOBILE ══ */
 #mobileControls{
   position:fixed;inset:0;
-  pointer-events:none;
+  pointer-events:all;
   z-index:400;
   display:none;
   isolation:isolate;
-  width:100%;
-  height:100%;
+  width:100vw;
+  height:100vh;
 }
 
-/* Show mobile controls on touch devices */
+/* FORCE show mobile controls on ALL touch devices */
 @media(max-width:900px),(pointer:coarse){
   #mobileControls{
     display:flex!important;
+    pointer-events:all!important;
+    position:fixed!important;
+    inset:0!important;
+    width:100vw!important;
+    height:100vh!important;
+    z-index:400!important;
   }
 }
 
-/* Hide mobile controls when not in game */
-body:not(.game-running) #mobileControls{
-  display:none!important;
-}
-
-#mobileControls.active{
-  display:flex!important;
-  pointer-events:none!important;
-}
-/* Hide mobile controls when not in game */
-body:not(.game-running) #mobileControls,
-body:not(.game-running) #quickCmds,
-#loginScreen:not([style*="display: none"]) ~ #mobileControls,
-#loginScreen:not([style*="display: none"]) ~ #quickCmds,
-#lobbyScreen:not([style*="display: none"]) ~ #mobileControls,
-#lobbyScreen:not([style*="display: none"]) ~ #quickCmds{
-  display:none!important;
-  pointer-events:none!important;
+/* Ensure child elements are touchable */
+#mobileControls * {
+  pointer-events:all!important;
 }
 #joystickZone,#mobileRightPanel,#mobileShootZone{
   pointer-events:all!important;
@@ -1270,7 +1261,7 @@ const mmx=MM.getContext('2d');
 CV.width=window.innerWidth;CV.height=window.innerHeight;
 let W=CV.width,H=CV.height;
 const _isMob=typeof isMobileDevice!=='undefined'?isMobileDevice:(('ontouchstart' in window)||navigator.maxTouchPoints>0);
-const WORLD_W=_isMob?Math.max(W*1.5,1800):Math.max(W*2.4,3200),WORLD_H=_isMob?Math.max(H*1.5,1400):Math.max(H*2.4,2400);let camX=0,camY=0,shakeX=0,shakeY=0,shakeDur=0,shakeMag=0;
+const WORLD_W=_isMob?Math.max(W*1.2,1200):Math.max(W*2.4,3200),WORLD_H=_isMob?Math.max(H*1.2,1000):Math.max(H*2.4,2400);let camX=0,camY=0,shakeX=0,shakeY=0,shakeDur=0,shakeMag=0;
 
 const GRID_SZ=120;let spatialGrid={};
 function gridKey(x,y){return`${Math.floor(x/GRID_SZ)},${Math.floor(y/GRID_SZ)}`;}
@@ -2575,9 +2566,9 @@ const ROUND_MULT={
   3:{1:{intel:1.5,speed:1.4,hp:1.8,dmg:1.7,bossHp:1.6},2:{intel:2.2,speed:1.8,hp:2.5,dmg:2.3,bossHp:2.4},3:{intel:3.0,speed:2.4,hp:3.4,dmg:3.1,bossHp:3.8}},
 };
 const PLAYER_STAGE_BONUS={hpPerStage:120,shieldPerStage:80,speedPerStage:0.12,dmgPerStage:35,squadHpPerStage:160,squadDmgPerStage:1.4};const WEAPONS=[
-{gun:'RIFLE',  ammo:90,reserve:9999,rate:1,dmg:55,pwr:'SHADOW',shots:1},
-  {gun:'ASSAULT',ammo:75,reserve:9999,rate:1,dmg:85,pwr:'SHADOW',shots:2},
-  {gun:'PLASMA', ammo:45,reserve:9999,rate:1,dmg:130,pwr:'SHADOW',shots:3},
+{gun:'RIFLE',  ammo:200,reserve:9999,rate:1,dmg:55,pwr:'SHADOW',shots:1},
+  {gun:'ASSAULT',ammo:180,reserve:9999,rate:1,dmg:85,pwr:'SHADOW',shots:2},
+  {gun:'PLASMA', ammo:120,reserve:9999,rate:1,dmg:130,pwr:'SHADOW',shots:3},
 ];
 const DIFF={easy:{mul:0.5,pHp:1200,pShield:800,sqHp:820},medium:{mul:0.75,pHp:950,pShield:620,sqHp:680},hard:{mul:1.1,pHp:720,pShield:460,sqHp:520}};let DC=DIFF.medium;
 const BASE_POSITIONS=[{x:WORLD_W*.12,y:WORLD_H*.5},{x:WORLD_W*.88,y:WORLD_H*.5},{x:WORLD_W*.5,y:WORLD_H*.12},{x:WORLD_W*.5,y:WORLD_H*.88}];
