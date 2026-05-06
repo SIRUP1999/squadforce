@@ -1305,7 +1305,7 @@ const mmx=MM.getContext('2d');
 CV.width=window.innerWidth;CV.height=window.innerHeight;
 let W=CV.width,H=CV.height;
 const _isMob=typeof isMobileDevice!=='undefined'?isMobileDevice:(('ontouchstart' in window)||navigator.maxTouchPoints>0);
-const WORLD_W=_isMob?Math.max(W*1.2,1200):Math.max(W*2.4,3200),WORLD_H=_isMob?Math.max(H*1.2,1000):Math.max(H*2.4,2400);let camX=0,camY=0,shakeX=0,shakeY=0,shakeDur=0,shakeMag=0;
+const WORLD_W=_isMob?Math.max(W*2.0,2200):Math.max(W*2.4,3200),WORLD_H=_isMob?Math.max(H*2.0,1800):Math.max(H*2.4,2400);let camX=0,camY=0,shakeX=0,shakeY=0,shakeDur=0,shakeMag=0;
 
 const GRID_SZ=120;let spatialGrid={};
 function gridKey(x,y){return`${Math.floor(x/GRID_SZ)},${Math.floor(y/GRID_SZ)}`;}
@@ -2651,7 +2651,7 @@ const BLADE_SHOTS_MAX=18;let bladeShotsLeft=0;let combatMode=false,combatTimer=0
 // ── POWER MODES ───────────────────────────────────
 let knifeMode=false,knifeModeTimer=0,KNIFE_MODE_DUR=480,knifeFireCD=0,KNIFE_FIRE_RATE=22;
 let bladeMode=false,bladeModeTimer=0,BLADE_MODE_DUR=400,bladeFireCD=0,BLADE_FIRE_RATE=35;
-let gameSpeed=1.0;let gameSpeedSetting=1.0;let squadOrder='follow',frameN=0;let comboCount=0,comboTimer=0,quickKills=0,quickKillTimer=0;
+let gameSpeed=1.0;let gameSpeedSetting=_isMob?1.38:1.0;let squadOrder='follow',frameN=0;let comboCount=0,comboTimer=0,quickKills=0,quickKillTimer=0;
 let reviveTarget=null,reviveProg=0,reviving=false,REVIVE_TIME=130;
 let ownedPerks=[],sosPings=[],pvpKills=0;
 let berserkActive=false,berserkTimer=0,berserkCooldown=0;
@@ -3655,7 +3655,7 @@ function drawBoss(){
 
 // ── BARREL ──────────────────────────────────────────
 function drawEnemyVisual(e,sx,sy,ec){
-  const sz=e.sz||18;
+  const sz=_isMob?Math.round((e.sz||18)*0.72):(e.sz||18);
 drawStickFigure(sx,sy,e.angle,ec,sz,false,0,e.crouching,false,e.berserkMode,e.sleeping,e.isMoving,e.stepPhase||0,null,false);
   if(e.dead)return;
   // Faction shirt + commander badge
@@ -7097,7 +7097,7 @@ function enterSpectateMode(){
 if(_invisActive)ctx.globalAlpha=0.22;
   const pCol=P.flashT>0?'#ffff88':(_invisActive?'#8800ff':(P.hiding?'#aaccff':(berserkActive?'#ff4444':myPlayerColor)));// Player faces left or right based on mouse — no spinning
 const _pFaceAngle = mouse.x+camX > P.x ? 0 : Math.PI;
-drawStickFigure(psp.x,psp.y,_pFaceAngle,pCol,21+(P.mergeSize||0),P.dead,P.deadT||0,P.crouching,false,berserkActive||mergeMode,false,P.isMoving,P.stepPhase||0,'#39ff8a',false);
+drawStickFigure(psp.x,psp.y,_pFaceAngle,pCol,_isMob?14+(P.mergeSize||0):21+(P.mergeSize||0),P.dead,P.deadT||0,P.crouching,false,berserkActive||mergeMode,false,P.isMoving,P.stepPhase||0,'#39ff8a',false);
 ctx.globalAlpha=1;
 if(P.dead)P.deadT=(P.deadT||0)+1;if(!P.dead){
   ctx.fillStyle=berserkActive?'#ff4444':'#39ff8a';ctx.font='bold 9px Courier New';ctx.textAlign='center';
@@ -7212,7 +7212,7 @@ if(P.dead)P.deadT=(P.deadT||0)+1;if(!P.dead){
       const rageCol=getSquadRageColor(m);
       const mc=m.flashT>0?'#ffff88':(rageCol||(m.berserkMode?'#ff8888':m.col));
       const sh=m.role==='SHIELD'&&m.shieldHp>0;
-      const sz=m.raging?20:18;
+      const sz=_isMob?(m.raging?14:12):(m.raging?20:18);
 
 // Draw rage aura BEHIND the figure, fully isolated
       if(m.raging){
@@ -7755,6 +7755,8 @@ const gsEl=document.getElementById('setGameSpeed');
 const gsVals=['SLOW','SLOW+','NORMAL','FAST','TURBO'];
 const gsSpeeds=[0.55,0.78,1.0,1.38,1.85];
 if(gsEl){
+  // Set slider to FAST (4) on mobile, NORMAL (3) on desktop
+  if(_isMob){gsEl.value='4';document.getElementById('setGameSpeedVal').textContent='FAST';}
   gsEl.addEventListener('input',e=>{
     const idx=+e.target.value-1;
     gameSpeedSetting=gsSpeeds[idx];
