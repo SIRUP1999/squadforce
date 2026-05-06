@@ -2651,7 +2651,7 @@ const BLADE_SHOTS_MAX=18;let bladeShotsLeft=0;let combatMode=false,combatTimer=0
 // ── POWER MODES ───────────────────────────────────
 let knifeMode=false,knifeModeTimer=0,KNIFE_MODE_DUR=480,knifeFireCD=0,KNIFE_FIRE_RATE=22;
 let bladeMode=false,bladeModeTimer=0,BLADE_MODE_DUR=400,bladeFireCD=0,BLADE_FIRE_RATE=35;
-let gameSpeed=1.0;let gameSpeedSetting=_isMob?1.38:1.0;let squadOrder='follow',frameN=0;let comboCount=0,comboTimer=0,quickKills=0,quickKillTimer=0;
+let gameSpeed=1.0;let gameSpeedSetting=1.38;let squadOrder='follow',frameN=0;let comboCount=0,comboTimer=0,quickKills=0,quickKillTimer=0;
 let reviveTarget=null,reviveProg=0,reviving=false,REVIVE_TIME=130;
 let ownedPerks=[],sosPings=[],pvpKills=0;
 let berserkActive=false,berserkTimer=0,berserkCooldown=0;
@@ -3655,7 +3655,7 @@ function drawBoss(){
 
 // ── BARREL ──────────────────────────────────────────
 function drawEnemyVisual(e,sx,sy,ec){
-  const sz=_isMob?Math.round((e.sz||18)*0.72):(e.sz||18);
+  const sz=e.sz||18;
 drawStickFigure(sx,sy,e.angle,ec,sz,false,0,e.crouching,false,e.berserkMode,e.sleeping,e.isMoving,e.stepPhase||0,null,false);
   if(e.dead)return;
   // Faction shirt + commander badge
@@ -7755,8 +7755,8 @@ const gsEl=document.getElementById('setGameSpeed');
 const gsVals=['SLOW','SLOW+','NORMAL','FAST','TURBO'];
 const gsSpeeds=[0.55,0.78,1.0,1.38,1.85];
 if(gsEl){
-  // Set slider to FAST (4) on mobile, NORMAL (3) on desktop
-  if(_isMob){gsEl.value='4';document.getElementById('setGameSpeedVal').textContent='FAST';}
+  // Set slider to FAST (4) on all platforms
+  if(gsEl){gsEl.value='4';document.getElementById('setGameSpeedVal').textContent='FAST';}
   gsEl.addEventListener('input',e=>{
     const idx=+e.target.value-1;
     gameSpeedSetting=gsSpeeds[idx];
@@ -7852,7 +7852,13 @@ document.getElementById('resumeBtn').addEventListener('click',()=>{
   const saved=loadProgress();if(!saved)return;
   myPlayerName=saved.name||document.getElementById('nameInput').value.trim()||'SOLDIER';
   myPlayerColor=saved.color||selectedColor;difficulty=saved.difficulty||difficulty;
-  showGameModeModal('resume');
+  // Skip game mode modal — use previously selected mode (rankedMode already set)
+  _pendingGameType='resume';
+  document.getElementById('gameModeModal').style.display='none';
+  soloMode=true;
+  document.getElementById('loginScreen').style.display='none';
+  startGame(saved.round||1,saved.stage||1,saved.score||0);
+  setTimeout(()=>addKillFeed&&addKillFeed(`↩ RESUMED — ${rankedMode?'🏆 RANKED':'Fun mode'}`, 'b'),1500);
 });
 
 async function _startCreateRoom(){
@@ -8437,8 +8443,29 @@ function onBtn(id,onDown,onUp){
   onBtn('mBtnPause',()=>{if(GS&&GS.running)togglePause();});
   onBtn('mBtnRevive',()=>{if(P&&!P.dead&&GS&&GS.running)tryRevive();});
   onBtn('mBtnRage',()=>{if(P&&!P.dead&&GS&&GS.running)activateRage();});
-  onBtn('mBtnKnife',()=>{if(P&&!P.dead)toggleKnifeMode();});
-  onBtn('mBtnBlade',()=>{if(P&&!P.dead)toggleBladeMode();});
+  onBtn('mBtnKnife',()=>{
+    if(!P||P.dead||!GS||!GS.running)return;
+    if(!knifeMode)toggleKnifeMode();
+    const ne=nearestEnemy(P.x,P.y);
+    if(ne&&!ne.dead)P.angle=Math.atan2(ne.y-P.y,ne.x-P.x);
+    throwKnife();
+    // Auto-repeat while held
+    let _kInt=setInterval(()=>{
+      if(!knifeMode||!P||P.dead||!GS||!GS.running){clearInterval(_kInt);return;}
+      const ne2=nearestEnemy(P.x,P.y);
+      if(ne2&&!ne2.dead)P.angle=Math.atan2(ne2.y-P.y,ne2.x-P.x);
+      if(knifeFireCD<=0)throwKnife();
+    },KNIFE_FIRE_RATE*16);
+    // Stop on release — handled by onBtn's onUp
+    return _kInt;
+  },()=>{});
+  onBtn('mBtnBlade',()=>{
+    if(!P||P.dead||!GS||!GS.running)return;
+    if(!bladeMode)toggleBladeMode();
+    const ne=nearestEnemy(P.x,P.y);
+    if(ne&&!ne.dead)P.angle=Math.atan2(ne.y-P.y,ne.x-P.x);
+    throwEnergyBlade();
+  });
   onBtn('mBtnCombat',()=>{if(P&&!P.dead)activateCombatMode();});
 
 // Update button states every 200ms
