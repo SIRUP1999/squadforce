@@ -202,7 +202,7 @@ function saveProfile(){const name=document.getElementById('nameInput').value.tri
 <style>  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;}
 :root{--green:#39ff8a;--red:#ff3a3a;--gold:#ffd700;--blue:#4af;--bg:#050608;--border:#1a2a1a;}
-body{background:var(--bg);color:#fff;font-family:'Share Tech Mono','Courier New',monospace;overflow:hidden;user-select:none;}
+body{background:var(--bg);color:#fff;font-family:'Share Tech Mono','Courier New',monospace;overflow:auto;user-select:none;-webkit-overflow-scrolling:touch;}
 .logo,.form-box h2,.fl label,.btn,.hv,.hl,.hb,.smr,.sn,.ss,.pn,.pd,.rEntry,.ply-name,.ply-status,.rEntry *{font-family:'Share Tech Mono','Courier New',monospace!important;}
 canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:none;}
 @media(max-width:900px) and (pointer:coarse){
@@ -444,8 +444,10 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
 #mobileControls{
   position:fixed;inset:0;
   pointer-events:none;
-  z-index:1;
+  z-index:-999;
   display:none;
+  visibility:hidden;
+  opacity:0;
   isolation:isolate;
   width:100vw;
   height:100vh;
@@ -456,18 +458,23 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
   #mobileControls{
     display:none !important;
     pointer-events:none !important;
+    visibility:hidden !important;
+    z-index:-999 !important;
   }
   /* Enable only when game is active */
   #mobileControls.active{
     display:flex !important;
     pointer-events:all !important;
+    visibility:visible !important;
     z-index:400 !important;
+    opacity:1 !important;
   }
 }
 
 /* Ensure child elements are touchable when active */
 #mobileControls.active * {
   pointer-events:all !important;
+  visibility:visible !important;
 }
 #mobileControls.active #joystickZone,
 #mobileControls.active #mobileRightPanel,
@@ -6827,8 +6834,11 @@ const isMobile=('ontouchstart' in window)||navigator.maxTouchPoints>0||window.ma
     // ADD .active CLASS TO SHOW MOBILE CONTROLS DURING GAME
     if(isMobile){
       mc2.classList.add('active');
+      // Disable body scroll when game starts
+      document.body.style.overflow='hidden';
     } else {
       mc2.classList.remove('active');
+      document.body.style.overflow='auto';
     }
     mc2.style.pointerEvents='all';
     mc2.style.zIndex='400';
