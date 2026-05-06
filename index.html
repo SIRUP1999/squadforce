@@ -478,10 +478,6 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
   body{cursor:default;}
   canvas{cursor:default;}
   
-  /* Force mobile controls to show on mobile devices */
-  #mobileControls{display:flex!important;}
-  #mobileControls.active{display:flex!important;}
-  
   #sqPanel{display:block!important;right:4px!important;top:60px!important;min-width:160px!important;font-size:9px!important;padding:6px!important;}
   #powerBars{display:none!important;}
   #onlineSidePanel{display:none!important;}
@@ -5702,6 +5698,10 @@ stageLives--;updateLivesHUD();saveProgress();
 }
 
 function showDeathScreen(){
+  // Remove mobile controls when death screen shows
+  const _mc = document.getElementById('mobileControls');
+  if(_mc) _mc.classList.remove('active');
+  
   document.getElementById('deathScreen').style.display='flex';
   document.getElementById('killedMsg').textContent='💀 ELIMINATED IN COMBAT';
   document.getElementById('killerInfo').textContent=`Score: ${GS.score} | Kills: ${pvpKills} | R${GS.round}S${GS.stage}`;
@@ -5725,8 +5725,12 @@ function showDeathScreen(){
 
 function doRespawn(){
   document.getElementById('deathScreen').style.display='none';
+  
+  // Re-enable mobile controls on respawn
   const _isMob=('ontouchstart' in window)||navigator.maxTouchPoints>0;
-  const _mc=document.getElementById('mobileControls');if(_mc)_mc.style.display=_isMob?'flex':'none';
+  const _mc=document.getElementById('mobileControls');
+  if(_mc && _isMob) _mc.classList.add('active');
+  
   const _qc=document.getElementById('quickCmds');if(_qc)_qc.style.display=_isMob?'flex':'none';
   if(isOnline){
     P._mpRespawnedFlag=true;
@@ -5749,8 +5753,12 @@ loopId=requestAnimationFrame(gameLoop);
 }
 function doRestartStage(){
   document.getElementById('deathScreen').style.display='none';
+  
+  // Re-enable mobile controls on restart
   const _isMob2=('ontouchstart' in window)||navigator.maxTouchPoints>0;
-  const _mc2=document.getElementById('mobileControls');if(_mc2)_mc2.style.display=_isMob2?'flex':'none';
+  const _mc2=document.getElementById('mobileControls');
+  if(_mc2 && _isMob2) _mc2.classList.add('active');
+  
   const _qc2=document.getElementById('quickCmds');if(_qc2)_qc2.style.display=_isMob2?'flex':'none';
   stageLives=MAX_LIVES;
 
@@ -6796,7 +6804,13 @@ document.getElementById('bossBar').style.display='none';document.getElementById(
 const isMobile=('ontouchstart' in window)||navigator.maxTouchPoints>0||window.matchMedia('(pointer:coarse)').matches||/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   const mc2=document.getElementById('mobileControls');
   if(mc2){
-mc2.style.display=isMobile?'flex':'none';    mc2.style.pointerEvents='all';
+    // ADD .active CLASS TO SHOW MOBILE CONTROLS DURING GAME
+    if(isMobile){
+      mc2.classList.add('active');
+    } else {
+      mc2.classList.remove('active');
+    }
+    mc2.style.pointerEvents='all';
     mc2.style.zIndex='400';
     if(isMobile){
       mc2.querySelectorAll('.mBtn').forEach(b=>{
@@ -7864,6 +7878,10 @@ document.getElementById('leaveBtn').addEventListener('click',async()=>{
   if(GS)GS.running=false;
   if(loopId){cancelAnimationFrame(loopId);loopId=null;}
   stopMusic();
+  // Remove mobile controls when returning to menu
+  const _mcReturn = document.getElementById('mobileControls');
+  if(_mcReturn) _mcReturn.classList.remove('active');
+  
   document.getElementById('lobbyScreen').style.display='none';
   document.getElementById('loginScreen').style.display='flex';
   saveProgress();
@@ -7875,11 +7893,19 @@ document.getElementById('closeOnlineBtn').addEventListener('click',()=>{document
 document.getElementById('onlineBtn').addEventListener('click',()=>{if(isOnline)showOnlineBrowser();});
 
 document.getElementById('playAgainBtn').addEventListener('click',()=>{
+  // Remove mobile controls when returning to menu from results
+  const _mcPlayAgain = document.getElementById('mobileControls');
+  if(_mcPlayAgain) _mcPlayAgain.classList.remove('active');
+  
   document.getElementById('resultsScreen').style.display='none';
   document.getElementById('loginScreen').style.display='flex';
   const saved=loadProgress();if(saved)document.getElementById('resumeBtn').style.display='block';
 });
 document.getElementById('mainMenuBtn').addEventListener('click',()=>{
+  // Remove mobile controls when returning to main menu
+  const _mcMainMenu = document.getElementById('mobileControls');
+  if(_mcMainMenu) _mcMainMenu.classList.remove('active');
+  
   document.getElementById('resultsScreen').style.display='none';
   document.getElementById('loginScreen').style.display='flex';
 });
