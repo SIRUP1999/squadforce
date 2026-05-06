@@ -502,9 +502,14 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
   position:fixed;
   bottom:24px;left:16px;
   width:140px;height:140px;
-  pointer-events:all;
+  pointer-events:none;
   z-index:410;
 }
+/* Enable joystick only during game */
+#mobileControls.active #joystickZone{
+  pointer-events:all !important;
+}
+
 #joystickBase{
   width:140px;height:140px;
   border-radius:50%;
@@ -529,10 +534,14 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
 #mobileShootZone{
   position:fixed;
   top:0;left:170px;right:220px;bottom:0;
-  pointer-events:all;
+  pointer-events:none;
   z-index:405;
-  background: transparent;                        /* ADD THIS */
-  -webkit-tap-highlight-color: transparent;       /* ADD THIS */
+  background: transparent;
+  -webkit-tap-highlight-color: transparent;
+}
+/* Enable shoot zone only during game */
+#mobileControls.active #mobileShootZone{
+  pointer-events:all !important;
 }
 
 /* ── RIGHT BUTTON PANEL ── */
@@ -540,9 +549,13 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
   position:fixed;
   bottom:20px;right:10px;
   display:flex;flex-direction:column;gap:10px;
-  pointer-events:all;
+  pointer-events:none;
   align-items:flex-end;
   z-index:410;
+}
+/* Enable right panel only during game */
+#mobileControls.active #mobileRightPanel{
+  pointer-events:all !important;
 }
 #mobileRow1,#mobileRow2{
   display:flex;gap:10px;align-items:center;
@@ -557,7 +570,7 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
   font-size:10px;font-weight:700;
   font-family:'Share Tech Mono','Courier New',monospace;
   text-align:center;line-height:1.1;
-  cursor:pointer;pointer-events:all!important;
+  cursor:pointer;pointer-events:none;
   user-select:none;-webkit-user-select:none;
   -webkit-tap-highlight-color:transparent;
   backdrop-filter:blur(4px);
@@ -566,6 +579,10 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
   -webkit-touch-callout:none;
   position:relative;
   z-index:420;
+}
+/* Enable buttons only during game */
+#mobileControls.active .mBtn{
+  pointer-events:all !important;
 }
 .mBtn:active{transform:scale(0.82);opacity:0.65;}
 
@@ -594,7 +611,10 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
     display:flex!important;
     pointer-events:none!important;
   }
-  #joystickZone,#mobileRightPanel,#mobileShootZone{
+  /* Enable controls in landscape when game is active */
+  #mobileControls.active #joystickZone,
+  #mobileControls.active #mobileRightPanel,
+  #mobileControls.active #mobileShootZone{
     pointer-events:all!important;
   }
 
