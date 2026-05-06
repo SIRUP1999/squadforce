@@ -276,6 +276,14 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
 #streakBanner{position:absolute;bottom:270px;left:14px;text-align:left;pointer-events:none;opacity:0;z-index:25;}
 #streakTxt{font-size:22px;font-weight:900;letter-spacing:3px;text-shadow:0 0 20px currentColor;}
 #stageBanner{position:absolute;top:37%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;opacity:0;transition:opacity .5s;z-index:60;}
+@media(max-width:900px),(pointer:coarse){#stageBanner{top:14%!important;}
+#stageTitle{font-size:28px!important;letter-spacing:3px!important;}
+#stageSub{font-size:10px!important;}
+#medkitUI{bottom:auto!important;top:52px!important;left:50%!important;transform:translateX(-50%)!important;}
+#qHint{bottom:auto!important;top:38px!important;}
+#comboBox{bottom:200px!important;left:14px!important;}
+#streakBanner{bottom:240px!important;left:14px!important;}
+}
 #stageTitle{font-size:50px;font-weight:900;letter-spacing:7px;text-shadow:0 0 40px currentColor;}
 #stageSub{font-size:14px;color:#fff;letter-spacing:3px;margin-top:6px;opacity:.8;}
 #powerBars{position:absolute;bottom:76px;right:14px;display:flex;flex-direction:column;gap:3px;pointer-events:none;}
@@ -502,6 +510,7 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
   #mc{width:72px!important;height:72px!important;}
   #cmdPanel{position:fixed;bottom:180px;left:50%;transform:translateX(-50%);width:60vw;max-width:320px;z-index:450;}
   #ci{width:42vw;font-size:12px;}
+  #mobileRow3{display:flex;gap:10px;align-items:center;}
 }
 
 /* ── JOYSTICK ── */
@@ -594,10 +603,10 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
 .mBtn:active{transform:scale(0.82);opacity:0.65;}
 
 #mBtnFire{
-  width:84px;height:84px;
+  width:72px;height:72px;
   background:rgba(255,50,50,0.2);
   border-color:#ff3333;color:#ff3333;
-  font-size:15px;
+  font-size:13px;
   box-shadow:0 0 24px rgba(255,50,50,0.4),inset 0 0 12px rgba(255,50,50,0.1);
 }
 #mBtnFire:active{background:rgba(255,50,50,0.5);box-shadow:0 0 44px rgba(255,50,50,0.7);}
@@ -607,6 +616,12 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
 #mBtnMerge{background:rgba(57,255,138,0.12);border-color:#39ff8a;color:#39ff8a;box-shadow:0 0 10px rgba(57,255,138,0.2);}
 #mBtnBerserk{background:rgba(255,34,0,0.12);border-color:#ff2200;color:#ff2200;box-shadow:0 0 10px rgba(255,34,0,0.2);}
 #mBtnPause{background:rgba(68,136,255,0.12);border-color:#4488ff;color:#4488ff;box-shadow:0 0 10px rgba(68,136,255,0.2);}
+#mBtnRevive{background:rgba(57,255,138,0.14);border-color:#39ff8a;color:#39ff8a;box-shadow:0 0 10px rgba(57,255,138,0.25);}
+#mBtnRage{background:rgba(255,68,0,0.14);border-color:#ff4400;color:#ff4400;box-shadow:0 0 10px rgba(255,68,0,0.25);}
+#mBtnKnife{background:rgba(255,215,0,0.12);border-color:#ffd700;color:#ffd700;box-shadow:0 0 10px rgba(255,215,0,0.2);}
+#mBtnBlade{background:rgba(68,136,255,0.12);border-color:#4488ff;color:#4488ff;box-shadow:0 0 10px rgba(68,136,255,0.2);}
+#mBtnCombat{background:rgba(255,170,0,0.12);border-color:#ffaa00;color:#ffaa00;box-shadow:0 0 10px rgba(255,170,0,0.2);}
+#mobileRow3{display:flex;gap:10px;align-items:center;}
 
 /* ── LANDSCAPE COMPACT MODE ── */
 /* Covers all mobile landscape: phones up to 700px height in landscape */
@@ -630,12 +645,11 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
   #joystickBase{width:115px!important;height:115px!important;}
   #joystickKnob{width:46px!important;height:46px!important;}
 
-  /* Right panel — bottom-right, compact */
-  #mobileRightPanel{bottom:6px!important;right:6px!important;gap:5px!important;align-items:flex-end!important;}
-  #mobileRow1{gap:6px!important;}
-  #mobileRow2{gap:6px!important;}
-  .mBtn{width:46px!important;height:46px!important;font-size:7px!important;gap:0px!important;}
-  #mBtnFire{width:72px!important;height:72px!important;font-size:13px!important;}
+  /* Right panel — bottom-right, compact 3 rows */
+  #mobileRightPanel{bottom:4px!important;right:4px!important;gap:3px!important;align-items:flex-end!important;}
+  #mobileRow1,#mobileRow2,#mobileRow3{gap:4px!important;}
+  .mBtn{width:38px!important;height:38px!important;font-size:6px!important;gap:0px!important;}
+  #mBtnFire{width:56px!important;height:56px!important;font-size:11px!important;}
 
   /* Shoot zone — full middle area between joystick and buttons */
   #mobileShootZone{left:135px!important;right:200px!important;top:0!important;bottom:0!important;}
@@ -882,16 +896,20 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
   <div id="mobileRightPanel">
     <div id="mobileRow1">
       <div class="mBtn" id="mBtnPause">⏸<span style="font-size:7px">PAUSE</span></div>
-      <div class="mBtn" id="mBtnPower">⚡<span style="font-size:7px">POWER</span></div>
+      <div class="mBtn" id="mBtnRevive">✚<span style="font-size:7px">REVIVE</span></div>
+      <div class="mBtn" id="mBtnRage">⚡<span style="font-size:7px">RAGE</span></div>
+      <div class="mBtn" id="mBtnPower">🥷<span style="font-size:7px">POWER</span></div>
+    </div>
+    <div id="mobileRow2">
+      <div class="mBtn" id="mBtnKnife">🔪<span style="font-size:7px">KNIFE</span></div>
+      <div class="mBtn" id="mBtnBlade">⚔️<span style="font-size:7px">BLADE</span></div>
       <div class="mBtn" id="mBtnMelee">👊<span style="font-size:7px">MELEE</span></div>
       <div class="mBtn" id="mBtnReload">↺<span style="font-size:7px">RELOAD</span></div>
     </div>
-    <div id="mobileRow2">
-      <div class="mBtn" id="mBtnMerge">⚡<span style="font-size:7px">MERGE</span></div>
-      
-      <div class="mBtn" id="mBtnKnife" style="display:none;">🔪<span style="font-size:7px">KNIFE</span></div>
-<div class="mBtn" id="mBtnBlade" style="display:none;">⚔️<span style="font-size:7px">BLADE</span></div>
-<div class="mBtn" id="mBtnCombat" style="display:none;">👊<span style="font-size:7px">COMBAT</span></div>
+    <div id="mobileRow3">
+      <div class="mBtn" id="mBtnMerge">🔗<span style="font-size:7px">MERGE</span></div>
+      <div class="mBtn" id="mBtnCombat">👊<span style="font-size:7px">COMBAT</span></div>
+      <div class="mBtn" id="mBtnBerserk">🔴<span style="font-size:7px">BERSRK</span></div>
       <div class="mBtn" id="mBtnFire">🔫<span style="font-size:9px">FIRE</span></div>
     </div>
   </div>
@@ -8415,25 +8433,39 @@ function onBtn(id,onDown,onUp){
   onBtn('mBtnPower',()=>{if(P&&!P.dead)activatePower();});
   onBtn('mBtnBerserk',()=>{if(P&&!P.dead)activateBerserk();});
   onBtn('mBtnPause',()=>{if(GS&&GS.running)togglePause();});
-onBtn('mBtnKnife',()=>{if(P&&!P.dead)throwKnife();});
-onBtn('mBtnBlade',()=>{if(P&&!P.dead)throwEnergyBlade();});
-onBtn('mBtnCombat',()=>{if(P&&!P.dead&&P.ammo<=0)activateCombatMode();});
+  onBtn('mBtnRevive',()=>{if(P&&!P.dead&&GS&&GS.running)tryRevive();});
+  onBtn('mBtnRage',()=>{if(P&&!P.dead&&GS&&GS.running)activateRage();});
+  onBtn('mBtnKnife',()=>{if(P&&!P.dead)toggleKnifeMode();});
+  onBtn('mBtnBlade',()=>{if(P&&!P.dead)toggleBladeMode();});
+  onBtn('mBtnCombat',()=>{if(P&&!P.dead)activateCombatMode();});
 
-// Show/hide buttons based on ammo
+// Update button states every 200ms
 setInterval(()=>{
-  const knife=document.getElementById('mBtnKnife');
-  const blade=document.getElementById('mBtnBlade');
-  const combat=document.getElementById('mBtnCombat');
-  if(!knife||!blade||!combat)return;
-  if(P&&GS&&GS.running&&P.ammo<=5){
-    knife.style.display='flex';
-    blade.style.display='flex';
-    combat.style.display='flex';
-  }else{
-    knife.style.display='none';
-    blade.style.display='none';
-    combat.style.display='none';
+  if(!P||!GS||!GS.running)return;
+  // Knife active indicator
+  const knifeBtn=document.getElementById('mBtnKnife');
+  if(knifeBtn){knifeBtn.style.background=knifeMode?'rgba(255,215,0,0.45)':'rgba(255,215,0,0.12)';knifeBtn.style.boxShadow=knifeMode?'0 0 18px rgba(255,215,0,0.8)':'0 0 10px rgba(255,215,0,0.2)';}
+  // Blade active indicator
+  const bladeBtn=document.getElementById('mBtnBlade');
+  if(bladeBtn){bladeBtn.style.background=bladeMode?'rgba(68,136,255,0.45)':'rgba(68,136,255,0.12)';bladeBtn.style.boxShadow=bladeMode?'0 0 18px rgba(68,136,255,0.8)':'0 0 10px rgba(68,136,255,0.2)';}
+  // Rage button — glow when ready
+  const rageBtn=document.getElementById('mBtnRage');
+  if(rageBtn){
+    if(rageActive){rageBtn.style.background='rgba(255,68,0,0.55)';rageBtn.style.boxShadow='0 0 22px rgba(255,68,0,0.9)';}
+    else if(rageCharge>=RAGE_MAX){rageBtn.style.background='rgba(255,68,0,0.35)';rageBtn.style.boxShadow='0 0 16px rgba(255,68,0,0.7)';rageBtn.style.animation='blink .5s infinite';}
+    else{rageBtn.style.background='rgba(255,68,0,0.12)';rageBtn.style.boxShadow='0 0 10px rgba(255,68,0,0.25)';rageBtn.style.animation='';}
   }
+  // Revive button — glow when squad member nearby needs revive
+  const revBtn=document.getElementById('mBtnRevive');
+  if(revBtn){
+    const needsRevive=SQ&&SQ.some(m=>!m.alive&&dist(P,m)<95);
+    if(reviving){revBtn.style.background='rgba(57,255,138,0.45)';revBtn.style.boxShadow='0 0 18px rgba(57,255,138,0.8)';}
+    else if(needsRevive){revBtn.style.background='rgba(57,255,138,0.3)';revBtn.style.boxShadow='0 0 14px rgba(57,255,138,0.6)';revBtn.style.animation='blink .5s infinite';}
+    else{revBtn.style.background='rgba(57,255,138,0.14)';revBtn.style.boxShadow='0 0 10px rgba(57,255,138,0.25)';revBtn.style.animation='';}
+  }
+  // Combat mode indicator
+  const combatBtn=document.getElementById('mBtnCombat');
+  if(combatBtn){combatBtn.style.background=combatMode?'rgba(255,170,0,0.45)':'rgba(255,170,0,0.12)';combatBtn.style.boxShadow=combatMode?'0 0 18px rgba(255,170,0,0.8)':'0 0 10px rgba(255,170,0,0.2)';}
 },200);
   // ── MERGE/RELEASE TOGGLE ──────────────────────────
   onBtn('mBtnMerge',()=>{
