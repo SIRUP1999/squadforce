@@ -443,7 +443,7 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
 /* ── MOBILE CONTROLS — ALWAYS VISIBLE ON MOBILE ══ */
 #mobileControls{
   position:fixed;inset:0;
-  pointer-events:all;
+  pointer-events:none;
   z-index:400;
   display:none;
   isolation:isolate;
@@ -451,9 +451,13 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
   height:100vh;
 }
 
-/* FORCE show mobile controls on ALL touch devices */
+/* SHOW mobile controls ONLY during game on touch devices */
 @media(max-width:900px),(pointer:coarse){
   #mobileControls{
+    display:none;
+  }
+  /* Enable ONLY when game is running */
+  body.game-running #mobileControls{
     display:flex!important;
     pointer-events:all!important;
     position:fixed!important;
@@ -464,11 +468,13 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
   }
 }
 
-/* Ensure child elements are touchable */
-#mobileControls * {
+/* Ensure child elements are touchable during game */
+body.game-running #mobileControls * {
   pointer-events:all!important;
 }
-#joystickZone,#mobileRightPanel,#mobileShootZone{
+body.game-running #joystickZone,
+body.game-running #mobileRightPanel,
+body.game-running #mobileShootZone{
   pointer-events:all!important;
 }
 @media(max-width:900px),(pointer:coarse){
@@ -2566,9 +2572,9 @@ const ROUND_MULT={
   3:{1:{intel:1.5,speed:1.4,hp:1.8,dmg:1.7,bossHp:1.6},2:{intel:2.2,speed:1.8,hp:2.5,dmg:2.3,bossHp:2.4},3:{intel:3.0,speed:2.4,hp:3.4,dmg:3.1,bossHp:3.8}},
 };
 const PLAYER_STAGE_BONUS={hpPerStage:120,shieldPerStage:80,speedPerStage:0.12,dmgPerStage:35,squadHpPerStage:160,squadDmgPerStage:1.4};const WEAPONS=[
-{gun:'RIFLE',  ammo:200,reserve:9999,rate:1,dmg:55,pwr:'SHADOW',shots:1},
-  {gun:'ASSAULT',ammo:180,reserve:9999,rate:1,dmg:85,pwr:'SHADOW',shots:2},
-  {gun:'PLASMA', ammo:120,reserve:9999,rate:1,dmg:130,pwr:'SHADOW',shots:3},
+{gun:'RIFLE',  ammo:300,reserve:9999,rate:1,dmg:55,pwr:'SHADOW',shots:1},
+  {gun:'ASSAULT',ammo:270,reserve:9999,rate:1,dmg:85,pwr:'SHADOW',shots:2},
+  {gun:'PLASMA', ammo:180,reserve:9999,rate:1,dmg:130,pwr:'SHADOW',shots:3},
 ];
 const DIFF={easy:{mul:0.5,pHp:1200,pShield:800,sqHp:820},medium:{mul:0.75,pHp:950,pShield:620,sqHp:680},hard:{mul:1.1,pHp:720,pShield:460,sqHp:520}};let DC=DIFF.medium;
 const BASE_POSITIONS=[{x:WORLD_W*.12,y:WORLD_H*.5},{x:WORLD_W*.88,y:WORLD_H*.5},{x:WORLD_W*.5,y:WORLD_H*.12},{x:WORLD_W*.5,y:WORLD_H*.88}];
