@@ -172,7 +172,11 @@ function _initAblyRouter(){
       return;
     }
     // ── ENEMY HIT: client reports damage, host applies ──
-    if(name==='enemy_hit'&&isRoomHost&&GS&&GS.running){
+    if(name==='enemy_killed'&&!isRoomHost&&GS&&GS.running){
+  const _ek=enemies[data.idx];
+  if(_ek&&!_ek.dead){_ek.hp=0;killEnemy(_ek);}
+}
+if(name==='enemy_hit'&&isRoomHost&&GS&&GS.running){
       const _e=enemies.find(e=>e.id===d.id);
       if(_e&&!_e.dead){_e.hp-=d.dmg;_e.flashT=6;if(_e.hp<=0)killEnemy(_e);}
       return;
@@ -506,7 +510,7 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
   .hv{font-size:11px!important;}
   .bar{width:75px!important;}
   #bossBar{width:220px;top:42px;}
-  #enemyCountHUD{font-size:8px!important;bottom:260px!important;left:6px!important;min-width:130px!important;padding:4px 8px!important;}
+  #enemyCountHUD{font-size:8px!important;top:72px!important;bottom:auto!important;left:6px!important;min-width:130px!important;padding:4px 8px!important;}
   #minimap{top:auto!important;bottom:280px!important;left:auto!important;right:6px!important;width:80px!important;height:80px!important;display:block!important;}
   #mc{width:72px!important;height:72px!important;}
   #cmdPanel{position:fixed;bottom:180px;left:50%;transform:translateX(-50%);width:60vw;max-width:320px;z-index:450;}
@@ -1205,7 +1209,7 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
 <div id="combatModeBar" style="position:absolute;bottom:58px;left:50%;transform:translateX(-50%);width:180px;height:6px;background:#0a0000;border:1px solid #663300;border-radius:3px;display:none;overflow:hidden;">
   <div id="combatModeFill" style="height:100%;background:linear-gradient(90deg,#ff8800,#ffcc00);width:100%;"></div>
 </div>
-<div id="enemyCountHUD" style="display:none;position:absolute;bottom:210px;left:14px;background:rgba(0,0,0,0.5);border-left:2px solid #39ff8a;padding:6px 10px;border-radius:0 6px 6px 0;font-family:'Share Tech Mono',monospace;font-size:10px;pointer-events:none;z-index:30;line-height:1.8;min-width:160px;">
+<div id="enemyCountHUD" style="display:none;position:absolute;top:90px;left:14px;background:rgba(0,0,0,0.5);border-left:2px solid #39ff8a;padding:6px 10px;border-radius:0 6px 6px 0;font-family:'Share Tech Mono',monospace;font-size:10px;pointer-events:none;z-index:30;line-height:1.8;min-width:160px;">
   <div id="ecTotal" style="color:#ffd700;font-size:11px;font-weight:bold;margin-bottom:2px;"></div>
   <div id="ecRemain" style="color:#ff6600;"></div>
   <div id="ecKilled" style="color:#39ff8a;"></div>
@@ -2218,7 +2222,7 @@ function _broadcastMyPos(){
     alive:!P.dead,isMoving:P.isMoving,
     stepPhase:+(P.stepPhase||0).toFixed(2),
     crouching:P.crouching,
-    score:GS?GS.score:0,kills:pvpKills||0,
+    score:GS?GS.score:0,kills:pvpKills||0,myKills:P?P.kills||0:0,
     wave:GS?GS.wave:1,stage:GS?GS.stage:1,round:GS?GS.round:1,
     isHost:isRoomHost,ts:Date.now(),
   });
@@ -2239,7 +2243,7 @@ function _broadcastHostState(){
     hp:Math.round(boss.hp),mhp:Math.round(boss.maxHp),
     phase:boss.phase,a:+(boss.angle||0).toFixed(1),
   }:null;
-const ebd=eBullets.slice(0,18).map(b=>({
+const ebd=eBullets.slice(0,30).map(b=>({
     x:Math.round(b.x),y:Math.round(b.y),
     dx:+b.dx.toFixed(1),dy:+b.dy.toFixed(1),
     dmg:Math.round(b.dmg),boss:b.boss?1:0,
@@ -2364,7 +2368,7 @@ if(data.enemies){
       const exists=eBullets.some(cb=>Math.abs(cb.x-hb.x)<35&&Math.abs(cb.y-hb.y)<35);
       if(!exists)eBullets.push({x:hb.x,y:hb.y,dx:hb.dx,dy:hb.dy,life:45,dmg:hb.dmg,boss:hb.boss===1});
     });
-    if(eBullets.length>50)eBullets=eBullets.slice(-50);
+    if(eBullets.length>80)eBullets=eBullets.slice(-80);
   }
 }
 
@@ -5862,7 +5866,8 @@ if(!hit)for(const e of enemies){if(!e.dead&&!e.sleeping&&dist(b,e)<(e.heavy?26:1
   const hitDmg=b.dmg*(inCov(e.x,e.y)&&!e.berserkMode?.48:1);
   e.flashT=5;e.suppressedT=80;spawnBlood(b.x,b.y,3);if(b.crit)burst(b.x,b.y,'#ff4444',3);
   if(mpCoopMode&&b.owner!=='remote'){
-    _reportHit('enemy',enemies.indexOf(e),hitDmg); // host applies damage authoritatively
+    _reportHit('enemy',enemies.indexOf(e),hitDmg);
+    e.flashT=5;spark(b.x,b.y,e.col||'#ff4444',3);
   }else if(!mpCoopMode){
     e.hp-=hitDmg;
     if(e.hp<=0){e._killer=b.shooter||null;killEnemy(e);}
@@ -6800,6 +6805,12 @@ function updateLobbyPlayers(){
 
 // ── CAMERA ───────────────────────────────────────────
 function updateCamera(){
+  // Spectate: follow host player
+  if(spectating&&mpCoopMode){
+    let hostP=null;
+    for(const k in onlinePlayers){if(onlinePlayers[k].isHost&&Date.now()-onlinePlayers[k].ts<8000){hostP=onlinePlayers[k];break;}}
+    if(hostP){camX=clamp(hostP.x-W/2,0,WORLD_W-W);camY=clamp(hostP.y-H/2,0,WORLD_H-H);return;}
+  }
   if(!P)return;
   if(shakeDur>0){shakeDur--;shakeX=(Math.random()-.5)*2*shakeMag;shakeY=(Math.random()-.5)*2*shakeMag;shakeMag*=.86;if(shakeDur<=0){shakeX=0;shakeY=0;}}
 let _spectTarget=P;
@@ -7131,6 +7142,7 @@ if(op.hp!=null&&op.maxHp>0){
 function enterSpectateMode(){
   document.getElementById('deathScreen').style.display='none';
   spectating=true;
+  window._spectateTarget=null;
   document.getElementById('spectateBar').style.display='block';
   document.getElementById('spectateBar').textContent='👁 SPECTATING — Watching the battle! Game ends normally.';
   GS.running=true;
@@ -7580,7 +7592,7 @@ if(done&&!GS.betweenWaves){GS.betweenWaves=true;
   // Boss comes AFTER all killers are announced
 setTimeout(spawnBoss,600000);}else{GS.wave++;GS.score+=450;updateScoreHUD();aiSay(`Wave cleared! Wave ${GS.wave} incoming!`);if(GS.wave%2===0)setTimeout(triggerSupplyDrop,1200);setTimeout(startWave,2400);}}}
 if(frameN%30===0){updatePowerBars();}
-if(frameN%15===0){renderLiveScoreboard();}   drawCursor();drawMinimap();
+if(frameN%5===0){renderLiveScoreboard();}   drawCursor();drawMinimap();
 
 // Always write to storage when online — was previously blocked in co-op, breaking the online badge
 mpSyncT++;
