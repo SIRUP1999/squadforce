@@ -541,7 +541,7 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
 .rRank{font-size:26px;width:38px;}.rName{flex:1;font-size:12px;text-align:left;}.rScore{font-size:11px;color:var(--gold);}.rMedals{font-size:13px;}
 
 
-#pauseScreen{position:fixed;inset:0;background:rgba(0,0,0,.93);z-index:9999!important;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;pointer-events:all!important;touch-action:manipulation!important;isolation:isolate;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;}.pauseBtn{background:#0a1a0a;border:2px solid var(--green);color:var(--green);font-family:'Courier New',monospace;font-size:13px;letter-spacing:2px;padding:12px 28px;border-radius:8px;cursor:pointer;transition:all .2s;width:220px;text-align:center;pointer-events:all!important;touch-action:manipulation!important;-webkit-tap-highlight-color:rgba(57,255,138,0.2);}.pauseBtn:hover,.pauseBtn:active{background:#1a3a1a;transform:scale(1.04);}
+#pauseScreen{position:fixed;inset:0;background:rgba(0,0,0,.93);z-index:9999!important;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;pointer-events:all!important;touch-action:manipulation!important;isolation:isolate;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;}.pauseBtn{background:#0a1a0a;border:2px solid var(--green);color:var(--green);font-family:'Courier New',monospace;font-size:13px;letter-spacing:2px;padding:12px 28px;border-radius:8px;cursor:pointer;transition:all .2s;width:min(280px,100%);max-width:280px;text-align:center;pointer-events:all!important;touch-action:manipulation!important;-webkit-tap-highlight-color:rgba(57,255,138,0.2);}.pauseBtn:hover,.pauseBtn:active{background:#1a3a1a;transform:scale(1.04);}
 .pauseBtn.red{border-color:var(--red);color:var(--red);}
 .pauseBtn.red:active{background:#1a0a0a;}
 #pauseTitle{font-size:52px;font-weight:900;color:#ffd700;letter-spacing:6px;text-shadow:0 0 40px #ffd700;}#pauseSub{font-size:11px;color:#555;letter-spacing:3px;}
@@ -7200,7 +7200,6 @@ function startGame(round=1,stage=1,savedScore=0){
   (async()=>{try{if(screen.orientation&&screen.orientation.lock)await screen.orientation.lock('landscape');}catch(e){}})(  );
   const normalizedScore = Number(savedScore) || 0;
 GS={running:true,round,stage,wave:1,waveKills:0,waveTarget:999,score:normalizedScore,spawnQ:[],spawnTick:0,bossSpawned:false,bossAlive:false,betweenWaves:false,upgradeLevel:Math.min(stage-1,2),stageAdvancing:false,waveStarted:false};enemies=[];bullets=[];eBullets=[];parts=[];pickups=[];fireBombs=[];shockwaves=[];supplyDrops=[];boss=null;  ownedPerks=[];sosPings=[];pvpKills=0;shootCD=0;meleeCD=0;powerCD=0;frameN=0;
-  updateAllHUD();
 
   comboCount=0;comboTimer=0;quickKills=0;quickKillTimer=0;reviving=false;reviveTarget=null;reviveProg=0;
 berserkActive=false;berserkTimer=0;berserkCooldown=0;sleepBombCD=0;shadowUsedThisStage=false;  shakeMag=0;shakeDur=0;spectating=false;
