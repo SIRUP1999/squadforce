@@ -209,7 +209,127 @@ function saveProfile(){const name=document.getElementById('nameInput').value.tri
 body{background:var(--bg);color:#fff;font-family:'Share Tech Mono','Courier New',monospace;overflow:auto;user-select:none;-webkit-overflow-scrolling:touch;}
 .logo,.form-box h2,.fl label,.btn,.hv,.hl,.hb,.smr,.sn,.ss,.pn,.pd,.rEntry,.ply-name,.ply-status,.rEntry *{font-family:'Share Tech Mono','Courier New',monospace!important;}
 canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:none;}
-@media(max-width:900px) and (pointer:coarse){
+
+/* ══ MOBILE OVERRIDES — highest priority ══ */
+@media(max-width:900px),(pointer:coarse){
+  #minimap{
+    position:fixed!important;
+    top:50vh!important;
+    transform:translateY(-50%)!important;
+    right:0!important;
+    left:auto!important;
+    bottom:auto!important;
+    width:88px!important;
+    height:88px!important;
+    border-radius:8px 0 0 8px!important;
+    border:1px solid rgba(57,255,138,0.3)!important;
+    border-right:none!important;
+    background:rgba(0,0,0,0.78)!important;
+    z-index:30!important;
+    pointer-events:none!important;
+  }
+  #mc{
+    width:88px!important;
+    height:88px!important;
+  }
+  #pauseScreen{
+    position:fixed!important;
+    inset:0!important;
+    display:none;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:14px!important;
+    padding:16px!important;
+    z-index:99999!important;
+    background:rgba(0,0,0,0.95)!important;
+    overflow-y:auto!important;
+    touch-action:manipulation!important;
+  }
+  #pauseTitle{
+    font-size:38px!important;
+    letter-spacing:4px!important;
+    text-align:center!important;
+    margin:0!important;
+  }
+  #pauseSub{
+    font-size:9px!important;
+    letter-spacing:2px!important;
+    text-align:center!important;
+    margin:0!important;
+  }
+  #pauseStats{
+    font-size:9px!important;
+    line-height:1.8!important;
+    text-align:center!important;
+    padding:8px 14px!important;
+    max-width:88vw!important;
+  }
+  .pauseBtn{
+    width:200px!important;
+    padding:12px!important;
+    font-size:12px!important;
+    letter-spacing:2px!important;
+  }
+}
+
+@media screen and (orientation:landscape) and (pointer:coarse),
+       screen and (orientation:landscape) and (max-height:700px){
+  #minimap{
+    position:fixed!important;
+    top:50vh!important;
+    transform:translateY(-50%)!important;
+    right:0!important;
+    left:auto!important;
+    bottom:auto!important;
+    width:75px!important;
+    height:75px!important;
+    border-radius:6px 0 0 6px!important;
+    border:1px solid rgba(57,255,138,0.3)!important;
+    border-right:none!important;
+    background:rgba(0,0,0,0.78)!important;
+    z-index:30!important;
+  }
+  #mc{width:75px!important;height:75px!important;}
+  #pauseScreen{
+    position:fixed!important;
+    inset:0!important;
+    display:none;
+    flex-direction:row!important;
+    flex-wrap:wrap!important;
+    align-items:center!important;
+    justify-content:center!important;
+    align-content:center!important;
+    gap:10px!important;
+    padding:10px!important;
+    z-index:99999!important;
+    background:rgba(0,0,0,0.95)!important;
+    touch-action:manipulation!important;
+  }
+  #pauseTitle{
+    font-size:28px!important;
+    width:100%!important;
+    text-align:center!important;
+    margin:0!important;
+  }
+  #pauseSub{
+    font-size:8px!important;
+    width:100%!important;
+    text-align:center!important;
+    margin:0!important;
+  }
+  #pauseStats{
+    font-size:8px!important;
+    padding:6px 12px!important;
+    max-width:420px!important;
+    width:100%!important;
+  }
+  .pauseBtn{
+    width:140px!important;
+    padding:10px!important;
+    font-size:10px!important;
+  }
+}@media(max-width:900px) and (pointer:coarse){
   canvas{cursor:none;}
   body{cursor:none;}
 }.screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;}
@@ -9730,7 +9850,7 @@ function showMultiplayerComingSoon(){
       <span>👥 2–5 Player Co-op</span>
       <span>⚔ Role-based team combat</span>
       <span>🏆 Shared leaderboard rankings</span>
-      <span>📡 Real-time enemy sync</span> 
+      <span>📡 Real-time enemy sync</span>
     </div>
     <button onclick="document.getElementById('mpComingSoonModal').remove()"
       style="background:#0a1a0a;border:2px solid #4488ff;color:#4488ff;
