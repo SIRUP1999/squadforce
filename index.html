@@ -436,9 +436,9 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
 #congratsSub{font-size:14px;letter-spacing:4px;color:#fff;}
 #progressionBadge{position:absolute;left:50%;top:8px;transform:translateX(-50%);text-align:center;pointer-events:none;z-index:15;}
 #progRound{font-size:9px;letter-spacing:2px;}
-.hudBtn{position:absolute;background:rgba(0,0,0,.75);border:1px solid #222;color:#555;font-family:'Courier New',monospace;font-size:8px;padding:3px 7px;border-radius:4px;cursor:pointer;pointer-events:all;z-index:20;transition:all .2s;}
+.hudBtn{position:absolute;background:rgba(0,0,0,.82);border:1px solid #333;color:#777;font-family:'Courier New',monospace;font-size:11px;padding:5px 12px;border-radius:5px;cursor:pointer;pointer-events:all;z-index:20;transition:all .2s;letter-spacing:1px;}
 .hudBtn:hover{color:var(--green);border-color:var(--green);}
-#muteBtn{top:10px;right:14px;}#settingsBtn{top:10px;right:74px;}#pauseBtn{top:10px;right:140px;}#onlineBtn{top:10px;right:208px;display:none;}.speechBubble{position:absolute;background:rgba(0,0,0,.92);border:1px solid;border-radius:6px;padding:4px 8px;font-size:9px;pointer-events:none;z-index:35;white-space:nowrap;letter-spacing:.5px;animation:bubbleFade 2.8s forwards;}
+#muteBtn{top:12px;right:18px;}#settingsBtn{top:12px;right:100px;}#pauseBtn{top:12px;right:192px;}#onlineBtn{top:12px;right:290px;display:none;}.speechBubble{position:absolute;background:rgba(0,0,0,.92);border:1px solid;border-radius:6px;padding:4px 8px;font-size:9px;pointer-events:none;z-index:35;white-space:nowrap;letter-spacing:.5px;animation:bubbleFade 2.8s forwards;}
 #onlineSidePanel{position:absolute;top:210px;left:14px;background:rgba(0,0,0,.78);border:1px solid #1a2a1a;border-radius:6px;padding:7px 10px;min-width:130px;pointer-events:none;display:none;}
 #onlineSidePanel h4{font-size:7px;color:#2a5a2a;letter-spacing:2px;margin-bottom:5px;}
 .opRow{display:flex;align-items:center;gap:5px;margin-bottom:3px;font-size:8px;color:#4a8a4a;}
@@ -510,7 +510,7 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
   .hv{font-size:11px!important;}
   .bar{width:75px!important;}
   #bossBar{width:220px;top:42px;}
-  #enemyCountHUD{font-size:8px!important;top:72px!important;bottom:auto!important;left:6px!important;min-width:130px!important;padding:4px 8px!important;}
+  #enemyCountHUD{font-size:8px!important;top:auto!important;bottom:280px!important;left:6px!important;min-width:130px!important;padding:4px 8px!important;}
   #minimap{top:auto!important;bottom:280px!important;left:auto!important;right:6px!important;width:80px!important;height:80px!important;display:block!important;}
   #mc{width:72px!important;height:72px!important;}
   #cmdPanel{position:fixed;bottom:180px;left:50%;transform:translateX(-50%);width:60vw;max-width:320px;z-index:450;}
@@ -1209,7 +1209,7 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
 <div id="combatModeBar" style="position:absolute;bottom:58px;left:50%;transform:translateX(-50%);width:180px;height:6px;background:#0a0000;border:1px solid #663300;border-radius:3px;display:none;overflow:hidden;">
   <div id="combatModeFill" style="height:100%;background:linear-gradient(90deg,#ff8800,#ffcc00);width:100%;"></div>
 </div>
-<div id="enemyCountHUD" style="display:none;position:absolute;top:90px;left:14px;background:rgba(0,0,0,0.5);border-left:2px solid #39ff8a;padding:6px 10px;border-radius:0 6px 6px 0;font-family:'Share Tech Mono',monospace;font-size:10px;pointer-events:none;z-index:30;line-height:1.8;min-width:160px;">
+<div id="enemyCountHUD" style="display:none;position:absolute;top:208px;left:14px;background:rgba(0,0,0,0.5);border-left:2px solid #39ff8a;padding:6px 10px;border-radius:0 6px 6px 0;font-family:'Share Tech Mono',monospace;font-size:10px;pointer-events:none;z-index:30;line-height:1.8;min-width:160px;">
   <div id="ecTotal" style="color:#ffd700;font-size:11px;font-weight:bold;margin-bottom:2px;"></div>
   <div id="ecRemain" style="color:#ff6600;"></div>
   <div id="ecKilled" style="color:#39ff8a;"></div>
