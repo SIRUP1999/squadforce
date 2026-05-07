@@ -421,8 +421,7 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
 .rRank{font-size:26px;width:38px;}.rName{flex:1;font-size:12px;text-align:left;}.rScore{font-size:11px;color:var(--gold);}.rMedals{font-size:13px;}
 
 
-#pauseScreen{position:fixed;inset:0;background:rgba(0,0,0,.93);z-index:9999!important;display:none;flex-direction:column;align-items:center;justify-content:flex-start;gap:16px;pointer-events:all!important;touch-action:pan-y!important;isolation:isolate;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:24px 16px 40px;}
-.pauseBtn{background:#0a1a0a;border:2px solid var(--green);color:var(--green);font-family:'Courier New',monospace;font-size:13px;letter-spacing:2px;padding:12px 28px;border-radius:8px;cursor:pointer;transition:all .2s;width:220px;text-align:center;pointer-events:all!important;touch-action:manipulation!important;-webkit-tap-highlight-color:rgba(57,255,138,0.2);}.pauseBtn:hover,.pauseBtn:active{background:#1a3a1a;transform:scale(1.04);}
+#pauseScreen{position:fixed;inset:0;background:rgba(0,0,0,.93);z-index:9999!important;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;pointer-events:all!important;touch-action:manipulation!important;isolation:isolate;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;}.pauseBtn{background:#0a1a0a;border:2px solid var(--green);color:var(--green);font-family:'Courier New',monospace;font-size:13px;letter-spacing:2px;padding:12px 28px;border-radius:8px;cursor:pointer;transition:all .2s;width:220px;text-align:center;pointer-events:all!important;touch-action:manipulation!important;-webkit-tap-highlight-color:rgba(57,255,138,0.2);}.pauseBtn:hover,.pauseBtn:active{background:#1a3a1a;transform:scale(1.04);}
 .pauseBtn.red{border-color:var(--red);color:var(--red);}
 .pauseBtn.red:active{background:#1a0a0a;}
 #pauseTitle{font-size:52px;font-weight:900;color:#ffd700;letter-spacing:6px;text-shadow:0 0 40px #ffd700;}#pauseSub{font-size:11px;color:#555;letter-spacing:3px;}
@@ -431,6 +430,52 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
 .pauseBtn:hover,.pauseBtn:active{background:#1a3a1a;transform:scale(1.04);}
 .pauseBtn.red{border-color:var(--red);color:var(--red);}
 .pauseBtn.red:hover{background:#1a0a0a;}
+
+@media(max-width:900px),(pointer:coarse){
+  #pauseScreen{
+    justify-content:center!important;
+    padding:12px 16px!important;
+    gap:12px!important;
+  }
+  #pauseTitle{
+    font-size:36px!important;
+    letter-spacing:4px!important;
+    margin-bottom:0!important;
+  }
+  #pauseSub{
+    font-size:9px!important;
+    letter-spacing:2px!important;
+    margin-bottom:0!important;
+  }
+  #pauseStats{
+    font-size:9px!important;
+    padding:8px 14px!important;
+    line-height:1.7!important;
+    max-width:90vw!important;
+  }
+  .pauseBtn{
+    width:180px!important;
+    padding:11px 20px!important;
+    font-size:12px!important;
+  }
+}
+
+@media screen and (orientation:landscape) and (pointer:coarse),
+       screen and (orientation:landscape) and (max-height:700px){
+  #pauseScreen{
+    justify-content:center!important;
+    flex-direction:row!important;
+    flex-wrap:wrap!important;
+    align-content:center!important;
+    gap:10px!important;
+    padding:10px!important;
+  }
+  #pauseTitle{font-size:28px!important;width:100%!important;text-align:center!important;}
+  #pauseSub{font-size:8px!important;width:100%!important;text-align:center!important;}
+  #pauseStats{font-size:8px!important;padding:6px 12px!important;width:100%!important;max-width:400px!important;}
+  .pauseBtn{width:150px!important;padding:9px 14px!important;font-size:10px!important;}
+}
+
 #congrats{position:absolute;inset:0;background:rgba(0,0,0,.85);z-index:85;display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;}
 #congratsTxt{font-size:60px;font-weight:900;letter-spacing:6px;text-shadow:0 0 60px currentColor;animation:pulse 1s infinite;}
 #congratsSub{font-size:14px;letter-spacing:4px;color:#fff;}
@@ -553,19 +598,22 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
   /* ── BOSS BAR — centered below topBar ── */
   #bossBar{width:min(280px,55vw)!important;top:40px!important;}
 /* ── MINIMAP — top-right corner, near the top ── */
-  /* ── MINIMAP — right side, vertically centered in play area ── */
+ /* ── MINIMAP — right wall, middle height ── */
   #minimap{
+    position:fixed!important;
     top:50%!important;
     transform:translateY(-50%)!important;
     bottom:auto!important;
     left:auto!important;
-    right:4px!important;
+    right:0px!important;
     width:90px!important;
     height:90px!important;
     display:block!important;
     background:rgba(0,0,0,0.72)!important;
     border:1px solid rgba(57,255,138,0.25)!important;
-    border-radius:6px!important;
+    border-left:1px solid rgba(57,255,138,0.25)!important;
+    border-right:none!important;
+    border-radius:6px 0 0 6px!important;
     z-index:18!important;
   }
   #mc{width:90px!important;height:90px!important;}
@@ -933,20 +981,33 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
 
 /* Mobile responsive for game mode modal */
 @media(max-width:600px),(pointer:coarse){
+  #gameModeModal{
+    justify-content:center!important;
+    padding:12px 8px 16px!important;
+    gap:10px!important;
+  }
   #gameModeModal > div:first-child{
-    font-size:16px!important;
+    font-size:15px!important;
     letter-spacing:2px!important;
+    margin-bottom:0!important;
   }
   #gameModeModal > div:nth-child(2){
-    font-size:8px!important;
+    font-size:7px!important;
+    margin:0!important;
+  }
+  /* Cards row */
+  #gameModeModal > div:nth-child(3){
+    gap:10px!important;
+    margin-top:4px!important;
   }
   #gameModeModal > div:nth-child(3) > div{
-    padding:12px 16px!important;
-    width:140px!important;
-    max-width:45vw!important;
+    padding:10px 12px!important;
+    width:136px!important;
+    max-width:43vw!important;
+    border-radius:10px!important;
   }
   #gameModeModal > div:nth-child(3) > div > div:first-child{
-    font-size:28px!important;
+    font-size:26px!important;
     margin-bottom:4px!important;
   }
   #gameModeModal > div:nth-child(3) > div > div:nth-child(2){
@@ -956,12 +1017,46 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
   #gameModeModal > div:nth-child(3) > div > div:nth-child(3){
     font-size:7px!important;
     line-height:1.6!important;
-    margin-top:6px!important;
+    margin-top:5px!important;
   }
+  /* Fine print */
   #gameModeModal > div:nth-child(4){
     font-size:7px!important;
-    max-width:90vw!important;
+    max-width:88vw!important;
+    text-align:center!important;
+    line-height:1.7!important;
+    margin:0!important;
   }
+  /* CANCEL button — always visible, never pushed off screen */
+  #gameModeModal > button{
+    margin-top:4px!important;
+    padding:9px 22px!important;
+    font-size:11px!important;
+    min-width:120px!important;
+    width:auto!important;
+    flex-shrink:0!important;
+  }
+}
+
+/* Landscape mobile modal fix */
+@media screen and (orientation:landscape) and (pointer:coarse),
+       screen and (orientation:landscape) and (max-height:700px){
+  #gameModeModal{
+    justify-content:flex-start!important;
+    padding:8px 8px 14px!important;
+    gap:8px!important;
+    overflow-y:auto!important;
+  }
+  #gameModeModal > div:first-child{font-size:13px!important;letter-spacing:2px!important;}
+  #gameModeModal > div:nth-child(2){font-size:7px!important;}
+  #gameModeModal > div:nth-child(3) > div{
+    padding:8px 10px!important;width:120px!important;max-width:38vw!important;
+  }
+  #gameModeModal > div:nth-child(3) > div > div:first-child{font-size:22px!important;}
+  #gameModeModal > div:nth-child(3) > div > div:nth-child(2){font-size:9px!important;}
+  #gameModeModal > div:nth-child(3) > div > div:nth-child(3){font-size:6px!important;line-height:1.5!important;}
+  #gameModeModal > div:nth-child(4){font-size:6px!important;max-width:90vw!important;}
+  #gameModeModal > button{margin-top:2px!important;padding:7px 18px!important;font-size:10px!important;}
 }
 </style>
 </head>
@@ -1108,8 +1203,7 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
   </div>
 </div>
 <!-- GAME MODE SELECTION MODAL -->
-<div id="gameModeModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.97);z-index:800;flex-direction:column;align-items:center;justify-content:flex-start;gap:16px;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:20px 8px 30px;">
-  <div style="font-size:22px;font-weight:900;color:#ffd700;letter-spacing:4px;font-family:'Share Tech Mono',monospace;text-align:center;text-shadow:0 0 30px #ffd70088;">⚔ SELECT GAME MODE</div>
+<div id="gameModeModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.97);z-index:800;flex-direction:column;align-items:center;justify-content:center;gap:12px;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 8px 20px;">  <div style="font-size:22px;font-weight:900;color:#ffd700;letter-spacing:4px;font-family:'Share Tech Mono',monospace;text-align:center;text-shadow:0 0 30px #ffd70088;">⚔ SELECT GAME MODE</div>
   <div style="font-size:9px;color:#555;letter-spacing:3px;font-family:'Share Tech Mono',monospace;text-align:center;">This choice affects your leaderboard rating</div>
   <div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center;margin-top:6px;">
     <div onclick="selectGameMode(true)" style="cursor:pointer;background:rgba(255,215,0,0.07);border:2px solid #ffd700;border-radius:14px;padding:20px 26px;text-align:center;width:185px;max-width:44vw;transition:all .2s;" onmouseover="this.style.background='rgba(255,215,0,0.16)'" onmouseout="this.style.background='rgba(255,215,0,0.07)'">
