@@ -552,19 +552,21 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
   
   /* ── BOSS BAR — centered below topBar ── */
   #bossBar{width:min(280px,55vw)!important;top:40px!important;}
-
-  /* ── MINIMAP — top-right, compact, does NOT overlap kill feed ── */
+/* ── MINIMAP — top-right corner, near the top ── */
+  /* ── MINIMAP — right side, vertically centered in play area ── */
   #minimap{
-    top:auto!important;
-    bottom:185px!important;
+    top:50%!important;
+    transform:translateY(-50%)!important;
+    bottom:auto!important;
     left:auto!important;
-    right:6px!important;
+    right:4px!important;
     width:90px!important;
     height:90px!important;
     display:block!important;
-    background:rgba(0,0,0,0.5)!important;
-    border:1px solid rgba(255,255,255,0.2)!important;
-    border-radius:4px!important;
+    background:rgba(0,0,0,0.72)!important;
+    border:1px solid rgba(57,255,138,0.25)!important;
+    border-radius:6px!important;
+    z-index:18!important;
   }
   #mc{width:90px!important;height:90px!important;}
 
@@ -584,8 +586,7 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
     border-left:2px solid #39ff8a!important;
     border-radius:0 4px 4px 0!important;
   }
-  #ecSquad{display:none!important;} /* hide squad kill counts on mobile */
-
+#ecSquad{display:block!important;font-size:7px!important;color:#00ccff!important;margin-top:2px!important;white-space:pre!important;}
   /* ── CMD PANEL ── */
   #cmdPanel{position:fixed;bottom:180px;left:50%;transform:translateX(-50%);width:60vw;max-width:320px;z-index:450;}
   #ci{width:42vw;font-size:12px;}
