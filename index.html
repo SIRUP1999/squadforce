@@ -506,7 +506,7 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
   .hv{font-size:11px!important;}
   .bar{width:75px!important;}
   #bossBar{width:220px;top:42px;}
-  #minimap{top:auto!important;bottom:180px!important;left:auto!important;right:6px!important;width:72px!important;height:72px!important;}
+  #minimap{top:auto!important;bottom:180px!important;left:auto!important;right:6px!important;width:80px!important;height:80px!important;display:block!important;}
   #mc{width:72px!important;height:72px!important;}
   #cmdPanel{position:fixed;bottom:180px;left:50%;transform:translateX(-50%);width:60vw;max-width:320px;z-index:450;}
   #ci{width:42vw;font-size:12px;}
@@ -655,7 +655,7 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
   #mobileShootZone{left:135px!important;right:200px!important;top:0!important;bottom:0!important;}
 
   /* Hide overlays that crowd landscape */
-  #minimap{display:none!important;}
+  #minimap{display:block!important;width:70px!important;height:70px!important;bottom:130px!important;right:4px!important;}
   #sqPanel{display:none!important;}
   #powerBars{display:none!important;}
   #killFeed{top:38px!important;bottom:auto!important;left:135px!important;max-width:200px!important;}
@@ -2869,7 +2869,7 @@ const count=Math.min(S.waves*10+(GS.wave-1)*13+GS.stage*8+(GS.round-1)*15,S.maxO
   const waveName=waveNames[Math.min(GS.wave,8)]||`WAVE ${GS.wave}`;
   const waveCol=GS.wave>=5?'#ff0000':GS.wave>=3?'#ff8800':'#ffd700';
   showBanner(`⚔ WAVE ${GS.wave} — ${waveName}`,threatLine,waveCol);
- GS.spawnTick=0;updateWaveHUD();sndAlarm();
+ GS.spawnTick=0;updateWaveHUD();sndAlarm();updateEnemyCountHUD();
   aiSay(`Wave ${GS.wave} — ${count} enemies! ${threatLine}`);
   if(GS.wave>=4)setTimeout(()=>sndVoice(`Wave ${GS.wave}!`,0.85,0.9),600);
   if(mpCoopMode&&ablyReady)ablyPublish('wave_start',{wave:GS.wave,stage:GS.stage,round:GS.round,waveTarget:GS.waveTarget});
@@ -3306,7 +3306,7 @@ function eShoot(e,tgt){
   const spread=(0.03+(1-SETTINGS.aiAccuracy/10)*.18)*(e.sniper?.10:e.heavy?.65:1.0)*(e.berserkMode?.3:1);
   const as=a+(Math.random()-.5)*spread;
   // Different bullet speeds/patterns per enemy type
-  let spd=e.sniper?32:e.heavy?14:20;
+  let spd=e.sniper?42:e.heavy?22:28;
   let bulletCount=1;
   let dmgMul=1;
   if(e.type==='demon'){spd=15;bulletCount=2;dmgMul=1.2;}
@@ -5091,7 +5091,7 @@ function pShoot(){
   for(let i=0;i<total;i++){
     const crit=Math.random()<(P.critChance||.14)+(berserkActive?.12:0);
     const a=P.angle+(i-total/2+.5)*(total>1?.1:0)+(Math.random()-.5)*.03;
-    const spd=28+GS.upgradeLevel*2;const dmg=(P.dmg||w.dmg)*(P.dmgMul||1)*bersMul*(crit?2.2:1);
+    const spd=38+GS.upgradeLevel*3;const dmg=(P.dmg||w.dmg)*(P.dmgMul||1)*bersMul*(crit?2.2:1);
 const blt={x:P.x+Math.cos(P.angle)*28,y:P.y+Math.sin(P.angle)*28,dx:Math.cos(a)*spd,dy:Math.sin(a)*spd,life:90,dmg,owner:'player',crit};    bullets.push(blt);newBullets.push(blt);
     if(crit)sndCrit();
   }
@@ -5618,7 +5618,7 @@ function onKill(){
 function comboMult(){return Math.min(Math.floor(comboCount/2)+1,10);}
 
 function killEnemy(e){
-  if(e.dead)return;e.dead=true;e.deathT=0;GS.waveKills++;if(enemies.filter(x=>!x.dead).length===0&&!GS.betweenWaves&&!_lastKillCinematic){_lastKillCinematic=true;const _prevSpeed=gameSpeedSetting;gameSpeedSetting=0.18;setTimeout(()=>{gameSpeedSetting=_prevSpeed;_lastKillCinematic=false;},1400);}
+  if(e.dead)return;e.dead=true;e.deathT=0;GS.waveKills++;updateEnemyCountHUD();if(enemies.filter(x=>!x.dead).length===0&&!GS.betweenWaves&&!_lastKillCinematic){_lastKillCinematic=true;const _prevSpeed=gameSpeedSetting;gameSpeedSetting=0.18;setTimeout(()=>{gameSpeedSetting=_prevSpeed;_lastKillCinematic=false;},1400);}
   const base=e.heavy?230:e.sniper?165:e.scout?88:70;
   const pts=Math.floor(base*comboMult()*(1+GS.round*.38));GS.score+=pts;updateScoreHUD();updateWaveHUD();
   burst(e.x,e.y,curStage().eCol,6);spawnBlood(e.x,e.y,4);shake(3,8);enemyScream();
@@ -5703,6 +5703,7 @@ function killBoss(){
     }
   },12000);
 }
+function addSquadKill(m){if(m&&m.kills!==undefined)m.kills++;else if(m)m.kills=1;updateEnemyCountHUD();}
 function killSquadMember(m){
   m.alive=false;m.deathT=0;
   burst(m.x,m.y,'#fff',20);sndExplode();shake(12,26);
@@ -5869,11 +5870,24 @@ const col=isEnemy?(b.boss?curStage().bossCol:'#ff3300'):(b.owner==='remote'?(b.r
 }
 
 // ── REVIVE ──────────────────────────────────────────
-function tryRevive(){let best=null,bd=9999;const range=_isMob?320:95;SQ.forEach(m=>{if(!m.alive){const d=dist(P,m);if(d<range&&d<bd){bd=d;best=m;}}});if(!best){SQ.forEach(m=>{if(!m.alive){const d=dist(P,m);if(d<bd){bd=d;best=m;}}});}if(best){reviving=true;reviveTarget=best;reviveProg=0;document.getElementById('medkitUI').style.display='block';document.getElementById('medkitTarget').textContent=best.name;document.getElementById('medkitFill').style.width='0%';}}
-function updateRevive(){if(!reviving||!reviveTarget)return;if(!keys['q']||dist(P,reviveTarget)>105){reviving=false;reviveTarget=null;reviveProg=0;document.getElementById('medkitUI').style.display='none';return;}reviveProg++;document.getElementById('medkitFill').style.width=Math.min(100,reviveProg/REVIVE_TIME*100)+'%';if(reviveProg>=REVIVE_TIME){reviveTarget.alive=true;reviveTarget.hp=Math.floor(reviveTarget.maxHp*.44);reviveTarget.deathT=0;reviveTarget.aiState='follow';reviveTarget.sosPinged=false;reviveTarget.guardingDownedAt=null;reviveTarget.killTarget=null;reviveTarget.hidePos=null;reviveTarget.spreadPos=null;burst(reviveTarget.x,reviveTarget.y,'#39ff8a',26);sndRevive();shake(5,12);addKillFeed(`✚ ${reviveTarget.name} REVIVED!`,'h');squadSpeak(reviveTarget,'idle',reviveTarget.col);updateSquadHUD();document.getElementById('medkitUI').style.display='none';reviving=false;reviveTarget=null;reviveProg=0;}}
+function tryRevive(){let best=null,bd=9999;SQ.forEach(m=>{if(!m.alive){const d=dist(P,m);if(d<bd){bd=d;best=m;}}});if(!best)return;if(_isMob){  best.alive=true;best.hp=Math.floor(best.maxHp*.5);best.deathT=0;  best.aiState='follow';best.sosPinged=false;  burst(best.x,best.y,'#39ff8a',14);sndRevive();shake(4,8);  addKillFeed('\u271a '+best.name+' REVIVED!','h');  updateSquadHUD();}else{  reviving=true;reviveTarget=best;reviveProg=0;  document.getElementById('medkitUI').style.display='block';  document.getElementById('medkitTarget').textContent=best.name;  document.getElementById('medkitFill').style.width='0%';}}
+function updateRevive(){if(!reviving||!reviveTarget)return;if(dist(P,reviveTarget)>320){reviving=false;reviveTarget=null;reviveProg=0;document.getElementById('medkitUI').style.display='none';return;}reviveProg++;document.getElementById('medkitFill').style.width=Math.min(100,reviveProg/REVIVE_TIME*100)+'%';if(reviveProg>=REVIVE_TIME){reviveTarget.alive=true;reviveTarget.hp=Math.floor(reviveTarget.maxHp*.44);reviveTarget.deathT=0;reviveTarget.aiState='follow';reviveTarget.sosPinged=false;reviveTarget.guardingDownedAt=null;reviveTarget.killTarget=null;reviveTarget.hidePos=null;reviveTarget.spreadPos=null;burst(reviveTarget.x,reviveTarget.y,'#39ff8a',26);sndRevive();shake(5,12);addKillFeed(`✚ ${reviveTarget.name} REVIVED!`,'h');squadSpeak(reviveTarget,'idle',reviveTarget.col);updateSquadHUD();document.getElementById('medkitUI').style.display='none';reviving=false;reviveTarget=null;reviveProg=0;}}
 function updateQHint(){const hint=document.getElementById('qHint');let best=null,bd=9999;SQ.forEach(m=>{if(!m.alive){const d=dist(P,m);if(d<95&&d<bd){bd=d;best=m;}}});if(best){const sp=w2s(best.x,best.y);hint.style.display='block';hint.style.left=(sp.x-30)+'px';hint.style.top=(sp.y-68)+'px';}else hint.style.display='none';}
 
 // ── PARTICLES ────────────────────────────────────────
+function updateEnemyCountHUD(){
+  if(!GS||!GS.running)return;
+  const hud=document.getElementById("enemyCountHUD");if(!hud)return;
+  hud.style.display="block";
+  const total=GS.waveTarget||0;
+  const killed=GS.waveKills||0;
+  const remain=Math.max(0,(enemies||[]).filter(e=>!e.dead).length+(GS.spawnQ?GS.spawnQ.length:0));
+  const sqKills=SQ?SQ.reduce((s,m)=>s+(m.kills||0),0):0;
+  document.getElementById("ecTotal").textContent="W"+GS.wave+": "+total+" enemies";
+  document.getElementById("ecKilled").textContent="\u2714 "+killed+" killed";
+  document.getElementById("ecRemain").textContent="\u25cf "+remain+" left";
+  document.getElementById("ecSquad").textContent="Squad: "+sqKills+" kills";
+}
 function spawnBlood(x,y,n=7){for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,s=1+Math.random()*3;parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,r:2+Math.random()*2,color:'#cc1111',life:50,ml:50});}}
 function spark(x,y,col,n=5){for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,s=2+Math.random()*4;parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,r:1.5+Math.random()*2,color:col,life:24,ml:24});}}
 function burst(x,y,col,n=18){for(let i=0;i<n;i++){const a=(i/n)*Math.PI*2,s=1.5+Math.random()*3;parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,r:2+Math.random()*2,color:col,life:55,ml:55});}}
@@ -7008,7 +7022,7 @@ if(P.reloading){
     addKillFeed('✓ Reload forced complete!','h');
   }
 }else{P._reloadWatchdog=0;} 
-if(mouse.down&&!P.reloading&&!knifeMode&&!bladeMode&&!combatMode){
+if(mouse.down&&!P.reloading&&!knifeMode&&!bladeMode){
       if(shootCD<=0){
         pShoot();
         // BOLT fires faster — minimum cooldown 6 frames vs normal minimum 10
@@ -8398,10 +8412,7 @@ if(window.visualViewport){
       // Aim player toward touch point
       P.angle=Math.atan2(mouse.y+camY-P.y, mouse.x+camX-P.x);
       // Fire immediately
-      if(!P.reloading && !knifeMode && !bladeMode){pShoot();}
-      else if(knifeMode){throwKnife();}
-      else if(bladeMode){throwEnergyBlade();}
-      else if(combatMode){combatPunch();}
+      if(!P.reloading){if(knifeMode){throwKnife();}else if(bladeMode){throwEnergyBlade();}else{pShoot();}}
     }
   },{passive:false, capture:true});
   
@@ -9021,7 +9032,7 @@ setInterval(()=>{
 })()</script>
  
 <!-- GLOBAL LEADERBOARD PANEL -->
-<div id="leaderboardPanel" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.97);z-index:600;flex-direction:column;align-items:center;padding-top:28px;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;">
+<div id="leaderboardPanel" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.97);z-index:600;flex-direction:column;align-items:center;padding:16px 8px 40px;overflow-y:scroll;-webkit-overflow-scrolling:touch;touch-action:pan-y;overscroll-behavior:contain;">
   <div style="width:600px;max-width:96vw;">
     <div style="text-align:center;margin-bottom:16px;">
       <div style="font-size:26px;font-weight:900;color:#ffd700;letter-spacing:4px;font-family:'Share Tech Mono',monospace;text-shadow:0 0 30px #ffd70088;">🏆 WORLD LEADERBOARD</div>
