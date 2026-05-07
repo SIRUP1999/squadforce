@@ -506,7 +506,7 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
   .hv{font-size:11px!important;}
   .bar{width:75px!important;}
   #bossBar{width:220px;top:42px;}
-  #enemyCountHUD{font-size:8px!important;padding:3px 8px!important;gap:8px!important;}
+  #enemyCountHUD{font-size:8px!important;bottom:260px!important;left:6px!important;min-width:130px!important;padding:4px 8px!important;}
   #minimap{top:auto!important;bottom:280px!important;left:auto!important;right:6px!important;width:80px!important;height:80px!important;display:block!important;}
   #mc{width:72px!important;height:72px!important;}
   #cmdPanel{position:fixed;bottom:180px;left:50%;transform:translateX(-50%);width:60vw;max-width:320px;z-index:450;}
@@ -530,17 +530,18 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
 #joystickBase{
   width:140px;height:140px;
   border-radius:50%;
-  background:rgba(57,255,138,0.05);
-  border:2px solid rgba(57,255,138,0.3);
-  box-shadow:0 0 24px rgba(57,255,138,0.08),inset 0 0 20px rgba(0,0,0,0.5);
+  background:rgba(0,0,0,0.55);
+  border:2px solid rgba(57,255,138,0.5);
+  box-shadow:0 0 0 4px rgba(57,255,138,0.08),0 0 30px rgba(57,255,138,0.15);
   position:relative;
 }
 #joystickKnob{
   width:58px;height:58px;
   border-radius:50%;
-  background:radial-gradient(circle at 30% 30%,rgba(57,255,138,0.85),rgba(57,255,138,0.2));
-  border:2px solid rgba(57,255,138,0.9);
-  box-shadow:0 0 18px rgba(57,255,138,0.5);
+  background:radial-gradient(circle at 35% 35%,rgba(57,255,138,0.95),rgba(20,180,80,0.65));
+  border:2px solid rgba(57,255,138,1);
+  box-shadow:0 0 16px rgba(57,255,138,0.75),0 2px 8px rgba(0,0,0,0.5);
+  transition:box-shadow 0.08s;
   position:absolute;
   top:50%;left:50%;
   transform:translate(-50%,-50%);
@@ -1204,11 +1205,13 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
 <div id="combatModeBar" style="position:absolute;bottom:58px;left:50%;transform:translateX(-50%);width:180px;height:6px;background:#0a0000;border:1px solid #663300;border-radius:3px;display:none;overflow:hidden;">
   <div id="combatModeFill" style="height:100%;background:linear-gradient(90deg,#ff8800,#ffcc00);width:100%;"></div>
 </div>
-<div id="enemyCountHUD" style="display:none;position:absolute;top:6px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.45);border-radius:6px;padding:4px 14px;font-family:'Share Tech Mono',monospace;font-size:10px;color:#aaa;letter-spacing:1px;pointer-events:none;z-index:30;text-align:center;white-space:nowrap;display:none;flex-direction:row;gap:14px;align-items:center;">
-    <span id="ecTotal" style="color:#ffd700;"></span>  <span style="color:#333;">|</span>  <span id="ecRemain" style="color:#ff6600;"></span>  <span style="color:#333;">|</span>  <span id="ecKilled" style="color:#39ff8a;"></span>  <span style="color:#333;">|</span>  <span id="ecSquad" style="color:#00ffff;"></span>
-  <div id="ecKilled" style="color:#39ff8a;">✔ 0 killed</div>
-  <div id="ecRemain" style="color:#ff6600;">● 0 left</div>
-  <div id="ecSquad" style="color:#00ffff;">Squad: 0 kills</div>
+<div id="enemyCountHUD" style="display:none;position:absolute;bottom:210px;left:14px;background:rgba(0,0,0,0.5);border-left:2px solid #39ff8a;padding:6px 10px;border-radius:0 6px 6px 0;font-family:'Share Tech Mono',monospace;font-size:10px;pointer-events:none;z-index:30;line-height:1.8;min-width:160px;">
+  <div id="ecTotal" style="color:#ffd700;font-size:11px;font-weight:bold;margin-bottom:2px;"></div>
+  <div id="ecRemain" style="color:#ff6600;"></div>
+  <div id="ecKilled" style="color:#39ff8a;"></div>
+  <div id="ecSquad" style="color:#00ccff;font-size:9px;margin-top:3px;border-top:1px solid #1a1a1a;padding-top:3px;"></div>
+</div>
+  
 </div>
 <div id="spectateBar">👁 SPECTATING — Watch your squad!</div>
 <div id="onlineSidePanel"><h4>🌐 ONLINE</h4><div id="onlineSideList"></div></div>
@@ -2414,7 +2417,7 @@ function genCovers(){
   covers=[];
   const stg=GS?GS.stage:1, rnd=GS?GS.round:1;
   const waveNum=GS?GS.wave||1:1;
-  const layoutSeed=((stg-1)*3+(rnd-1)+(waveNum-1))%9;
+  const layoutSeed=((stg*31)^(rnd*17)^(waveNum*7))%9;
 
   const layouts=[
     // Layout 0: R1S1 — wide corridor walls
@@ -2548,7 +2551,7 @@ function genCovers(){
   (layouts[layoutSeed]||layouts[0])();
 
   // ── TREES: lots everywhere, every stage, every wave ──
-  const treeCount = 24 + stg*6 + rnd*5;
+  const treeCount = (_isMob ? 24 : 55) + stg*8 + rnd*6;
   for(let i=0;i<treeCount;i++){
     const tx=(0.06+Math.random()*0.88)*WORLD_W;
     const ty=(0.06+Math.random()*0.88)*WORLD_H;
@@ -2563,7 +2566,7 @@ function genCovers(){
   }
 
   // ── UNIVERSAL SCATTER: extra rocks and short walls added to EVERY layout ──
-  const extraCount = 10 + stg*3 + rnd*2;
+  const extraCount = (_isMob ? 10 : 28) + stg*5 + rnd*3;
   for(let i=0;i<extraCount;i++){
     const bx=100+Math.random()*(WORLD_W-200);
     const by=100+Math.random()*(WORLD_H-200);
@@ -2584,7 +2587,7 @@ function genCovers(){
 
   // ── BARRELS: more per stage ──
   barrels=[];
-  const barrelCount = 24 + stg*6 + rnd*4;
+  const barrelCount = (_isMob ? 24 : 40) + stg*8 + rnd*5;
   for(let i=0;i<barrelCount;i++){
     const bx=80+Math.random()*(WORLD_W-160),by=80+Math.random()*(WORLD_H-160);
     if(Math.abs(bx-PLAYER_BASE.x)<140&&Math.abs(by-PLAYER_BASE.y)<140)continue;
@@ -2592,7 +2595,7 @@ function genCovers(){
   }
   // ── GROUND DECALS — dirt, craters, cracks, stains ──
 groundDecals=[];
-const decalCount=55+stg*14+rnd*8;
+const decalCount=(_isMob?55:120)+stg*18+rnd*10;
 for(let i=0;i<decalCount;i++){
   groundDecals.push({
     x:Math.random()*WORLD_W,
@@ -2849,6 +2852,7 @@ function curWeapon(){return WEAPONS[Math.min(GS.upgradeLevel,2)];}
 function startWave(){
   if(mpCoopMode&&!isRoomHost)return; // ← Only host manages waves
   const S=curStage(),RM=curRoundMult();GS.waveKills=0;
+  genCovers();
 const count=Math.min(S.waves*10+(GS.wave-1)*13+GS.stage*8+(GS.round-1)*15,S.maxOn*4+60);GS.waveTarget=count;GS.spawnQ=[];GS.betweenWaves=false;
   // Assign two random factions for this wave
   waveFactionsActive=[ENEMY_FACTIONS[Math.floor(Math.random()*4)],ENEMY_FACTIONS[Math.floor(Math.random()*4)]];
@@ -5714,7 +5718,7 @@ function addSquadKill(m){if(m&&m.kills!==undefined)m.kills++;else if(m)m.kills=1
 function killSquadMember(m){
   m.alive=false;m.deathT=0;
   burst(m.x,m.y,'#fff',20);sndExplode();shake(12,26);
-  addKillFeed(`💀 ${m.name} KIA — Squad rushing to revive!`,'s');
+  addKillFeed(`💀 ${m.name} KIA — Squad rushing to revive!`,'e');
 
   // Find nearest alive member not already on a revive mission
   const candidates=SQ.filter(s=>s.alive&&s!==m&&s.aiState!=='run_revive');
@@ -5885,14 +5889,15 @@ function updateQHint(){const hint=document.getElementById('qHint');let best=null
 function updateEnemyCountHUD(){
   if(!GS||!GS.running)return;
   const hud=document.getElementById("enemyCountHUD");if(!hud)return;
-  hud.style.display="flex";
+  hud.style.display="block";
   const total=GS.waveTarget||0;
   const remain=Math.max(0,(enemies||[]).filter(e=>!e.dead).length+(GS.spawnQ?GS.spawnQ.length:0));
-  document.getElementById("ecTotal").textContent="W"+GS.wave+": "+total;
-  document.getElementById("ecRemain").textContent=remain+" left";
-  document.getElementById("ecKilled").textContent="✔ You:"+(P?P.kills||0:0);
-  const sq=SQ?SQ.filter(m=>m&&m.alive).map(m=>m.name.slice(0,3)+":"+(m.kills||0)).join(" "):"";
-  document.getElementById("ecSquad").textContent=sq||"";
+  document.getElementById("ecTotal").textContent="🌊 W"+GS.wave+" — "+total+" enemies";
+  document.getElementById("ecRemain").textContent="● "+remain+" remaining";
+  document.getElementById("ecKilled").textContent="✔ You: "+(P?P.kills||0:0)+" kills";
+  const sqLines=SQ?SQ.filter(m=>m).map(m=>"  "+m.name+": "+(m.kills||0)).join("\n"):"";
+  document.getElementById("ecSquad").textContent=sqLines?"Squad:\n"+sqLines:"";
+  document.getElementById("ecSquad").style.whiteSpace="pre";
 }
 function spawnBlood(x,y,n=7){for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,s=1+Math.random()*3;parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,r:2+Math.random()*2,color:'#cc1111',life:50,ml:50});}}
 function spark(x,y,col,n=5){for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,s=2+Math.random()*4;parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,r:1.5+Math.random()*2,color:col,life:24,ml:24});}}
@@ -5986,11 +5991,18 @@ function drawGround(){
   };
   const bgKey=`${GS?GS.stage:1}-${GS?GS.round:1}`;
   const bg=berserkActive?'#100000':(bgMap[bgKey]||S.bg);
-  ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
-  ctx.strokeStyle=berserkActive?'rgba(255,0,0,.02)':'rgba(255,255,255,.012)';ctx.lineWidth=1;
-  const gx=60-(camX%60),gy=60-(camY%60);
-  for(let x=gx;x<W;x+=60){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
-  for(let y=gy;y<H;y+=60){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+    ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+  const stgN=GS?GS.stage:1;
+  const tileCol=stgN===1?'rgba(255,220,0,0.018)':stgN===2?'rgba(255,60,0,0.022)':'rgba(100,100,255,0.02)';
+  const tileSize=stgN===1?80:stgN===2?60:100;
+  ctx.strokeStyle=berserkActive?'rgba(255,0,0,.04)':tileCol;ctx.lineWidth=1;
+  const gx=tileSize-(camX%tileSize),gy=tileSize-(camY%tileSize);
+  for(let x=gx;x<W;x+=tileSize){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=gy;y<H;y+=tileSize){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+  const vg=ctx.createRadialGradient(W/2,H/2,H*.3,W/2,H/2,H*.85);
+  vg.addColorStop(0,'rgba(0,0,0,0)');
+  vg.addColorStop(1,stgN===1?'rgba(0,8,0,0.35)':stgN===2?'rgba(12,0,0,0.4)':'rgba(0,0,12,0.45)');
+  ctx.fillStyle=vg;ctx.fillRect(0,0,W,H);
   ctx.strokeStyle='rgba(255,80,80,.3)';ctx.lineWidth=3;ctx.strokeRect(-camX+shakeX+3,-camY+shakeY+3,WORLD_W-6,WORLD_H-6);
   // ── GROUND DECALS ──
 groundDecals.forEach(d=>{
@@ -6111,7 +6123,10 @@ if(c.t==='tree'){
   ctx.beginPath();ctx.arc(tx+sway*.8+8,ty-12,16,0,Math.PI*2);ctx.fill();
   ctx.beginPath();ctx.arc(tx+sway*.8-8,ty-14,15,0,Math.PI*2);ctx.fill();
   // Main canopy layers
-  const canopyColors=['#1a5a0a','#225e0e','#2a7012','#1e6610'];
+  const _stgT=GS?GS.stage:1;
+  const canopyColors=_stgT===1?['#1a5a0a','#225e0e','#2a7012','#1e6610']:
+    _stgT===2?['#5a1a0a','#6e220e','#7a2a12','#661e10']:
+    ['#0a1a5a','#0e226e','#12307a','#101e66'];
   const layers=[{r:22,ox:sway,oy:0},{r:18,ox:sway*.8-7,oy:-10},{r:17,ox:sway*.8+8,oy:-8},{r:14,ox:sway*.6,oy:-18}];
   layers.forEach((l,i)=>{
     ctx.fillStyle=canopyColors[i];
@@ -6126,7 +6141,17 @@ if(c.t==='tree'){
   ctx.fillStyle='#3a8a18';ctx.shadowBlur=0;
   ctx.beginPath();ctx.arc(tx+sway*.5,ty-20,10,0,Math.PI*2);ctx.fill();
   ctx.restore();ctx.shadowBlur=0;
-}  else if(c.t==='rock'){const rg=ctx.createRadialGradient(sx+c.w/2,sy+c.h/2,2,sx+c.w/2,sy+c.h/2,c.w/2);rg.addColorStop(0,'#5a5a5a');rg.addColorStop(1,'#2a2a2a');ctx.fillStyle=rg;ctx.beginPath();ctx.arc(sx+c.w/2,sy+c.h/2,c.w/2,0,Math.PI*2);ctx.fill();}else{const g=ctx.createLinearGradient(sx,sy,sx+c.w,sy+c.h);g.addColorStop(0,'#2e3a2e');g.addColorStop(1,'#465846');ctx.fillStyle=g;ctx.strokeStyle='#586858';ctx.lineWidth=1.5;rrect(sx,sy,c.w,c.h,c.t==='bunker'?5:3);ctx.fill();ctx.stroke();}}
+}  else if(c.t==='rock'){const rg=ctx.createRadialGradient(sx+c.w/2,sy+c.h/2,2,sx+c.w/2,sy+c.h/2,c.w/2);rg.addColorStop(0,'#5a5a5a');rg.addColorStop(1,'#2a2a2a');ctx.fillStyle=rg;ctx.beginPath();ctx.arc(sx+c.w/2,sy+c.h/2,c.w/2,0,Math.PI*2);ctx.fill();}else{const _stg=GS?GS.stage:1;
+  const _c1=_stg===1?'#2a3a1a':_stg===2?'#3a1a0a':'#1a1a3a';
+  const _c2=_stg===1?'#3e5230':_stg===2?'#5a2a10':'#2a2a5a';
+  const _cs=_stg===1?'#4a6038':_stg===2?'#6a3418':'#383870';
+  const g=ctx.createLinearGradient(sx,sy,sx+c.w,sy+c.h);
+  g.addColorStop(0,_c1);g.addColorStop(1,_c2);
+  ctx.fillStyle=g;ctx.strokeStyle=_cs;ctx.lineWidth=1.5;
+  rrect(sx,sy,c.w,c.h,c.t==='bunker'?6:3);ctx.fill();ctx.stroke();
+  // top highlight
+  ctx.fillStyle='rgba(255,255,255,0.04)';
+  rrect(sx,sy,c.w,4,2);ctx.fill();}}
 function drawBarrel(b){if(b.dead)return;const sp=w2s(b.x,b.y);if(sp.x<-34||sp.x>W+34||sp.y<-34||sp.y>H+34)return;if(b.flashT>0)b.flashT--;ctx.save();ctx.fillStyle='#330000';rrect(sp.x-10,sp.y-14,20,28,4);ctx.fill();ctx.fillStyle=b.flashT>0?'#fff':'#ff3300';rrect(sp.x-9,sp.y-12,18,10,2);ctx.fill();ctx.fillStyle='#ff6600';rrect(sp.x-9,sp.y-1,18,10,2);ctx.fill();ctx.fillStyle='#ffcc00';ctx.font='bold 11px monospace';ctx.textAlign='center';ctx.fillText('!',sp.x,sp.y+10);ctx.restore();}
 function drawPickup(pk){const sp=w2s(pk.x,pk.y);if(sp.x<-24||sp.x>W+24||sp.y<-24||sp.y>H+24)return;ctx.save();ctx.translate(sp.x,sp.y);ctx.rotate(Date.now()*.002);const col=pk.type==='ammo'?'#ffd700':'#39ff8a';ctx.fillStyle=col;ctx.shadowColor=col;ctx.shadowBlur=12+Math.sin(Date.now()*.005)*4;rrect(-10,-10,20,20,4);ctx.fill();ctx.fillStyle='#000';ctx.font='bold 11px monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(pk.type==='ammo'?'A':'♥',0,0);ctx.restore();}
 function drawCursor(){
@@ -7095,6 +7120,13 @@ if(op.hp!=null&&op.maxHp>0){
   ctx.fillRect(sx-22,sy-28,44*_hpPct,5);
 }}}}
   if(frameN%30===0)updateEnemyCountHUD();
+  if(frameN%180===0&&P&&!P.dead&&!P.isMoving){
+    enemies.forEach(e=>{
+      if(!e.dead&&!e.sleeping&&(e.aiState==='approach'||e.aiState==='investigate'||e.aiState==='patrol')){
+        e.aiState='berserk';
+      }
+    });
+  }
   if(frameN%30===0)updateEnemyCountHUD();
 function enterSpectateMode(){
   document.getElementById('deathScreen').style.display='none';
@@ -8719,6 +8751,7 @@ document.addEventListener('touchmove',e=>{
     window._joyDY = dy / MAX;
     const DEADZONE = 0.08;
     window._joyActive = (Math.abs(dx) > DEADZONE || Math.abs(dy) > DEADZONE);
+    knob.style.boxShadow = window._joyActive ? '0 0 22px rgba(57,255,138,1),0 2px 8px rgba(0,0,0,0.6)' : '0 0 14px rgba(57,255,138,0.7),0 2px 8px rgba(0,0,0,0.6)';
     // Also set key states for compatibility
     const T = 0.18;
     keys['w'] = dy < -MAX*T;
@@ -8768,7 +8801,8 @@ document.addEventListener('touchmove',e=>{
     if(!isJoyTouching) return;
     e.preventDefault(); 
     e.stopPropagation();
-    const t = Array.from(e.touches).find(touch => touch.identifier === touchId) || Array.from(e.changedTouches).find(touch => touch.identifier === touchId);
+    let t = Array.from(e.touches).find(touch => touch.identifier === touchId);
+    if(!t && e.touches.length > 0) t = e.touches[0];
     if(t){
       if(!GS || !GS.running) {
         const c = getCenter();
@@ -8783,9 +8817,10 @@ document.addEventListener('touchmove',e=>{
     }
   },{passive:false, capture:true});
 
-  zone.addEventListener('touchend', e=>{ 
-    if(e.changedTouches.length === 0 || Array.from(e.changedTouches).some(t => t.identifier === touchId)) {
-      e.preventDefault(); 
+  zone.addEventListener('touchend', e=>{
+    e.preventDefault();
+    const _ch = Array.from(e.changedTouches);
+    if(touchId === null || _ch.some(t => t.identifier === touchId) || e.touches.length === 0){
       resetJoy();
     }
   },{passive:false, capture:true});
