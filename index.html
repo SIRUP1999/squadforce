@@ -745,7 +745,6 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
     max-width:140px!important;
     padding:3px 7px!important;
     line-height:1.6!important;
-    background:rgba(0,0,0,0.7)!important;
     border-left:2px solid #39ff8a!important;
     border-radius:0 4px 4px 0!important;
   }
@@ -1512,7 +1511,7 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
 <div id="combatModeBar" style="position:absolute;bottom:58px;left:50%;transform:translateX(-50%);width:180px;height:6px;background:#0a0000;border:1px solid #663300;border-radius:3px;display:none;overflow:hidden;">
   <div id="combatModeFill" style="height:100%;background:linear-gradient(90deg,#ff8800,#ffcc00);width:100%;"></div>
 </div>
-<div id="enemyCountHUD" style="display:none;position:absolute;top:208px;left:14px;background:rgba(0,0,0,0.5);border-left:2px solid #39ff8a;padding:6px 10px;border-radius:0 6px 6px 0;font-family:'Share Tech Mono',monospace;font-size:10px;pointer-events:none;z-index:30;line-height:1.8;min-width:160px;">
+<div id="enemyCountHUD" style="display:none;position:absolute;top:208px;left:14px;border-left:2px solid #39ff8a;padding:6px 10px;border-radius:0 6px 6px 0;font-family:'Share Tech Mono',monospace;font-size:10px;pointer-events:none;z-index:30;line-height:1.8;min-width:160px;">
   <div id="ecTotal" style="color:#ffd700;font-size:11px;font-weight:bold;margin-bottom:2px;"></div>
   <div id="ecRemain" style="color:#ff6600;"></div>
   <div id="ecKilled" style="color:#39ff8a;"></div>
@@ -7200,6 +7199,7 @@ function startGame(round=1,stage=1,savedScore=0){
   (async()=>{try{if(screen.orientation&&screen.orientation.lock)await screen.orientation.lock('landscape');}catch(e){}})(  );
   const normalizedScore = Number(savedScore) || 0;
 GS={running:true,round,stage,wave:1,waveKills:0,waveTarget:999,score:normalizedScore,spawnQ:[],spawnTick:0,bossSpawned:false,bossAlive:false,betweenWaves:false,upgradeLevel:Math.min(stage-1,2),stageAdvancing:false,waveStarted:false};enemies=[];bullets=[];eBullets=[];parts=[];pickups=[];fireBombs=[];shockwaves=[];supplyDrops=[];boss=null;  ownedPerks=[];sosPings=[];pvpKills=0;shootCD=0;meleeCD=0;powerCD=0;frameN=0;
+  updateScoreHUD();
 
   comboCount=0;comboTimer=0;quickKills=0;quickKillTimer=0;reviving=false;reviveTarget=null;reviveProg=0;
 berserkActive=false;berserkTimer=0;berserkCooldown=0;sleepBombCD=0;shadowUsedThisStage=false;  shakeMag=0;shakeDur=0;spectating=false;
