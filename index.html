@@ -497,7 +497,8 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
   body{cursor:default;}
   canvas{cursor:default;}
   
-  #sqPanel{display:block!important;right:4px!important;top:60px!important;min-width:160px!important;font-size:9px!important;padding:6px!important;}
+  #sqPanel{display:block!important;right:4px!important;top:64px!important;min-width:160px!important;max-width:42vw!important;font-size:9px!important;padding:6px!important;max-height:calc(100vh - 220px)!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;}
+  #sqPanel h3{font-size:8px!important;margin-bottom:6px!important;}
   #powerBars{display:none!important;}
   #onlineSidePanel{display:none!important;}
   #perkTray{display:none!important;}
@@ -506,16 +507,22 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
   .km{font-size:8px!important;padding:2px 5px!important;}
   #aiChat{left:8px;top:52px;bottom:auto;}
   .am{font-size:9px!important;}
-  #topBar{padding:4px 8px;}
+  #topBar{padding:4px 8px;flex-direction:column;align-items:flex-start;gap:8px;}
+  #topBar .hb{width:100%;}
+  #topBar .hb:first-child{display:flex;flex-wrap:wrap;align-items:center;gap:8px;}
+  #livesHUD{font-size:11px!important;margin-top:6px!important;display:flex;flex-wrap:wrap;gap:6px;}
   .hv{font-size:11px!important;}
   .bar{width:75px!important;}
   #bossBar{width:220px;top:42px;}
-  #enemyCountHUD{font-size:8px!important;top:auto!important;bottom:280px!important;left:6px!important;min-width:130px!important;padding:4px 8px!important;}
+  #enemyCountHUD{font-size:9px!important;top:98px!important;bottom:auto!important;left:6px!important;min-width:unset!important;width:calc(100vw - 16px)!important;max-width:260px!important;padding:6px 10px!important;}
   #minimap{top:auto!important;bottom:280px!important;left:auto!important;right:6px!important;width:80px!important;height:80px!important;display:block!important;}
   #mc{width:72px!important;height:72px!important;}
   #cmdPanel{position:fixed;bottom:180px;left:50%;transform:translateX(-50%);width:60vw;max-width:320px;z-index:450;}
   #ci{width:42vw;font-size:12px;}
   #mobileRow3{display:flex;gap:10px;align-items:center;}
+  #sqPanel .smr{flex-wrap:wrap!important;gap:5px!important;}
+  #sqPanel .sn{font-size:10px!important;}
+  #sqPanel .ss{font-size:8px!important;}
 }
 
 /* ── JOYSTICK ── */
@@ -662,9 +669,14 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
 
   /* Hide overlays that crowd landscape */
   #minimap{display:block!important;width:70px!important;height:70px!important;bottom:200px!important;right:4px!important;}
-  #sqPanel{display:none!important;}
+  #sqPanel{display:block!important;right:4px!important;top:58px!important;left:auto!important;min-width:140px!important;max-width:210px!important;padding:6px!important;font-size:8px!important;max-height:calc(100vh - 190px)!important;overflow-y:auto!important;}
+  #sqPanel h3{font-size:8px!important;margin-bottom:5px!important;}
+  #sqPanel .smr{flex-wrap:wrap!important;gap:4px!important;}
+  #sqPanel .sn{font-size:9px!important;}
+  #sqPanel .ss{font-size:8px!important;}
   #powerBars{display:none!important;}
   #killFeed{top:38px!important;bottom:auto!important;left:135px!important;max-width:200px!important;}
+  #enemyCountHUD{font-size:9px!important;top:92px!important;bottom:auto!important;left:6px!important;min-width:unset!important;width:calc(100vw - 16px)!important;max-width:260px!important;padding:6px 10px!important;}
   .km{font-size:7px!important;padding:2px 4px!important;}
   #bossBar{width:200px!important;top:34px!important;}
 
@@ -1032,7 +1044,7 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
     </div>
   </div>
   <div style="font-size:8px;color:#333;letter-spacing:2px;font-family:'Share Tech Mono',monospace;text-align:center;max-width:380px;line-height:1.6;">Loss penalty is small and fair — based on kills, waves survived, and how far you got. Veterans lose even less per loss.</div>
-  <button onclick="document.getElementById('gameModeModal').style.display='none'" class="btn red" style="font-size:12px;padding:10px 28px;margin-top:8px;min-width:140px;letter-spacing:2px;">✕ CANCEL</button>
+  <button onclick="document.getElementById('gameModeModal').style.display='none'" class="btn red" style="font-size:12px;padding:10px 18px;margin-top:8px;width:auto;min-width:0;letter-spacing:1px;max-width:160px;">✕ CANCEL</button>
 </div>
 
 <!-- LOBBY -->
@@ -5722,6 +5734,7 @@ function killSquadMember(m){
   m.alive=false;m.deathT=0;
   burst(m.x,m.y,'#fff',20);sndExplode();shake(12,26);
   addKillFeed(`💀 ${m.name} KIA — Squad rushing to revive!`,'e');
+  showBanner('💀 SQUAD MEMBER DOWN', `${m.name} was eliminated!`, '#ff3333');
 
   // Find nearest alive member not already on a revive mission
   const candidates=SQ.filter(s=>s.alive&&s!==m&&s.aiState!=='run_revive');
@@ -7816,21 +7829,22 @@ document.getElementById('setOverlays').addEventListener('change',e=>{
   
 const gsEl=document.getElementById('setGameSpeed');
 const gsVals=['SLOW','SLOW+','NORMAL','FAST','TURBO'];
-const gsSpeeds=[0.55,0.78,1.0,1.38,1.85];
+const gsSpeeds=[0.55,0.78,1.0,1.5,2.2];
+const gsLabels=['SLOW x0.55','SLOW+ x0.78','NORMAL x1.0','FAST x1.5','TURBO x2.2'];
 if(gsEl){
   // Set slider to FAST (4) on all platforms
-  if(gsEl){gsEl.value='4';document.getElementById('setGameSpeedVal').textContent='FAST';}
+  if(gsEl){gsEl.value='4';document.getElementById('setGameSpeedVal').textContent=gsLabels[3];}
   gsEl.addEventListener('input',e=>{
     const idx=+e.target.value-1;
     gameSpeedSetting=gsSpeeds[idx];
     gameSpeed=gameSpeedSetting;
     _lastFrameTime=0;_frameAccum=0;
-    document.getElementById('setGameSpeedVal').textContent=gsVals[idx];
+    document.getElementById('setGameSpeedVal').textContent=gsLabels[idx];
     // Speed is now applied live via mv() and player movement — instant effect
     if(GS&&GS.running){
       const spCol=gameSpeedSetting>=1.38?'#ffff00':gameSpeedSetting<=0.78?'#4488ff':'#39ff8a';
-      showBanner(`⚡ ${gsVals[idx]} MODE`,'Speed applied instantly!',spCol);
-      addKillFeed(`⚡ Speed: ${gsVals[idx]}`, 'b');
+      showBanner(`⚡ ${gsLabels[idx]}`,'Speed applied instantly!',spCol);
+      addKillFeed(`⚡ Speed: ${gsLabels[idx]}`, 'b');
     }
   });
 }
