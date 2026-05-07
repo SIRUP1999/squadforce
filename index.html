@@ -564,7 +564,7 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
 #mobileRightPanel{
   position:fixed;
   bottom:20px;right:10px;
-  display:flex;flex-direction:column;gap:10px;
+  display:flex;flex-direction:column;gap:12px;
   pointer-events:none;
   align-items:flex-end;
   z-index:410;
@@ -574,7 +574,7 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
   pointer-events:all !important;
 }
 #mobileRow1,#mobileRow2{
-  display:flex;gap:10px;align-items:center;
+  display:flex;gap:12px;align-items:center;
 }
 
 /* ── BUTTONS ── */
@@ -1244,7 +1244,7 @@ K=Knife | L=Blade | C=Combat | J=Kick | U=Punch | N=SlowMo | M=FastFwd<br>   1-4
     </div>
   </div>
   <div style="font-size:8px;color:#333;margin-bottom:8px;text-align:center;">Hides chat, kill feed, squad panel — keeps HP/ammo/boss bar</div>
-  <button class="btn" id="closeSettings" style="width:100%;font-size:10px;">CLOSE</button></div>
+  <div id="btnCustomizerSection" style="display:none;"><hr class="sDivider"><div style="font-size:9px;color:#39ff8a;letter-spacing:2px;margin-bottom:8px;">📱 MOBILE BUTTONS</div><div style="font-size:8px;color:#555;margin-bottom:8px;">Toggle which buttons show. Drag any button to reposition it.</div><div id="btnToggles" style="display:flex;flex-direction:column;gap:6px;"></div><div style="font-size:8px;color:#333;margin-top:8px;text-align:center;">Drag buttons on screen to move them anywhere</div></div><hr class="sDivider"><button class="btn" id="closeSettings" style="width:100%;font-size:10px;">CLOSE</button></div>
 <div id="cmdHint">[ Y ] SQUAD COMMANDS</div>
 <div id="cmdPanel">
   <div id="cmdPanelHeader">
@@ -5287,12 +5287,12 @@ function updateEnergyBlades(){
     b.trail.forEach((t,i)=>{
       const sp=w2s(t.x,t.y);
       ctx.save();
-      ctx.globalAlpha=t.life/15*0.6;
+      ctx.globalAlpha=t.life/15*0.35;
       ctx.fillStyle='#00ffff';
       ctx.shadowColor='#00ffff';
-      ctx.shadowBlur=12;
+      ctx.shadowBlur=2;
       ctx.beginPath();
-      ctx.arc(sp.x,sp.y,8-i*0.3,0,Math.PI*2);
+      ctx.arc(sp.x,sp.y,4-i*0.15,0,Math.PI*2);
       ctx.fill();
       ctx.restore();
     });
@@ -5305,7 +5305,7 @@ function updateEnergyBlades(){
       ctx.rotate(b.spinning);
       ctx.fillStyle='#00ffff';
       ctx.shadowColor='#00ffff';
-      ctx.shadowBlur=20;
+      ctx.shadowBlur=4;
       ctx.globalAlpha=0.9;
       // Blade shape
       ctx.beginPath();
@@ -8002,6 +8002,147 @@ document.getElementById('pauseBtn').addEventListener('click', togglePause);
 document.getElementById('muteBtn').addEventListener('click',()=>{muted=!muted;document.getElementById('muteBtn').textContent=(muted?'🔇':'🔊')+' SND';if(!muted&&GS&&GS.running&&!musicInt)startMusic();if(muted)stopMusic();});
 document.getElementById('settingsBtn').addEventListener('click',()=>{const sp=document.getElementById('settingsPanel');sp.style.display=sp.style.display==='block'?'none':'block';});
 document.getElementById('closeSettings').addEventListener('click',()=>{document.getElementById('settingsPanel').style.display='none';});
+
+// ── MOBILE BUTTON CUSTOMIZER ──────────────────────────
+const BTN_DEFS=[
+  {id:'mBtnFire',   label:'🔫 FIRE',    always:true},
+  {id:'mBtnMelee',  label:'👊 MELEE',   always:false},
+  {id:'mBtnReload', label:'↺ RELOAD',   always:false},
+  {id:'mBtnPower',  label:'🥷 POWER',   always:false},
+  {id:'mBtnPause',  label:'⏸ PAUSE',   always:false},
+  {id:'mBtnRevive', label:'✚ REVIVE',   always:false},
+  {id:'mBtnRage',   label:'⚡ RAGE',    always:false},
+  {id:'mBtnKnife',  label:'🔪 KNIFE',   always:false},
+  {id:'mBtnBlade',  label:'⚔ BLADE',   always:false},
+  {id:'mBtnCombat', label:'👊 COMBAT',  always:false},
+  {id:'mBtnBerserk',label:'🔴 BERSRK',  always:false},
+  {id:'mBtnMerge',  label:'🔗 MERGE',   always:false},
+];
+
+let _btnPositions={};
+try{_btnPositions=JSON.parse(localStorage.getItem('sqfv9_btnPos')||'{}');}catch{}
+let _btnVisible={};
+try{_btnVisible=JSON.parse(localStorage.getItem('sqfv9_btnVis')||'{}');}catch{}
+
+function _saveBtnPrefs(){
+  try{localStorage.setItem('sqfv9_btnPos',JSON.stringify(_btnPositions));}catch{}
+  try{localStorage.setItem('sqfv9_btnVis',JSON.stringify(_btnVisible));}catch{}
+}
+
+function applyBtnPrefs(){
+  BTN_DEFS.forEach(def=>{
+    const el=document.getElementById(def.id);
+    if(!el)return;
+    // Visibility
+    const vis=def.always?true:(_btnVisible[def.id]!==false);
+    el.style.display=vis?'flex':'none';
+    // Position
+    const pos=_btnPositions[def.id];
+    if(pos){
+      el.style.position='fixed';
+      el.style.left=pos.x+'px';
+      el.style.top=pos.y+'px';
+      el.style.zIndex='420';
+    }
+  });
+}
+
+function buildBtnToggles(){
+  const wrap=document.getElementById('btnToggles');
+  if(!wrap)return;
+  wrap.innerHTML='';
+  BTN_DEFS.forEach(def=>{
+    const vis=def.always?true:(_btnVisible[def.id]!==false);
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:4px 0;';
+    row.innerHTML=`<span style="font-size:9px;color:#aaa;">${def.label}</span>`+
+      (def.always
+        ? `<span style="font-size:8px;color:#333;">always on</span>`
+        : `<label style="display:flex;align-items:center;gap:5px;cursor:pointer;">`+
+          `<input type="checkbox" ${vis?'checked':''} data-btnid="${def.id}" style="width:16px;height:16px;accent-color:#39ff8a;cursor:pointer;">`+
+          `<span style="font-size:8px;color:${vis?'#39ff8a':'#555'};">${vis?'SHOW':'HIDE'}</span></label>`);
+    wrap.appendChild(row);
+  });
+  wrap.querySelectorAll('input[type=checkbox]').forEach(cb=>{
+    cb.addEventListener('change',function(){
+      const id=this.dataset.btnid;
+      _btnVisible[id]=this.checked;
+      _saveBtnPrefs();
+      applyBtnPrefs();
+      const lbl=this.nextElementSibling;
+      if(lbl){lbl.textContent=this.checked?'SHOW':'HIDE';lbl.style.color=this.checked?'#39ff8a':'#555';}
+    });
+  });
+}
+
+function initBtnDrag(){
+  BTN_DEFS.forEach(def=>{
+    const el=document.getElementById(def.id);
+    if(!el)return;
+    let dragging=false,startX=0,startY=0,origLeft=0,origTop=0;
+    const onStart=e=>{
+      if(document.getElementById('settingsPanel').style.display!=='block')return;
+      dragging=true;
+      const touch=e.touches?e.touches[0]:e;
+      startX=touch.clientX;startY=touch.clientY;
+      const r=el.getBoundingClientRect();
+      origLeft=r.left;origTop=r.top;
+      el.style.position='fixed';
+      el.style.left=origLeft+'px';
+      el.style.top=origTop+'px';
+      el.style.zIndex='9999';
+      el.style.opacity='0.7';
+      e.stopPropagation();
+    };
+    const onMove=e=>{
+      if(!dragging)return;
+      const touch=e.touches?e.touches[0]:e;
+      const dx=touch.clientX-startX,dy=touch.clientY-startY;
+      const nx=clamp(origLeft+dx,0,window.innerWidth-60);
+      const ny=clamp(origTop+dy,0,window.innerHeight-60);
+      el.style.left=nx+'px';
+      el.style.top=ny+'px';
+      e.preventDefault();
+    };
+    const onEnd=e=>{
+      if(!dragging)return;
+      dragging=false;
+      el.style.opacity='1';
+      el.style.zIndex='420';
+      _btnPositions[def.id]={x:parseFloat(el.style.left),y:parseFloat(el.style.top)};
+      _saveBtnPrefs();
+    };
+    el.addEventListener('mousedown',onStart);
+    el.addEventListener('touchstart',onStart,{passive:false});
+    document.addEventListener('mousemove',onMove);
+    document.addEventListener('touchmove',onMove,{passive:false});
+    document.addEventListener('mouseup',onEnd);
+    document.addEventListener('touchend',onEnd);
+  });
+}
+
+// Show customizer only on mobile
+if(_isMob){
+  const sec=document.getElementById('btnCustomizerSection');
+  if(sec)sec.style.display='block';
+}
+
+// Wire settings open to rebuild toggles
+['openSettingsLogin','pauseSettingsBtn','settingsBtn'].forEach(id=>{
+  const el=document.getElementById(id);
+  if(el)el.addEventListener('click',()=>{
+    buildBtnToggles();
+    document.getElementById('settingsPanel').style.display='block';
+  });
+});
+
+// Apply saved prefs on load + init drag
+window.addEventListener('DOMContentLoaded',()=>{
+  applyBtnPrefs();
+  initBtnDrag();
+});
+applyBtnPrefs();
+initBtnDrag();
 document.getElementById('openSettingsLogin').addEventListener('click',()=>{document.getElementById('settingsPanel').style.display='block';});
 document.getElementById('lbOpenBtn')?.addEventListener('click',()=>{ if(typeof openLeaderboard==='function')openLeaderboard(); });
 document.getElementById('soloBtn')?.addEventListener('click', (e) => {
