@@ -815,8 +815,8 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
 /* ── RIGHT BUTTON PANEL ── */
 #mobileRightPanel{
   position:fixed;
-  bottom:20px;right:10px;
-  display:flex;flex-direction:column;gap:12px;
+  bottom:18px;right:10px;
+  display:flex;flex-direction:column;gap:14px;
   pointer-events:none;
   align-items:flex-end;
   z-index:410;
@@ -898,10 +898,11 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
   #joystickKnob{width:46px!important;height:46px!important;}
 
   /* Right panel — bottom-right, compact 3 rows */
-  #mobileRightPanel{bottom:4px!important;right:4px!important;gap:3px!important;align-items:flex-end!important;}
-  #mobileRow1,#mobileRow2,#mobileRow3{gap:4px!important;}
-  .mBtn{width:38px!important;height:38px!important;font-size:6px!important;gap:0px!important;}
-  #mBtnFire{width:56px!important;height:56px!important;font-size:11px!important;}
+#mobileRightPanel{bottom:6px!important;right:6px!important;gap:8px!important;align-items:flex-end!important;}
+  #mobileRow1,#mobileRow2{gap:8px!important;}
+  .mBtn{width:48px!important;height:48px!important;font-size:9px!important;}
+  #mBtnFire{width:64px!important;height:64px!important;font-size:13px!important;border-width:3px!important;}
+  #mBtnReload,#mBtnMelee,#mBtnBerserk{width:48px!important;height:48px!important;}
 
   /* Shoot zone — full middle area between joystick and buttons */
   #mobileShootZone{left:135px!important;right:200px!important;top:0!important;bottom:0!important;}
@@ -1049,27 +1050,31 @@ body.game-running #quickCmds{
 
 /* Mobile adjustments for quick commands */
 @media(max-width:900px),(pointer:coarse){
+  /* Quick commands: move to top-left below wave pill — completely off joystick/buttons */
   #quickCmds{
-    left:10px!important;
-    right:10px!important;
-    bottom:180px!important;
-    max-width:calc(100vw - 20px)!important;
-    gap:3px!important;
+    left:6px!important;
+    right:auto!important;
+    top:178px!important;
+    bottom:auto!important;
+    max-width:calc(55vw)!important;
+    gap:4px!important;
     flex-wrap:wrap!important;
+    max-height:80px!important;
+    overflow:hidden!important;
+    transform:none!important;
   }
-  /* Show quick commands when game is running */
   body.game-running #quickCmds{
     display:flex!important;
   }
-  /* Hide when on menu screens */
   #loginScreen:not([style*="display: none"]) ~ #quickCmds,
   #lobbyScreen:not([style*="display: none"]) ~ #quickCmds{
     display:none!important;
   }
   #quickCmds .qc{
-    font-size:7px!important;
-    padding:4px 7px!important;
+    font-size:8px!important;
+    padding:5px 8px!important;
     letter-spacing:0.5px!important;
+    border-radius:16px!important;
   }
 }
 
@@ -1196,23 +1201,27 @@ body.game-running #quickCmds{
     </div>
   </div>
   <div id="mobileRightPanel">
-    <div id="mobileRow1">
+    <!-- TOP ROW: FIRE (big) + RELOAD -->
+    <div id="mobileRow1" style="display:flex;gap:14px;align-items:center;justify-content:flex-end;">
+      <div class="mBtn" id="mBtnReload" style="width:60px;height:60px;font-size:11px;">↺<br><span style="font-size:8px">RELOAD</span></div>
+      <div class="mBtn" id="mBtnFire" style="width:82px;height:82px;font-size:15px;border-width:3px;">🔫<br><span style="font-size:9px">FIRE</span></div>
+    </div>
+    <!-- BOTTOM ROW: MELEE + BERSERK -->
+    <div id="mobileRow2" style="display:flex;gap:14px;align-items:center;justify-content:flex-end;">
+      <div class="mBtn" id="mBtnMelee" style="width:60px;height:60px;font-size:11px;">👊<br><span style="font-size:8px">MELEE</span></div>
+      <div class="mBtn" id="mBtnBerserk" style="width:60px;height:60px;font-size:11px;">🔴<br><span style="font-size:8px">BERSRK</span></div>
+    </div>
+    <!-- HIDDEN BUTTONS — still functional, just not visible by default -->
+    <div style="display:none">
       <div class="mBtn" id="mBtnPause">⏸<span style="font-size:7px">PAUSE</span></div>
       <div class="mBtn" id="mBtnRevive">✚<span style="font-size:7px">REVIVE</span></div>
       <div class="mBtn" id="mBtnRage">⚡<span style="font-size:7px">RAGE</span></div>
       <div class="mBtn" id="mBtnPower">🥷<span style="font-size:7px">POWER</span></div>
-    </div>
-    <div id="mobileRow2">
       <div class="mBtn" id="mBtnKnife">🔪<span style="font-size:7px">KNIFE</span></div>
       <div class="mBtn" id="mBtnBlade">⚔️<span style="font-size:7px">BLADE</span></div>
-      <div class="mBtn" id="mBtnMelee">👊<span style="font-size:7px">MELEE</span></div>
-      <div class="mBtn" id="mBtnReload">↺<span style="font-size:7px">RELOAD</span></div>
-    </div>
-    <div id="mobileRow3">
       <div class="mBtn" id="mBtnMerge">🔗<span style="font-size:7px">MERGE</span></div>
       <div class="mBtn" id="mBtnCombat">👊<span style="font-size:7px">COMBAT</span></div>
-<div class="mBtn" id="mBtnBerserk">🔴<span style="font-size:7px">BERSRK</span></div>
-      <div class="mBtn" id="mBtnSpirit">✨<span style="font-size:7px">SPIRIT</span></div>      <div class="mBtn" id="mBtnFire">🔫<span style="font-size:9px">FIRE</span></div>
+      <div class="mBtn" id="mBtnSpirit">✨<span style="font-size:7px">SPIRIT</span></div>
     </div>
   </div>
 </div>
@@ -1634,10 +1643,14 @@ function _echo(g,delay=0.06,feedback=0.28){
   const out=AC.createGain();out.gain.value=0.35;
   g.connect(d);d.connect(fb);fb.connect(d);d.connect(out);out.connect(masterGain);
 }
-
+let _sndShootLast=0;
 function sndShoot(){
   if(muted)return;
   if(!AC)initAudio();if(!AC)return;
+  // Hard throttle: max one full shoot sound every 65ms — prevents AudioNode explosion
+  const _now=Date.now();
+  if(_now-_sndShootLast<65){return;}
+  _sndShootLast=_now;
   const t=AC.currentTime;
   // Crack
   const o=AC.createOscillator(),g=AC.createGain();
@@ -1698,8 +1711,12 @@ function sndShoot(){
 playNoise(0.018,0.06,0,400,1200);  }
 }
 
+let _sndEShootLast=0;
 function sndEShoot(){
   if(muted||!AC)return;
+  const _now2=Date.now();
+  if(_now2-_sndEShootLast<45)return;
+  _sndEShootLast=_now2;
   const t=AC.currentTime;
   const b=AC.createBuffer(1,Math.floor(AC.sampleRate*.025),AC.sampleRate);
   const d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,1.8);
@@ -2002,7 +2019,7 @@ let roomId=null,isOnline=false;
 let mpSyncT=0,mpReadT=0,mpLobbyInt=null;
 
 async function mpWrite(){
-  if(!myPid||!isOnline)return;
+  if(!myPid||!isOnline||!window.storage)return;
   try{
     const payload={
       x:GS&&GS.running?Math.round(P.x):0,
@@ -2039,7 +2056,7 @@ async function mpWrite(){
 }
 
 async function mpRead(){
-  if(!myPid||!isOnline)return;
+  if(!myPid||!isOnline||!window.storage)return;
   try{
     const kk=await window.storage.list('sqfv9_',true);
     const fresh={};const now=Date.now();
@@ -2387,32 +2404,7 @@ function renderLiveScoreboard(){
 // CO-OP SYNC FUNCTIONS
 // ══════════════════════════════════════════════════════
 
-function broadcastMyPosition(){
-  if(!ablyReady||!P)return;
-  ablyPublish('player',{
-    pid: myPid,
-    name: myPlayerName,
-    color: myPlayerColor,
-    role: myRole,
-    x: Math.round(P.x),
-    y: Math.round(P.y),
-    angle: +(P.angle||0).toFixed(2),
-    hp: Math.round(P.hp),
-    maxHp: Math.round(P.maxHp),
-    shield: Math.round(P.shield),
-    maxShield: Math.round(P.maxShield),
-    alive: !P.dead,
-    isMoving: P.isMoving,
-    stepPhase: +(P.stepPhase||0).toFixed(2),
-    crouching: P.crouching,
-    score: GS?GS.score:0,
-    kills: pvpKills||0,
-    wave: GS?GS.wave:1,
-    stage: GS?GS.stage:1,
-    round: GS?GS.round:1,
-    ts: Date.now(),
-  });
-}
+
 
 function broadcastGameState(){
   // Host sends compact enemy + boss state
@@ -2932,10 +2924,14 @@ function rrect(x,y,w,h,r){r=Math.min(r,w/2,h/2);ctx.beginPath();ctx.moveTo(x+r,y
 function hasLOS(ax,ay,bx,by){const dx=(bx-ax)/12,dy=(by-ay)/12;for(let i=1;i<12;i++){if(inCov(ax+dx*i,ay+dy*i,5))return false;}return true;}
 function canSee(e,target,range=400){
   if(!target||(target===P&&P.dead))return false;
-  // Invisibility check — enemies cannot see player while shadow active
   if(target===P&&_invisActive)return false;
-  if(dist(e,target)>range)return false;
-  return hasLOS(e.x,e.y,target.x,target.y);
+  const _d=dist(e,target);
+  if(_d>range)return false;
+  // Skip expensive LOS raycast every other frame for distant enemies
+  if(_d>300&&frameN%2===1){return e._cachedLOS||false;}
+  const result=hasLOS(e.x,e.y,target.x,target.y);
+  e._cachedLOS=result;
+  return result;
 }function nearestEnemy(x,y){let b=null,bd=99999;for(const e of enemies){if(!e.dead&&!e.sleeping){const d=(x-e.x)**2+(y-e.y)**2;if(d<bd){bd=d;b=e;}}}if(boss&&!boss.dead){const d=(x-boss.x)**2+(y-boss.y)**2;if(d<bd)b=boss;}return b;}
 function nearestTarget(x,y){let b=null,bd=99999;const ts=[P,...SQ.filter(m=>m.alive)];for(const t of ts){if(t===P&&P.dead)continue;const d=(t.x-x)**2+(t.y-y)**2;if(d<bd){bd=d;b=t;}}return b;}
 function nearCoverPos(x,y,range=360){let best=null,bd=Infinity;for(const c of covers){const pts=[{x:c.x-28,y:c.y+c.h/2},{x:c.x+c.w+28,y:c.y+c.h/2},{x:c.x+c.w/2,y:c.y-28},{x:c.x+c.w/2,y:c.y+c.h+28}];for(const p of pts){const d=dist({x,y},p);if(d<bd&&d<range){bd=d;best=p;}}}return best;}
@@ -3025,18 +3021,10 @@ let _lastBubbleT=0;
 function squadSpeak(member,category,col){
   const lines=SQ_PERSONALITY[member.name]?.[category];
   if(!lines||!lines.length)return;
-  // Max 2 bubbles on screen at once, minimum 4s between any bubble
-  if(speechBubbles.length>=2)return;
   const now=Date.now();
   if(now-_lastBubbleT<4000)return;
   _lastBubbleT=now;
   const line=lines[Math.floor(Math.random()*lines.length)];
-  const sp=w2s(member.x,member.y);
-  const el=document.createElement('div');el.className='speechBubble';
-  el.style.cssText=`left:${sp.x+10}px;top:${sp.y-50}px;color:${col||member.col};border-color:${col||member.col}40;`;
-  el.textContent=line;document.body.appendChild(el);
-  speechBubbles.push(el);
-  setTimeout(()=>{if(el.parentNode)el.remove();speechBubbles=speechBubbles.filter(b=>b!==el);},2600);
   aiSay(`${member.name}: "${line}"`,true);
 }
 
@@ -3159,7 +3147,6 @@ function startWave(){
   });
   const S=curStage(),RM=curRoundMult();GS.waveKills=0;GS.waveStarted=true;
 berserkCooldown=0; // berserk resets each wave — one use per wave
-spiritUsedThisWave=false; // spirit resets each wave
 spirit=null; spiritActive=false; spiritTimer=0;
 spiritUsedThisWave=false; // spirit resets each wave — one use per wave
 const count=Math.min(S.waves*14+(GS.wave-1)*18+GS.stage*10+(GS.round-1)*18,S.maxOn*5+80);GS.waveTarget=count;GS.spawnQ=[];GS.betweenWaves=false;
@@ -3190,10 +3177,25 @@ const count=Math.min(S.waves*14+(GS.wave-1)*18+GS.stage*10+(GS.round-1)*18,S.max
   const waveCol=GS.wave>=5?'#ff0000':GS.wave>=3?'#ff8800':'#ffd700';
   showBanner(`⚔ WAVE ${GS.wave} — ${waveName}`,threatLine,waveCol);
  GS.spawnTick=0;updateWaveHUD();sndAlarm();updateEnemyCountHUD();
-  aiSay(`Wave ${GS.wave} — ${count} enemies! ${threatLine}`);
+aiSay(`Wave ${GS.wave} — ${count} enemies! ${threatLine}`);
   if(GS.wave>=4)setTimeout(()=>sndVoice(`Wave ${GS.wave}!`,0.85,0.9),600);
-  if(mpCoopMode&&ablyReady)ablyPublish('wave_start',{wave:GS.wave,stage:GS.stage,round:GS.round,waveTarget:GS.waveTarget});
-}
+const _tutSeen=(()=>{try{return localStorage.getItem('sqfv9_tutorialSeen');}catch{return true;}})();
+  if(GS.wave===1&&GS.stage===1&&GS.round===1&&!_tutSeen){
+    try{localStorage.setItem('sqfv9_tutorialSeen','1');}catch{}
+    setTimeout(()=>{
+      showBanner('🎯 HOW TO WIN','Kill waves → defeat BOSS → clear 3 stages × 3 rounds','#39ff8a');
+      addKillFeed('🎯 Kill all waves then defeat the BOSS to advance','b');
+    },3200);
+    setTimeout(()=>{
+      addKillFeed('💡 Tap quick buttons below to command your squad','h');
+      addKillFeed('💡 Try: ATTACK · FOLLOW · HEAL · FLANK · RETREAT','p');
+    },7000);
+    setTimeout(()=>{
+      addKillFeed(_isMob?'🔫 Joystick=Move · Fire=Shoot · Melee=Punch':'🔫 WASD=Move · Click=Shoot · F=Melee · R=Reload','s');
+      addKillFeed('💡 Grab yellow drops (ammo) and green drops (health)','h');
+    },11500);
+  }
+  if(mpCoopMode&&ablyReady)ablyPublish('wave_start',{wave:GS.wave,stage:GS.stage,round:GS.round,waveTarget:GS.waveTarget});}
 const CREATURE_TYPES=['grunt','heavy','sniper','scout','berserker','shielder','phantom','bomber','shadow','brute','alien','swordsman','spider_creature','lobster','serpent','dragon','gorilla'];// ── ENEMY FACTIONS ─────────────────────────────────
 const ENEMY_FACTIONS=[
   {id:'alpha', col:'#ff4400',helmetCol:'#cc2200',shirtCol:'rgba(255,68,0,0.58)',    name:'ALPHA'},
@@ -3246,8 +3248,7 @@ else if(wave>=2&&roll<0.93)type='spider_creature';  else if(GS.stage>=2&&roll<0.
   else if(wave>=3&&roll<0.97)type='serpent';
   else if(GS.stage>=2&&wave>=4&&roll<0.98)type='dragon';
 // else if(wave>=2&&roll<0.92)type='gorilla';
-  const intel=clamp(S.eSmart*RM.intel*(SETTINGS.aiIntelligence/6.5),0.45,1);
-
+const intel=clamp(S.eSmart*RM.intel*(SETTINGS.aiIntelligence/5.0),0.68,1);
   // Per-creature stats
 const cfg={
 grunt:   {hp:145,spd:3.7,dmg:30,col:S.eCol,   sz:22,label:''},
@@ -3269,9 +3270,7 @@ demon:   {hp:500,spd:5.6,dmg:98,col:'#cc0033',  sz:22,label:'DMN'},
     hellhound:{hp:300,spd:8.4,dmg:76,col:'#440000', sz:15,label:'HND'},
  necromancer:{hp:340,spd:2.8,dmg:110,col:'#440066',sz:17,label:'NEC'},
 alien:      {hp:440,spd:5.4,dmg:95,col:'#00ff88',sz:18,label:'👽'},
-    swordsman:  {hp:600,spd:4.0,dmg:128,col:'#cc8800',sz:19,label:'🤺'},
-    spider_creature:{hp:250,spd:7.8,dmg:75,col:'#330011',sz:14,label:'🕷️'},
-    lobster:    {hp:750,spd:2.4,dmg:115,col:'#cc3300',sz:22,label:'🦞'},
+swordsman:  {hp:600,spd:3.4,dmg:95,col:'#aabbcc',sz:19,label:'🔫'},    lobster:    {hp:750,spd:2.4,dmg:115,col:'#cc3300',sz:22,label:'🦞'},
     serpent:    {hp:520,spd:4.8,dmg:102,col:'#225500',sz:20,label:'🐍'},
     dragon:     {hp:1020,spd:3.2,dmg:152,col:'#882200',sz:26,label:'🐉'},
     gorilla:    {hp:900,spd:3.5,dmg:140,col:'#443322',sz:24,label:'🦍'},
@@ -3293,8 +3292,37 @@ const isHeavy=type==='heavy'||type==='shielder'||type==='ogre';
 // Co-op: enemies are weaker (55% HP, 60% dmg, 80% spd) — players have less AI squad support
   const _coopEMul=mpCoopMode?0.55:1.0;
 // Unique deterministic ID so host and clients can reference the same enemy object
-  if(!window._enemyIdCounter)window._enemyIdCounter=1;
+if(!window._enemyIdCounter)window._enemyIdCounter=1;
   const _eid='e'+(window._enemyIdCounter++)+'_'+Date.now();
+  if(window._seenEnemyTypes&&!window._seenEnemyTypes.has(type)){
+    window._seenEnemyTypes.add(type);
+    const _typeDesc={
+      heavy:'HEAVY — high HP, slow, hits hard',
+      sniper:'SNIPER — long range, deadly accurate',
+      scout:'SCOUT — very fast, weak',
+      berserker:'BERSERKER — charges and never retreats',
+      shielder:'SHIELDER — armored shield, aim around it',
+      phantom:'PHANTOM — nearly invisible, flanks you',
+      bomber:'BOMBER — throws grenades, keep distance',
+      shadow:'SHADOW — teleports, hard to pin down',
+      brute:'BRUTE — enormous HP, slow',
+      demon:'DEMON — fast with wings, high damage',
+      imp:'IMP — tiny, extremely fast',
+      spider:'SPIDER — fast, can cling and drain HP',
+      wraith:'WRAITH — ghostly, phases through cover',
+      ogre:'OGRE — massive HP, devastating melee',
+      hellhound:'HELLHOUND — fastest enemy, fire attacks',
+      necromancer:'NECROMANCER — triple ranged shots, stay mobile',
+      alien:'ALIEN — multi-arm attacks, energy bursts',
+      swordsman:'SWORDSMAN — elite armored melee warrior',
+      spider_creature:'SPIDER — venomous, 8 legs, very fast',
+      lobster:'LOBSTER — armored claws, massive HP',
+      serpent:'SERPENT — sinuous body, unpredictable',
+      dragon:'DRAGON — fire breath, high HP, flying',
+      gorilla:'GORILLA — charges and chest-pounds, devastating',
+    }[type];
+    if(_typeDesc)setTimeout(()=>addKillFeed(`⚠ NEW ENEMY: ${_typeDesc}`,'s'),900);
+  }
   enemies.push({
     id:_eid,
     x,y,angle:0,type,
@@ -3340,8 +3368,12 @@ isCommander,commanderT:0,
 function updateEnemy(e){
   if(e.dead){e.deathT++;return;}
   if(e.flashT>0)e.flashT--;
-  // CO-OP CLIENT: skip all AI, damage, and shooting — host controls everything
-  // Clients were running full enemy AI independently, causing double/triple damage
+// Skip full AI for far-away non-alert enemies every 3rd frame (big CPU save)
+  if(P&&!P.dead&&!e.berserkMode&&e.aiState!=='berserk'&&frameN%3!==0){
+    const _fd=dist(e,P);
+    if(_fd>650&&e.aiState==='approach'&&e.alertT<50){e.aiT++;return;}
+  }
+  // CO-OP CLIENT: skip all AI, damage, and shooting — host controls everything  // Clients were running full enemy AI independently, causing double/triple damage
   if(mpCoopMode&&!isRoomHost){
     if(e.sleeping){e.sleepT--;if(e.sleepT<=0){e.sleeping=false;e.aiState='approach';}}
     if(e.burnT>0)e.burnT--;
@@ -3483,11 +3515,38 @@ if(e.stuckT>80){
     e.y=clamp(e.y+(Math.random()-.5)*28,16,WORLD_H-16);
   }
 }if(e.hp<e.maxHp*.18&&!e.retreating&&!e.berserkMode){e.retreating=true;e.aiState='retreat';e.retreatTarget=null;}
-  // Dodge bullets — sidestep when suppressed
-  if(e.suppressedT>20&&!e.berserkMode&&Math.random()<0.08){
-    const dodgeAng=e.angle+Math.PI/2*(Math.random()<.5?1:-1);
-    e.x=clamp(e.x+Math.cos(dodgeAng)*e.speed*2.5,16,WORLD_W-16);
-    e.y=clamp(e.y+Math.sin(dodgeAng)*e.speed*2.5,16,WORLD_H-16);
+// ── TACTICAL BULLET PREDICTION & DODGE ───────────────
+  if(!e.dead&&!e.sleeping&&!e.berserkMode){
+    // Scan player + squad bullets for threats
+    let threat=null,threatDist=92;
+    for(const blt of bullets){
+      if(blt.owner==='player'||blt.owner==='squad'){
+        // Project bullet 10 frames forward — will it hit me?
+        const futX=blt.x+blt.dx*10, futY=blt.y+blt.dy*10;
+        const nowD=dist(e,blt);
+        const futD=Math.sqrt((futX-e.x)**2+(futY-e.y)**2);
+        if(nowD<92&&futD<nowD){threat=blt;threatDist=nowD;break;}
+      }
+    }
+    if(threat&&Math.random()<(e.intel*0.92)){
+      // Sidestep perpendicular to bullet's flight path
+      const bAng=Math.atan2(threat.dy,threat.dx);
+      const dodgeSide=Math.random()<0.5?1:-1;
+      const dodgeAng=bAng+Math.PI/2*dodgeSide;
+      const dodgeSpd=e.speed*(e.scout?3.0:e.heavy?1.4:2.2);
+      e.x=clamp(e.x+Math.cos(dodgeAng)*dodgeSpd*2.2,16,WORLD_W-16);
+      e.y=clamp(e.y+Math.sin(dodgeAng)*dodgeSpd*2.2,16,WORLD_H-16);
+      e.suppressedT=Math.max(e.suppressedT,60);
+      // Smart enemies dive for cover after dodging
+      if(e.intel>0.72&&Math.random()<0.55&&e.aiState==='approach'){
+        e.aiState='seek_cover';e.covPos=null;
+      }
+    }else if(e.suppressedT>25&&!e.berserkMode&&Math.random()<0.14){
+      // Fallback: random panic sidestep when pinned
+      const dodgeAng=e.angle+Math.PI/2*(Math.random()<.5?1:-1);
+      e.x=clamp(e.x+Math.cos(dodgeAng)*e.speed*2.0,16,WORLD_W-16);
+      e.y=clamp(e.y+Math.sin(dodgeAng)*e.speed*2.0,16,WORLD_H-16);
+    }
   }  const target=nearestTarget(e.x,e.y);
   const hasTgt=target&&!(target===P&&P.dead);
   let dx=0,dy=0,d=9999,ang=e.angle;
@@ -3617,11 +3676,16 @@ case'at_cover':{
       }else if(e.peekT>110)e.peekT=0;
       if(e.covPos&&dist(e,e.covPos)>20)mv(e,e.covPos.x,e.covPos.y,e.speed*.9);
       // Only leave cover when healthy AND not being shot at
-   if(e.hp>e.maxHp*.4&&e.suppressedT<8&&e.aiT>55){
-        if(Math.random()<0.55){e.aiState='flank';e.flankAngle=(Math.random()-.5)*Math.PI;}
-        else{e.aiState='approach';}
-        e.covPos=null;e.crouching=false;e.aiT=0;
+// Only leave cover when: healthy, not being shot at, AND a full 3 seconds have passed
+      if(e.hp>e.maxHp*.60&&e.suppressedT===0&&e.aiT>180){
+        const roll=Math.random();
+        if(roll<e.intel*.55){e.aiState='flank';e.flankAngle=(Math.random()-.5)*Math.PI*1.5;e.aiT=0;}
+        else if(roll<e.intel*.85){e.aiState='approach';e.aiT=0;}
+        // else stay in cover — keep fighting from here
+        if(e.aiState!=='at_cover'){e.covPos=null;e.crouching=false;}
       }
+      // When shot at while peeking — dive immediately back into crouch
+      if(e.suppressedT>15&&e.peekT>20){e.peekT=0;e.crouching=true;}
       break;
     } case'flank':{e.angle=ang;
       if(!hasTgt){e.aiState='approach';break;}const fa=ang+e.flankAngle;mv(e,target.x+Math.cos(fa)*110,target.y+Math.sin(fa)*110,e.speed*1.2);e.shootT--;if(e.shootT<=0&&canSee(e,target,450)&&d<450){e.shootT=50;eShoot(e,target);}if(e.aiT>120){e.aiState='approach';e.aiT=0;}break;}
@@ -3631,7 +3695,7 @@ case'retreat':{e.angle=ang;if(!e.retreatTarget||dist(e,e.retreatTarget)<55){cons
 
     }
 function eShoot(e,tgt){
-  if(!tgt||(tgt===P&&P.dead))return;
+if(!tgt||(tgt===P&&P.dead))return;
   const a=Math.atan2(tgt.y-e.y,tgt.x-e.x);
   const spread=(0.03+(1-SETTINGS.aiAccuracy/10)*.18)*(e.sniper?.10:e.heavy?.65:1.0)*(e.berserkMode?.3:1);
   const as=a+(Math.random()-.5)*spread;
@@ -3639,14 +3703,50 @@ function eShoot(e,tgt){
   let spd=e.sniper?42:e.heavy?22:28;
   let bulletCount=1;
   let dmgMul=1;
+  // ── SWORDSMAN GUNMAN: tactical burst fire, high accuracy ──
+  if(e.type==='swordsman'){
+    const d=Math.sqrt((tgt.x-e.x)**2+(tgt.y-e.y)**2);
+    spd=38; dmgMul=0.95;
+    // Close range: 3-shot burst; mid range: 2-shot; far: single precise
+    bulletCount=d<160?3:d<320?2:1;
+    // Predict target movement — lead the shot
+    const leadX=tgt.x+(tgt.vx||0)*8;
+    const leadY=tgt.y+(tgt.vy||0)*8;
+    const _la=Math.atan2(leadY-e.y,leadX-e.x);
+    const _ls=_la+(Math.random()-.5)*(0.04+(1-e.intel)*0.08);
+    // Fire burst with tiny stagger
+    for(let _bi=0;_bi<bulletCount;_bi++){
+      const _bDelay=_bi*55;
+      setTimeout(()=>{
+        if(e.dead||!GS||!GS.running)return;
+        const _bSpread=_ls+(_bi-bulletCount/2+0.5)*0.05;
+        eBullets.push({
+          x:e.x+Math.cos(_la)*32,y:e.y+Math.sin(_la)*32,
+          dx:Math.cos(_bSpread)*spd,dy:Math.sin(_bSpread)*spd,
+          life:220,dmg:e.dmg*dmgMul,boss:false
+        });
+        sndEShoot();
+      },_bDelay);
+    }
+    // Tactical repositioning after firing — duck to cover
+    if(Math.random()<0.65&&e.intel>0.5){
+      setTimeout(()=>{
+        if(!e.dead&&e.aiState!=='retreat'){
+          e.aiState='seek_cover';e.covPos=null;e.suppressedT=60;
+        }
+      },bulletCount*55+180);
+    }
+    return; // handled above — skip default push
+  }
   if(e.type==='demon'){spd=15;bulletCount=2;dmgMul=1.2;}
   else if(e.type==='gorilla'){spd=9;bulletCount=3;dmgMul=0.8;} // shotgun spread
   else if(e.type==='dragon'){spd=14;bulletCount=2;dmgMul=1.5;}
   else if(e.type==='necromancer'){spd=12;bulletCount=3;dmgMul=0.9;} // triple shot
   else if(e.type==='alien'){spd=16;bulletCount=1;dmgMul=1.3;}
-  for(let i=0;i<bulletCount;i++){
+for(let i=0;i<bulletCount;i++){
     const shootAngle=as+(i-bulletCount/2+0.5)*(bulletCount>1?0.15:0);
-eBullets.push({x:e.x+Math.cos(a)*30,y:e.y+Math.sin(a)*30,dx:Math.cos(shootAngle)*spd,dy:Math.sin(shootAngle)*spd,life:240,dmg:e.dmg*dmgMul,boss:false});  }
+    eBullets.push({x:e.x+Math.cos(a)*30,y:e.y+Math.sin(a)*30,dx:Math.cos(shootAngle)*spd,dy:Math.sin(shootAngle)*spd,life:240,dmg:e.dmg*dmgMul,boss:false});
+  }
   sndEShoot();
 }
 
@@ -3992,7 +4092,7 @@ function drawEnemyVisual(e,sx,sy,ec){
   }
   if(e.dead)return;
   // Faction shirt + commander badge
-  if(e.factionShirt){
+if(e.factionShirt&&!_fullBody.includes(e.type)){
     ctx.save();ctx.translate(sx,sy);ctx.rotate(e.angle);
     const scY=e.crouching?0.62:1;ctx.scale(1,scY);
     ctx.fillStyle=e.factionShirt;ctx.globalAlpha=0.72;
@@ -4302,43 +4402,76 @@ ctx.save();ctx.shadowBlur=0;
     ctx.beginPath();ctx.arc(sx-sz*.22,sy-sz*2.0,sz*.1,0,Math.PI*2);ctx.fill();
     ctx.beginPath();ctx.arc(sx+sz*.22,sy-sz*2.0,sz*.1,0,Math.PI*2);ctx.fill();
     ctx.restore();ctx.globalAlpha=1;ctx.shadowBlur=0;
-
-  }else if(e.type==='swordsman'){
+}else if(e.type==='swordsman'){
     ctx.save();
-    const sT=Date.now()*.008;
-    // Swordsman: armored warrior swinging a blade
-    ctx.fillStyle=e.flashT>0?'#fff':'#885500';ctx.shadowColor='#ffaa00';ctx.shadowBlur=10;
-    // Body armour
+    // GUNMAN — tactical armored soldier with white realistic gun
+    ctx.fillStyle=e.flashT>0?'#fff':'#445566';ctx.shadowColor='#aabbcc';ctx.shadowBlur=10;
+    // Tactical body armour — dark blue-grey
     rrect(sx-sz*.48,sy-sz*.52,sz*.96,sz*.88,4);ctx.fill();
-    // Helmet
-    ctx.fillStyle=e.flashT>0?'#fff':'#996600';
+    // Plate carrier straps
+    ctx.strokeStyle='#334455';ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(sx-sz*.2,sy-sz*.52);ctx.lineTo(sx-sz*.2,sy+sz*.36);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(sx+sz*.2,sy-sz*.52);ctx.lineTo(sx+sz*.2,sy+sz*.36);ctx.stroke();
+    // Helmet — tactical ops style
+    ctx.fillStyle=e.flashT>0?'#fff':'#334455';
     ctx.beginPath();ctx.arc(sx,sy-sz*.88,sz*.52,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='rgba(0,0,0,0.7)';
-    ctx.fillRect(sx-sz*.3,sy-sz*.98,sz*.6,sz*.22);
-    // Visor slit glow
-    ctx.fillStyle='#ffaa00';ctx.shadowColor='#ffaa00';ctx.shadowBlur=12;
-    ctx.fillRect(sx-sz*.25,sy-sz*.93,sz*.5,sz*.08);
-    // SWORD — swings back and forth
-    const swingAngle=Math.sin(sT*2.8)*0.9;
-    ctx.save();ctx.translate(sx+sz*.5,sy-sz*.25);ctx.rotate(swingAngle);
-    ctx.strokeStyle='#ccddff';ctx.lineWidth=4;ctx.shadowColor='#aaccff';ctx.shadowBlur=18;
-    ctx.lineCap='round';
-    ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(sz*2.1,-sz*1.8);ctx.stroke();
-    // Crossguard
-    ctx.strokeStyle='#886600';ctx.lineWidth=7;ctx.shadowBlur=4;
-    ctx.beginPath();ctx.moveTo(-sz*.3,-sz*.22);ctx.lineTo(sz*.3,sz*.22);ctx.stroke();
-    // Blade shine
-    ctx.strokeStyle='rgba(255,255,255,0.6)';ctx.lineWidth=1.5;
-    ctx.beginPath();ctx.moveTo(sz*.1,-sz*.05);ctx.lineTo(sz*1.9,-sz*1.7);ctx.stroke();
+    // Helmet visor strip — dark
+    ctx.fillStyle='rgba(0,5,15,0.85)';
+    ctx.fillRect(sx-sz*.32,sy-sz*.98,sz*.64,sz*.24);
+    // Visor reflection — white glint (tactical gunman)
+    ctx.fillStyle='rgba(255,255,255,0.18)';
+    ctx.fillRect(sx-sz*.28,sy-sz*.95,sz*.24,sz*.06);
+    // Ear protectors
+    ctx.fillStyle='#445566';
+    ctx.beginPath();ctx.arc(sx-sz*.52,sy-sz*.9,sz*.18,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(sx+sz*.52,sy-sz*.9,sz*.18,0,Math.PI*2);ctx.fill();
+    // ── WHITE REALISTIC GUN — same geometry as player gun ──
+    const _gAngle=e.angle;
+    const _fR=Math.cos(_gAngle)>=0;
+    const _armX=sx+(_fR?sz*.72:-sz*.72);
+    const _armY=sy+sz*.2;
+    ctx.save();
+    ctx.translate(_armX,_armY);
+    ctx.rotate(_gAngle);
+    if(!_fR)ctx.scale(1,-1);
+    // Muzzle flash when recently fired
+    if(e.flashT>2){
+      ctx.save();ctx.globalAlpha=e.flashT/10;
+      ctx.fillStyle='#ffffcc';ctx.shadowColor='#ffff88';ctx.shadowBlur=18;
+      ctx.beginPath();ctx.arc(46,0,5+Math.random()*3,0,Math.PI*2);ctx.fill();
+      ctx.restore();
+    }
+    // Gun body — white/light grey
+    ctx.shadowColor='#ffffff';ctx.shadowBlur=8;
+    // Receiver
+    ctx.fillStyle='#f0f0f0';ctx.fillRect(-4,-5,21,10);
+    // Barrel
+    ctx.fillStyle='#e8e8e8';ctx.fillRect(17,-2.5,31,5);
+    // Muzzle brake
+    ctx.fillStyle='#dddddd';ctx.fillRect(45,-3.5,8,7);
+    ctx.fillStyle='rgba(0,0,0,0.15)';
+    ctx.fillRect(46,-3.5,1.5,2.5);ctx.fillRect(48.5,-3.5,1.5,2.5);
+    // Scope — white
+    ctx.fillStyle='#e0e0e0';ctx.fillRect(2,-9,16,5);
+    ctx.fillStyle='rgba(0,20,40,0.7)';ctx.fillRect(3,-8,14,3);
+    // Scope lens — slight blue tint
+    ctx.fillStyle='rgba(180,220,255,0.5)';ctx.shadowColor='#aaddff';ctx.shadowBlur=6;
+    ctx.beginPath();ctx.arc(9,-6.5,2.5,0,Math.PI*2);ctx.fill();
+    ctx.shadowBlur=0;
+    // Front sight
+    ctx.fillStyle='#cccccc';ctx.fillRect(40,-6,1.5,3.5);
+    // Grip
+    ctx.fillStyle='#d8d8d8';ctx.fillRect(-6,4,9,13);
+    ctx.fillStyle='rgba(0,0,0,0.08)';
+    for(let _gi=0;_gi<4;_gi++)ctx.fillRect(-5,5+_gi*3,8,1.5);
+    // Magazine — white
+    ctx.fillStyle='#e0e0e0';ctx.fillRect(-3,5,7,13);
+    ctx.fillStyle='#cccccc';ctx.fillRect(-2,6,2,11);
+    // Trigger guard
+    ctx.strokeStyle='#cccccc';ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(-1,4);ctx.quadraticCurveTo(3,11,9,4);ctx.stroke();
     ctx.restore();
-    // Shield on left arm
-    ctx.fillStyle='#774400';ctx.shadowColor='#aa6600';ctx.shadowBlur=8;
-    rrect(sx-sz*1.45,sy-sz*.58,sz*.52,sz*.72,4);ctx.fill();
-    ctx.strokeStyle='#cc8800';ctx.lineWidth=2;
-    ctx.strokeRect(sx-sz*1.44,sy-sz*.57,sz*.5,sz*.7);
-    // Shield boss (center stud)
-    ctx.fillStyle='#ffcc00';ctx.beginPath();ctx.arc(sx-sz*1.2,sy-sz*.22,sz*.1,0,Math.PI*2);ctx.fill();
-    ctx.restore();ctx.shadowBlur=0;
+    ctx.shadowBlur=0;
 
   }else if(e.type==='spider_creature'){
     ctx.save();
@@ -6245,7 +6378,7 @@ function updateInvisibility(){
 // ── KILLS & COMBO ────────────────────────────────────
 function onKill(){
   comboTimer=190;comboCount++;const mult=Math.min(Math.floor(comboCount/2)+1,10);
-  if(comboCount>=2){document.getElementById('comboNum').textContent=`×${comboCount}`;document.getElementById('comboLbl').textContent=`${mult}× MULT`;document.getElementById('comboNum').style.color=comboCount>=6?'#ff44ff':comboCount>=4?'#ff8800':'#ff4444';document.getElementById('comboBox').style.opacity='1';sndCombo();}
+  if(comboCount>=2){document.getElementById('comboNum').textContent=`×${comboCount}`;document.getElementById('comboLbl').textContent=`SCORE ×${mult} — COMBO!`;document.getElementById('comboNum').style.color=comboCount>=6?'#ff44ff':comboCount>=4?'#ff8800':'#ff4444';document.getElementById('comboBox').style.opacity='1';sndCombo();}
   quickKillTimer=240;quickKills++;pvpKills++;
   const stNames=['','','DOUBLE KILL!','TRIPLE KILL!','QUADRA KILL!','PENTA KILL!!'];
   const stCols=['','','#ff4444','#ff8800','#ff00ff','#ffff00'];
@@ -6614,6 +6747,98 @@ function spawnFire(x,y,n=4){for(let i=0;i<n;i++){const a=(Math.random()-.5)*Math
 function drawParticle(p){const sx=p.x-camX+shakeX,sy=p.y-camY+shakeY;if(sx<-14||sx>W+14||sy<-14||sy>H+14)return;ctx.globalAlpha=Math.max(0,p.life/p.ml);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(sx,sy,p.r,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;}
 
 // ── STICK FIGURE ─────────────────────────────────────
+function drawDirectionalGun(sx,sy,angle,sz,isEnemy,flashT){
+  const _fR=Math.cos(angle)>=0;
+  const _armX=sx+(_fR?sz*.74:-sz*.74);
+  const _armY=sy+sz*.2;
+  ctx.save();
+  ctx.translate(_armX,_armY);
+  ctx.rotate(angle);
+  if(!_fR)ctx.scale(1,-1);
+
+  if(isEnemy){
+    // ── WHITE ENEMY GUN ──
+    ctx.shadowColor='#ffffff';ctx.shadowBlur=7;
+    // Receiver
+    ctx.fillStyle=flashT>0?'#ffffff':'#f0f0f0';
+    ctx.fillRect(-4,-4,20,8);
+    // Barrel
+    ctx.fillStyle=flashT>0?'#ffffff':'#e8e8e8';
+    ctx.fillRect(16,-2.5,28,5);
+    // Muzzle brake
+    ctx.fillStyle='#dddddd';
+    ctx.fillRect(42,-3.5,7,7);
+    ctx.fillStyle='rgba(0,0,0,0.12)';
+    ctx.fillRect(43,-3.5,1.5,2.5);ctx.fillRect(45.5,-3.5,1.5,2.5);
+    // Scope
+    ctx.fillStyle='#eeeeee';ctx.shadowBlur=0;
+    ctx.fillRect(2,-8.5,14,5);
+    ctx.fillStyle='rgba(0,10,30,0.7)';ctx.fillRect(3,-7.5,12,3);
+    // Scope lens
+    ctx.fillStyle='rgba(180,220,255,0.55)';ctx.shadowColor='#aaddff';ctx.shadowBlur=6;
+    ctx.beginPath();ctx.arc(8,-6,2.2,0,Math.PI*2);ctx.fill();
+    ctx.shadowBlur=0;
+    // Front sight
+    ctx.fillStyle='#cccccc';ctx.fillRect(38,-6,1.5,3.5);
+    // Grip
+    ctx.fillStyle='#d8d8d8';ctx.fillRect(-5,3,9,12);
+    ctx.fillStyle='rgba(0,0,0,0.08)';
+    for(let _gi=0;_gi<3;_gi++)ctx.fillRect(-4,5+_gi*3.5,7,1.5);
+    // Magazine
+    ctx.fillStyle='#e0e0e0';ctx.fillRect(-3,4,7,12);
+    ctx.fillStyle='#cccccc';ctx.fillRect(-2,5,2,10);
+    // Trigger guard
+    ctx.strokeStyle='#cccccc';ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(-1,3);ctx.quadraticCurveTo(3,10,8,3);ctx.stroke();
+    // ── MUZZLE FLASH when shooting ──
+    if(flashT>3){
+      const _fp=flashT/12;
+      ctx.globalAlpha=_fp;
+      ctx.fillStyle='#ffffaa';ctx.shadowColor='#ffff44';ctx.shadowBlur=22;
+      ctx.beginPath();ctx.arc(49,0,4+Math.random()*3,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#ffffff';ctx.shadowBlur=10;
+      ctx.beginPath();ctx.arc(49,0,2,0,Math.PI*2);ctx.fill();
+      // Ejected shell casing
+      if(Math.random()<0.4){
+        parts.push({
+          x:_armX+Math.cos(angle+Math.PI/2)*8,
+          y:_armY+Math.sin(angle+Math.PI/2)*8,
+          vx:Math.cos(angle+Math.PI/2)*(2+Math.random()*3),
+          vy:Math.sin(angle+Math.PI/2)*(2+Math.random()*3)-1,
+          r:1.5,color:'#ddaa22',life:22,ml:22
+        });
+      }
+      ctx.globalAlpha=1;
+    }
+  } else {
+    // ── SQUAD GUN — dark tactical rifle ──
+    ctx.shadowColor='#44ffaa';ctx.shadowBlur=5;
+    ctx.fillStyle='#3a3a3a';ctx.fillRect(-4,-4,20,8);
+    ctx.fillStyle='#2c2c2c';ctx.fillRect(16,-2.5,28,5);
+    ctx.fillStyle='#1a1a1a';ctx.fillRect(42,-3.5,7,7);
+    ctx.fillStyle='#363636';ctx.fillRect(2,-8.5,14,5);
+    ctx.fillStyle='rgba(0,20,40,0.7)';ctx.fillRect(3,-7.5,12,3);
+    ctx.fillStyle='#00aaff';ctx.shadowColor='#00aaff';ctx.shadowBlur=9;
+    ctx.beginPath();ctx.arc(8,-6,2.2,0,Math.PI*2);ctx.fill();
+    ctx.shadowBlur=0;
+    ctx.fillStyle='#555';ctx.fillRect(38,-6,1.5,3.5);
+    ctx.fillStyle='#28180e';ctx.fillRect(-5,3,9,12);
+    ctx.fillStyle='rgba(0,0,0,0.25)';
+    for(let _gi=0;_gi<3;_gi++)ctx.fillRect(-4,5+_gi*3.5,7,1.5);
+    ctx.fillStyle='#2c2c2c';ctx.fillRect(-3,4,7,12);
+    ctx.strokeStyle='#555';ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(-1,3);ctx.quadraticCurveTo(3,10,8,3);ctx.stroke();
+    // Squad muzzle flash
+    if(flashT>2){
+      ctx.globalAlpha=flashT/10;
+      ctx.fillStyle='#aaffcc';ctx.shadowColor='#39ff8a';ctx.shadowBlur=18;
+      ctx.beginPath();ctx.arc(49,0,3+Math.random()*3,0,Math.PI*2);ctx.fill();
+      ctx.globalAlpha=1;
+    }
+  }
+  ctx.restore();
+  ctx.shadowBlur=0;ctx.globalAlpha=1;
+}
 function drawStickFigure(x,y,angle,col,sz=18,dead=false,dt=0,crouching=false,shieldOn=false,berserkEyes=false,sleeping=false,isMoving=false,stepPhase=0,helmetColor=null,isBoss=false){
   // On mobile: only rotate when aiming at enemies, otherwise face up
   if(isMobileDevice && !isBoss && !dead) {
@@ -6647,26 +6872,8 @@ if(helmetColor&&!dead&&!isBoss){
 }  const armExtend=isBoss?sz*1.18:sz*.74;const armY=sz*.2+bodyY;
   ctx.beginPath();ctx.moveTo(0,-sz*.1+bodyY);ctx.lineTo(-armExtend,armY+armSwing*sz*.35);ctx.stroke();
   ctx.beginPath();ctx.moveTo(0,-sz*.1+bodyY);ctx.lineTo(armExtend,armY-armSwing*sz*.35);ctx.stroke();
-if(!dead&&!isBoss){
-    ctx.save();
-    ctx.translate(-armExtend,armY+armSwing*sz*.35);
-    ctx.rotate(-0.5);
-    // Knife blade
-    ctx.strokeStyle='#c8d8ee';ctx.lineWidth=2;ctx.lineCap='round';
-    ctx.shadowColor='#99bbff';ctx.shadowBlur=6;
-    ctx.beginPath();ctx.moveTo(0,sz*.1);ctx.lineTo(0,-sz*.95);ctx.stroke();
-    // Knife tip
-    ctx.fillStyle='#c8d8ee';ctx.shadowBlur=4;
-    ctx.beginPath();ctx.moveTo(-sz*.1,-sz*.8);ctx.lineTo(sz*.1,-sz*.8);ctx.lineTo(0,-sz*1.15);ctx.closePath();ctx.fill();
-    // Knife guard
-    ctx.strokeStyle='#888';ctx.lineWidth=2.5;ctx.shadowBlur=0;
-    ctx.beginPath();ctx.moveTo(-sz*.15,sz*.1);ctx.lineTo(sz*.15,sz*.1);ctx.stroke();
-    // Handle
-    ctx.strokeStyle='#664422';ctx.lineWidth=4;
-    ctx.beginPath();ctx.moveTo(0,sz*.1);ctx.lineTo(0,sz*.38);ctx.stroke();
-    ctx.restore();
-    ctx.shadowBlur=0;ctx.strokeStyle=col;ctx.lineWidth=lw;
-  }  if(!dead&&isBoss){ctx.strokeStyle='#555';ctx.lineWidth=sz*.18;ctx.beginPath();ctx.moveTo(armExtend,armY-armSwing*sz*.35);ctx.lineTo(sz*2.5,sz*.35+bodyY);ctx.stroke();ctx.beginPath();ctx.moveTo(-armExtend,armY+armSwing*sz*.35);ctx.lineTo(-sz*2.1,sz*.85+bodyY);ctx.stroke();ctx.strokeStyle=col;ctx.lineWidth=lw;}
+// Gun is now drawn separately per-figure with correct directional rotation
+  ctx.shadowBlur=0;ctx.strokeStyle=col;ctx.lineWidth=lw;if(!dead&&isBoss){ctx.strokeStyle='#555';ctx.lineWidth=sz*.18;ctx.beginPath();ctx.moveTo(armExtend,armY-armSwing*sz*.35);ctx.lineTo(sz*2.5,sz*.35+bodyY);ctx.stroke();ctx.beginPath();ctx.moveTo(-armExtend,armY+armSwing*sz*.35);ctx.lineTo(-sz*2.1,sz*.85+bodyY);ctx.stroke();ctx.strokeStyle=col;ctx.lineWidth=lw;}
   const legExtend=isBoss?sz*1.1:sz*1.08;const legBase={x:0,y:sz*.46+bodyY};
   ctx.beginPath();ctx.moveTo(legBase.x,legBase.y);ctx.lineTo(-sz*.5,legExtend+legSwing*sz*.3);ctx.stroke();
   ctx.beginPath();ctx.moveTo(legBase.x,legBase.y);ctx.lineTo(sz*.5,legExtend-legSwing*sz*.3);ctx.stroke();
@@ -7201,27 +7408,24 @@ function updatePowerBars(){
           <div class="pwTrk" style="flex:1"><div class="pwFl" style="width:${Math.floor(pct*100)}%;background:${col}"></div></div>
           <div style="font-size:7px;color:${ready?SQUAD_SUPERS[m.name].color:'#333'};min-width:44px;text-align:right;">${m.name} ${ready?'✓':Math.floor(pct*100)+'%'}</div>
         </div>
-        <div style="font-size:7px;color:${ready?SQUAD_SUPERS[m.name].color+'aa':'#2a2a2a'};padding-left:25px;letter-spacing:0.5px;">${tips[m.name]}</div>
+        <div style="font-size:7px;color:${ready?SQUAD_SUPERS[m.name].color+'cc':'#555'};padding-left:25px;letter-spacing:0.5px;">${tips[m.name]} · [${['1','2','3','4'][SQ.indexOf(m)]}]</div>
       </div>`;
   });
   const spPct=spiritCD>0?1-(spiritCD/SPIRIT_CD):1;
   el.innerHTML+=`<div class="pwRow" title="✨ SPIRIT SURGE [Y] — 2.5× dmg, stuns enemies, 8s">
     <div class="pwIco">✨</div>
     <div class="pwTrk"><div class="pwFl" style="width:${Math.floor(spPct*100)}%;background:${spiritActive?'#aaffff':spPct>=1?'#aaffff':'#1a3a3a'}"></div></div>
-    <div class="pwLbl" style="color:${spiritActive?'#aaffff':spPct>=1?'#aaffff':'#333'}">${spiritActive?'SPIRIT ACTIVE':spPct>=1?'[Y] SPIRIT READY':'SPIRIT '+Math.floor(spPct*100)+'%'}</div>
-  </div>`;
+<div class="pwLbl" style="color:${spiritActive?'#aaffff':spPct>=1?'#aaffff':'#555'}">${spiritActive?'SPIRIT ACTIVE':spPct>=1?'[Y] SPIRIT READY':'[Y] SPIRIT '+Math.floor(spPct*100)+'%'}</div>  </div>`;
   const sPct=1-(sleepBombCD/SLEEP_CD);
   el.innerHTML+=`<div class="pwRow" title="💤 SLEEP BOMB — knocks out nearby enemies for several seconds">
     <div class="pwIco">💤</div>
     <div class="pwTrk"><div class="pwFl" style="width:${Math.floor(sPct*100)}%;background:#9944ff"></div></div>
-    <div class="pwLbl" style="color:${sPct>=1?'#9944ff':'#333'}">SLEEP ${sPct>=1?'READY':Math.floor(sPct*100)+'%'}</div>
-  </div>`;
+<div class="pwLbl" style="color:${sPct>=1?'#9944ff':'#555'}">[Z] SLEEP ${sPct>=1?'READY':Math.floor(sPct*100)+'%'}</div>  </div>`;
   const bUsed=berserkCooldown>=999999&&!berserkActive;
   el.innerHTML+=`<div class="pwRow" title="🔴 BERSERK — once per wave! Doubles damage, rage mode">
     <div class="pwIco">🔴</div>
     <div class="pwTrk"><div class="pwFl" style="width:${berserkActive?100:bUsed?0:100}%;background:${berserkActive?'#ff0000':'#880000'}"></div></div>
-    <div class="pwLbl" style="color:${berserkActive?'#ff4444':bUsed?'#333':'#ff4444'}">${berserkActive?'BERSERK ACTIVE':bUsed?'USED — NEXT WAVE':'BERSERK READY'}</div>
-  </div>`;
+<div class="pwLbl" style="color:${berserkActive?'#ff4444':bUsed?'#555':'#ff4444'}">${berserkActive?'[X] BERSERK ACTIVE':bUsed?'USED — NEXT WAVE':'[X] BERSERK READY'}</div>  </div>`;
 }
 function addKillFeed(msg,type='e'){const kf=document.getElementById('killFeed');while(kf.children.length>=4)kf.removeChild(kf.children[0]);const el=document.createElement('div');el.className=`km ${type}`;el.textContent=msg;kf.appendChild(el);setTimeout(()=>el.parentNode&&el.remove(),3700);}function aiSay(msg,isSquad=false){const c=document.getElementById('aiChat'),el=document.createElement('div');el.className='am'+(isSquad?' squad':'');el.textContent=(isSquad?'':' 🏆 ')+msg;c.appendChild(el);while(c.children.length>5)c.removeChild(c.children[0]);setTimeout(()=>el.parentNode&&el.remove(),5500);}
 function showFeedback(msg){const el=document.getElementById('cmdResponse');el.textContent=msg;el.style.opacity='1';setTimeout(()=>el.style.opacity='0',3000);}
@@ -7656,17 +7860,14 @@ function boostSquadForKillers(){
   showBanner('⚡ COMMANDER SURGE','Your power matches the killers!','#ff8800');
   // Visual + audio
   burst(P.x,P.y,'#ff8800',55);burst(P.x,P.y,'#ffffff',30);
-  shake(18,40);sndBerserk();  berserkActive=true;berserkTimer=99999;// berserk lasts the whole killer wave
-  document.getElementById('berserkOverlay').style.opacity='1';
-  document.getElementById('berserkLabel').style.display='block';
-  document.getElementById('berserkBar').style.display='block';
-  document.getElementById('berserkLabel').textContent='💢 KILLER WAVE SURGE';
+  shake(18,40);sndBerserk(); // Player keeps berserk control — not forced on
   squadRageTriggered=false;// let rage trigger again
   addKillFeed('💢 SQUAD POWER SURGE — Fighting at KILLER level!','b');
   showBanner('💢 KILLER WAVE','Squad powered up to match the threat!','#ff4400');
   aiSay('Squad boosted! They match the killers now — FIGHT!');
   updateSquadHUD();updatePowerBars();
 }
+
 
 function resetForNewStage(){
 enemies=[];boss=null;eBullets=[];bullets=[];fireBombs=[];shockwaves=[];supplyDrops=[]; GS.bossSpawned=false;GS.bossAlive=false;GS.stageAdvancing=false;GS.spawnQ=[];
@@ -7691,6 +7892,7 @@ function showResults(results){GS&&(GS.running=false);stopMusic();const rs=docume
 async function showOnlineBrowser(){document.getElementById('onlineScreen').style.display='flex';await refreshOnlinePlayers();}
 async function refreshOnlinePlayers(){
   const list=document.getElementById('onlineList');list.innerHTML='<div style="font-size:10px;color:#444;text-align:center;padding:10px">Scanning...</div>';
+  if(!window.storage){list.innerHTML='<div style="font-size:10px;color:#444;text-align:center;padding:14px">Storage unavailable</div>';return;}
   try{
     const kk=await window.storage.list('sqfv9_',true);const now=Date.now();const found=[];
     if(kk&&kk.keys){for(const k of kk.keys){try{const r=await window.storage.get(k,true);if(r){const p=JSON.parse(r.value);if(now-p.ts<20000)found.push(p);}}catch{}}}
@@ -7844,16 +8046,7 @@ function pauseGame(){
     `HP: ${GS&&P?Math.ceil(P.hp):0} / ${GS&&P?P.maxHp:0}`;
 }
 
-function resumeGame(){
-  if(!gamePaused)return;
-  gamePaused=false;
-  const ps=document.getElementById('pauseScreen');
-  ps.style.display='none';
-  if(GS&&GS.running&&!loopId){
-    startMusic();
-    loopId=requestAnimationFrame(gameLoop);
-  }
-}
+
 
 function resumeGame(){
   if(!gamePaused)return;
@@ -7885,8 +8078,8 @@ function startGame(round=1,stage=1,savedScore=0){
 GS={running:true,round,stage,wave:1,waveKills:0,waveTarget:999,score:normalizedScore,spawnQ:[],spawnTick:0,bossSpawned:false,bossAlive:false,betweenWaves:false,upgradeLevel:Math.min(stage-1,2),stageAdvancing:false,waveStarted:false};enemies=[];bullets=[];eBullets=[];parts=[];pickups=[];fireBombs=[];shockwaves=[];supplyDrops=[];boss=null;  ownedPerks=[];sosPings=[];pvpKills=0;shootCD=0;meleeCD=0;powerCD=0;frameN=0;
   updateScoreHUD();
 
-  comboCount=0;comboTimer=0;quickKills=0;quickKillTimer=0;reviving=false;reviveTarget=null;reviveProg=0;
-berserkActive=false;berserkTimer=0;berserkCooldown=0;sleepBombCD=0;shadowUsedThisStage=false;  shakeMag=0;shakeDur=0;spectating=false;
+comboCount=0;comboTimer=0;quickKills=0;quickKillTimer=0;reviving=false;reviveTarget=null;reviveProg=0;
+  window._seenEnemyTypes=new Set();berserkActive=false;berserkTimer=0;berserkCooldown=0;sleepBombCD=0;shadowUsedThisStage=false;  shakeMag=0;shakeDur=0;spectating=false;
   stageLives=MAX_LIVES;
 ['loginScreen','lobbyScreen','resultsScreen','deathScreen'].forEach(id=>document.getElementById(id).style.display='none');
   document.body.classList.add('game-running');  document.body.classList.add('game-running');  const _qcEl=document.getElementById('quickCmds');if(_qcEl)_qcEl.style.display='flex';  document.getElementById('perkTray').innerHTML='';document.getElementById('aiChat').innerHTML='';
@@ -7988,6 +8181,19 @@ window._rankAutoSave=setInterval(async()=>{
 }
 
 // ── MAIN GAME LOOP ───────────────────────────────────
+function enterSpectateMode(){
+  document.getElementById('deathScreen').style.display='none';
+  spectating=true;
+  window._spectateTarget=null;
+  document.getElementById('spectateBar').style.display='block';
+  document.getElementById('spectateBar').textContent='👁 SPECTATING — Watch your squad!';
+  GS.running=true;
+  if(ablyReady)ablyPublish('player_event',{type:'spectating',name:myPlayerName,color:myPlayerColor,role:myRole});
+  addKillFeed('👁 You are SPECTATING — watching until the game ends','s');
+  if(loopId){cancelAnimationFrame(loopId);loopId=null;}
+  _lastFrameTime=0;_frameAccum=0;
+  loopId=requestAnimationFrame(gameLoop);
+}
 let _lastFrameTime=0,_frameAccum=0;
 function gameLoop(ts){
   if(!GS||!GS.running)return;
@@ -8032,7 +8238,7 @@ if(mpCoopMode&&ablyReady){
       camX=clamp(P.x-W/2,0,WORLD_W-W);
       camY=clamp(P.y-H/2,0,WORLD_H-H);
     }
-    drawCursor();drawMinimap();
+  drawCursor();if(frameN%3===0)drawMinimap();
     loopId=requestAnimationFrame(gameLoop);
     return;
   }
@@ -8061,57 +8267,10 @@ if(P&&P._invincible){
     ctx.beginPath();ctx.arc(_isp.x,_isp.y,34+Math.sin(frameN*.2)*6,0,Math.PI*2);ctx.stroke();
     ctx.restore();ctx.shadowBlur=0;ctx.globalAlpha=1;
   }
-}// ── SPIRIT CLONE AI — ghost hunts nearest enemy ──────
-if(spiritActive&&spirit&&GS&&GS.running){
-  const _ste=nearestEnemy(spirit.x,spirit.y);
-  if(_ste&&!_ste.dead){
-    const _sa=Math.atan2(_ste.y-spirit.y,_ste.x-spirit.x);
-    spirit.x=clamp(spirit.x+Math.cos(_sa)*4.5*(gameSpeedSetting||1),18,WORLD_W-18);
-    spirit.y=clamp(spirit.y+Math.sin(_sa)*4.5*(gameSpeedSetting||1),18,WORLD_H-18);
-    spirit.angle=_sa;
-    spirit.stepPhase=(spirit.stepPhase||0)+0.18;
-    spirit.isMoving=true;
-    if(dist(spirit,_ste)<30){
-      const _sdmg=(P.dmg||120)*2.5;
-      _ste.hp-=_sdmg;_ste.flashT=8;
-      burst(spirit.x,spirit.y,'#cc88ff',10);
-      spawnBlood(spirit.x,spirit.y,4);
-      if(_ste.hp<=0)killEnemy(_ste);
-    }
-    if(spirit._shootCD>0)spirit._shootCD--;
-    if(spirit._shootCD<=0){
-      spirit._shootCD=22;
-      const _sba=spirit.angle+(Math.random()-.5)*.08;
-      bullets.push({x:spirit.x,y:spirit.y,dx:Math.cos(_sba)*55,dy:Math.sin(_sba)*55,
-        life:80,dmg:(P.dmg||120)*1.8,owner:'squad',crit:Math.random()<0.3});
-    }
-  }else{
-    spirit.isMoving=false;
-    spirit.stepPhase=(spirit.stepPhase||0)*.9;
-  }
-  if(boss&&!boss.dead&&dist(spirit,boss)<boss.size+20){
-    const _sbdmg=(P.dmg||120)*1.2;
-    boss.hp-=_sbdmg;boss.flashT=6;updateBossHUD();
-    if(boss.hp<=0)killBoss();
-    burst(spirit.x,spirit.y,'#cc88ff',8);
-  }
-  const _ssp=w2s(spirit.x,spirit.y);
-  if(_ssp.x>-80&&_ssp.x<W+80&&_ssp.y>-80&&_ssp.y<H+80){
-    ctx.save();
-    ctx.globalAlpha=0.55+0.35*Math.sin(frameN*.12);
-    ctx.shadowColor='#cc88ff';ctx.shadowBlur=18;
-    drawStickFigure(_ssp.x,_ssp.y,spirit.angle,'#cc88ff',18,false,0,
-      false,false,false,false,spirit.isMoving,spirit.stepPhase||0,'#9944ff',false);
-    ctx.fillStyle='#cc88ff';ctx.font='bold 8px monospace';ctx.textAlign='center';
-    ctx.shadowColor='#cc88ff';ctx.shadowBlur=12;
-    ctx.fillText('👻 SPIRIT',_ssp.x,_ssp.y-42);
-    ctx.restore();ctx.shadowBlur=0;ctx.globalAlpha=1;
-  }
 }if(!spectating&&!P.dead){updateRevive();  updateQHint();}
   if(comboTimer>0){comboTimer--;if(comboTimer<=0){comboCount=0;document.getElementById('comboBox').style.opacity='0';}}
   if(quickKillTimer>0){quickKillTimer--;if(quickKillTimer<=0)quickKills=0;}
-tickSpawn();if(frameN%6===0)rebuildGrid();
-  if(frameN%90===0)checkSquadRage();
+tickSpawn();if(frameN%16===0)rebuildGrid();  if(frameN%90===0)checkSquadRage();
   sosPings=sosPings.filter(sp=>{sp.life--;if(!sp.member.alive){const sx2=sp.member.x-camX+shakeX,sy2=sp.member.y-camY+shakeY;const dx2=clamp(sx2,24,W-24),dy2=clamp(sy2,24,H-24);ctx.save();ctx.globalAlpha=.5+.5*Math.abs(Math.sin(Date.now()*.01));ctx.fillStyle='#ff4444';ctx.beginPath();ctx.arc(dx2,dy2,14,0,Math.PI*2);ctx.fill();ctx.fillStyle='#fff';ctx.font='bold 8px monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('SOS',dx2,dy2);ctx.restore();}return sp.life>0&&!sp.member.alive;});
 
   // Player update
@@ -8229,20 +8388,7 @@ if(op.hp!=null&&op.maxHp>0){
     });
   }
   if(frameN%30===0)updateEnemyCountHUD();
-function enterSpectateMode(){
-  document.getElementById('deathScreen').style.display='none';
-  spectating=true;
-  window._spectateTarget=null;
-  document.getElementById('spectateBar').style.display='block';
-  document.getElementById('spectateBar').textContent='👁 SPECTATING — Watching the battle! Game ends normally.';
-  GS.running=true;
-  if(ablyReady)ablyPublish('player_event',{type:'spectating',name:myPlayerName,color:myPlayerColor,role:myRole});
-  addKillFeed('👁 You are SPECTATING — watching until the game ends','s');
-  // Cancel any stale loop handle and restart cleanly
-  if(loopId){cancelAnimationFrame(loopId);loopId=null;}
-  _lastFrameTime=0;_frameAccum=0;
-  loopId=requestAnimationFrame(gameLoop);
-}
+
 
   // Draw player
     ctx.globalAlpha=1;ctx.shadowBlur=0;ctx.shadowColor='transparent';ctx.setLineDash([]);
@@ -8476,8 +8622,13 @@ if(P.dead)P.deadT=(P.deadT||0)+1;if(!P.dead){
       if(!mpCoopMode)drawSquadAura(m,spx,spy,sz);
 
       // Draw the stick figure — shadow fully reset before this
-      ctx.shadowBlur=0;ctx.shadowColor='transparent';
+ctx.shadowBlur=0;ctx.shadowColor='transparent';
       drawStickFigure(spx,spy,m.angle,mc,sz,false,0,m.crouching,sh,m.berserkMode||m.raging,false,m.isMoving,m.stepPhase||0,m.helmetCol,false);
+      // Squad directional gun — points toward their target
+      const _sqGunAngle=m.killTarget&&!m.killTarget.dead
+        ?Math.atan2(m.killTarget.y-m.y,m.killTarget.x-m.x)
+        :m.angle;
+      drawDirectionalGun(spx,spy,_sqGunAngle,sz,false,m.flashT||0);
 
       // Name tag
       ctx.save();
@@ -8597,8 +8748,15 @@ if(P.dead)P.deadT=(P.deadT||0)+1;if(!P.dead){
  const ec=e.flashT>0?'#fff':e.sleeping?'#9944ff':(e.col||S.eCol);
       const sz=e.sz||18;
       const phantomA=e.isPhantom?(e.phantomRevealT>0?1:(e.phantomAlpha||0.22)):1;
-      ctx.globalAlpha=e.sleeping?0.7:phantomA;
+ctx.globalAlpha=e.sleeping?0.7:phantomA;
       drawEnemyVisual(e,sx2,sy2,ec);
+      // Draw directional gun pointing at target — skip fullBody creature types
+      const _noGunTypes=['serpent','dragon','gorilla','spider','spider_creature','lobster','wraith','alien','hellhound','ogre','imp','demon','shadow','brute','phantom','berserker'];
+      if(!_noGunTypes.includes(e.type)){
+        ctx.globalAlpha=e.sleeping?0.5:(e.isPhantom?(e.phantomAlpha||0.22):1);
+        drawDirectionalGun(sx2,sy2,e.angle,e.sz||18,true,e.flashT||0);
+        ctx.globalAlpha=1;
+      }
       const bw=e.heavy?40:26,bh=e.heavy?5:3;
       ctx.fillStyle='#1a0000';ctx.fillRect(sx2-bw/2,sy2-sz-28,bw,bh);ctx.fillStyle=e.berserkMode?'#ff0000':S.eCol;ctx.fillRect(sx2-bw/2,sy2-sz-28,bw*(e.hp/e.maxHp),bh);
       ctx.globalAlpha=1;
@@ -8651,8 +8809,11 @@ if(P.dead)P.deadT=(P.deadT||0)+1;if(!P.dead){
 ctx.shadowBlur=0;
 
   processBullets();
-  ctx.save();parts=parts.filter(p=>{p.x+=p.vx;p.y+=p.vy;p.vx*=.9;p.vy*=.9;p.life--;drawParticle(p);return p.life>0;});ctx.restore();
-
+// Cap particles — kill oldest when over 180 to prevent GC spikes
+if(parts.length>180)parts.splice(0,parts.length-180);
+ctx.save();parts=parts.filter(p=>{p.x+=p.vx;p.y+=p.vy;p.vx*=.9;p.vy*=.9;p.life--;drawParticle(p);return p.life>0;});ctx.restore();
+// Prune fully dead enemies every 60 frames — never let array balloon
+if(frameN%60===0)enemies=enemies.filter(e=>!(e.dead&&e.deathT>12));
   pickups=pickups.filter(pk=>{pk.life--;if(!P.dead&&dist(pk,P)<28){
 if(pk.type==='ammo'){
   const addAmt=P.maxAmmo*8;
@@ -8708,8 +8869,7 @@ if(done&&!GS.betweenWaves){GS.betweenWaves=true;
   shake(18,40);
 
 const killerTypes=['swordsman','shadow','necromancer'];
-  const killerCount=18+GS.stage*4+GS.round*3;
-
+const killerCount=6+GS.stage*2+GS.round*1;
 // Track killer wave state
   GS.killerWaveActive=true;
   GS.killersAllSpawned=false;
@@ -8775,8 +8935,8 @@ setTimeout(()=>{
   // Boss comes AFTER all killers are announced
 window._pendingBossTO=setTimeout(spawnBoss,600000);}
 else{GS.wave++;GS.score+=220;updateScoreHUD();aiSay(`Wave cleared! Wave ${GS.wave} incoming!`);if(GS.wave%2===0)setTimeout(triggerSupplyDrop,1200);setTimeout(()=>{genCovers();},180);setTimeout(startWave,2400);}}}
-if(frameN%30===0){updatePowerBars();}
-if(frameN%5===0){renderLiveScoreboard();}   drawCursor();drawMinimap();
+if(frameN%90===0){updatePowerBars();}
+if(frameN%30===0){renderLiveScoreboard();}  drawCursor();drawMinimap();
 
 // Always write to storage when online — was previously blocked in co-op, breaking the online badge
 mpSyncT++;
@@ -9439,16 +9599,14 @@ function toggleCmdPanel(){
   cmdPanelOpen=!cmdPanelOpen;
   const cp=document.getElementById('cmdPanel');
   const ch=document.getElementById('cmdHint');
-  if(cmdPanelOpen){
+if(cmdPanelOpen){
     cp.style.display='flex';
-    ch.style.display='none';
     // Pause game while browsing commands
     if(!gamePaused&&GS&&GS.running){
       if(loopId){cancelAnimationFrame(loopId);loopId=null;}
     }
-  }else{
+}else{
     cp.style.display='none';
-    ch.style.display='block';
     // Resume game
     if(!gamePaused&&GS&&GS.running&&!loopId){
       loopId=requestAnimationFrame(gameLoop);
@@ -10816,13 +10974,7 @@ function showMultiplayerComingSoon(){
   document.body.appendChild(modal);
 }
 
-// Disable the browse rooms button completely
-document.addEventListener('DOMContentLoaded', ()=>{
-  const browseBtn = document.getElementById('browseRoomsBtn');
-  if(browseBtn){
-    browseBtn.style.display='none'; // hide entirely
-  }
-});
+
 </script>
 
 </body>
