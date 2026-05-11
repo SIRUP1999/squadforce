@@ -369,7 +369,7 @@ canvas{display:block;cursor:crosshair;position:relative;z-index:1;touch-action:n
 .onlineEntry .oe-dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);}
 .onlineEntry .oe-name{flex:1;font-size:11px;}.onlineEntry .oe-room{font-size:9px;color:#444;}
 #hud{position:absolute;top:0;left:0;width:100%;pointer-events:none;z-index:10;}
-#topBar{display:flex;justify-content:space-between;align-items:flex-start;padding:8px 14px;background:linear-gradient(180deg,rgba(0,0,0,.95),transparent);}
+.hudBtn{position:absolute;background:rgba(0,0,0,.82);border:1px solid #333;color:#777;font-family:'Courier New',monospace;font-size:11px;padding:5px 12px;border-radius:5px;cursor:pointer;pointer-events:all!important;z-index:9999!important;transition:all .2s;letter-spacing:1px;touch-action:manipulation!important;-webkit-tap-highlight-color:rgba(255,255,255,0.15);}#topBar{display:flex;justify-content:space-between;align-items:flex-start;padding:8px 14px;background:linear-gradient(180deg,rgba(0,0,0,.95),transparent);}
 .hb{display:flex;flex-direction:column;gap:2px;}.hl{font-size:7px;color:#444;letter-spacing:2px;text-transform:uppercase;}.hv{font-size:15px;font-weight:bold;}
 .bar{width:140px;height:9px;background:#0a0a0a;border:1px solid #1a1a1a;border-radius:5px;overflow:hidden;margin-top:2px;}
 .bar-fill{height:100%;border-radius:5px;transition:width .2s;}
@@ -1050,31 +1050,34 @@ body.game-running #quickCmds{
 
 /* Mobile adjustments for quick commands */
 @media(max-width:900px),(pointer:coarse){
-  /* Quick commands — bottom center, above joystick and fire button */
   #quickCmds{
     left:50%!important;
     right:auto!important;
     transform:translateX(-50%)!important;
-    bottom:175px!important;
+    bottom:182px!important;
     top:auto!important;
-    max-width:calc(100vw - 20px)!important;
+    width:calc(100vw - 170px)!important;
+    max-width:440px!important;
+    margin-left:20px!important;
     gap:5px!important;
     flex-wrap:nowrap!important;
     overflow-x:auto!important;
     overflow-y:hidden!important;
-    max-height:44px!important;
-    padding:0 4px!important;
+    max-height:46px!important;
+    padding:0 6px!important;
     -webkit-overflow-scrolling:touch!important;
     scrollbar-width:none!important;
-    justify-content:center!important;
+    justify-content:flex-start!important;
+    align-items:center!important;
   }
   #quickCmds::-webkit-scrollbar{display:none!important;}
   #quickCmds .qc{
-    font-size:9px!important;
-    padding:6px 10px!important;
-    border-radius:20px!important;
+    font-size:8px!important;
+    padding:6px 9px!important;
+    border-radius:18px!important;
     flex-shrink:0!important;
     white-space:nowrap!important;
+    letter-spacing:0.3px!important;
   }
   body.game-running #quickCmds{
     display:flex!important;
@@ -1200,7 +1203,10 @@ body.game-running #quickCmds{
   <button class="qc qc-gold"  onclick="qCmd('retreat')">⬅<span>RUN</span></button>
   <button class="qc" style="border-color:#ff3333;color:#ff3333;" onclick="qCmd('heavy attack')">💥<span>HEAVY</span></button>
   <button class="qc" style="border-color:#ff8800;color:#ff8800;" onclick="qCmd('flank')">↗<span>FLANK</span></button>
-<button class="qc" style="border-color:#cc88ff;color:#cc88ff;" onclick="qCmd('surround')">⭕<span>SURROUND</span></button></div>
+  <button class="qc" style="border-color:#cc88ff;color:#cc88ff;" onclick="qCmd('surround')">⭕<span>SURROUND</span></button>
+  <button class="qc" style="border-color:#ff4444;color:#ff4444;" onclick="qCmd('kill boss')">👑<span>BOSS</span></button>
+  <button class="qc" style="border-color:#39ffcc;color:#39ffcc;" onclick="qCmd('defend')">🛡<span>DEFEND</span></button>
+</div>
 <div id="mobileControls">
 
 <!-- FLOATING QUICK COMMANDS — always accessible mid-combat -->
@@ -1220,13 +1226,13 @@ body.game-running #quickCmds{
       <div class="mBtn" id="mBtnFire" style="width:82px;height:82px;font-size:15px;border-width:3px;">🔫<br><span style="font-size:9px">FIRE</span></div>
     </div>
     <!-- BOTTOM ROW: MELEE + BERSERK -->
-    <div id="mobileRow2" style="display:flex;gap:14px;align-items:center;justify-content:flex-end;">
+  <div id="mobileRow2" style="display:flex;gap:14px;align-items:center;justify-content:flex-end;">
+      <div class="mBtn" id="mBtnPause" style="width:52px;height:52px;font-size:13px;background:rgba(68,136,255,0.18);border-color:#4488ff;color:#4488ff;">⏸<br><span style="font-size:7px">PAUSE</span></div>
       <div class="mBtn" id="mBtnMelee" style="width:60px;height:60px;font-size:11px;">👊<br><span style="font-size:8px">MELEE</span></div>
       <div class="mBtn" id="mBtnBerserk" style="width:60px;height:60px;font-size:11px;">🔴<br><span style="font-size:8px">BERSRK</span></div>
     </div>
-    <!-- HIDDEN BUTTONS — still functional, just not visible by default -->
+<!-- HIDDEN BUTTONS — still functional, just not visible by default -->
     <div style="display:none">
-      <div class="mBtn" id="mBtnPause">⏸<span style="font-size:7px">PAUSE</span></div>
       <div class="mBtn" id="mBtnRevive">✚<span style="font-size:7px">REVIVE</span></div>
       <div class="mBtn" id="mBtnRage">⚡<span style="font-size:7px">RAGE</span></div>
       <div class="mBtn" id="mBtnPower">🥷<span style="font-size:7px">POWER</span></div>
@@ -1607,6 +1613,16 @@ let AC,masterGain;
 function initAudio(){
   if(!AC){
     AC=new(window.AudioContext||window.webkitAudioContext)();
+    // Auto-recover if context dies under heavy load
+    setInterval(()=>{
+      if(AC&&AC.state==='suspended'){
+        AC.resume().catch(()=>{});
+      }
+      if(AC&&AC.state==='closed'){
+        AC=null;masterGain=null;
+        initAudio();
+      }
+    },3000);
     masterGain=AC.createGain();
 const comp=AC.createDynamicsCompressor();
 comp.threshold.value=-14;
@@ -1660,9 +1676,9 @@ let _sndShootLast=0;
 function sndShoot(){
   if(muted)return;
   if(!AC)initAudio();if(!AC)return;
-  // Hard throttle: max one full shoot sound every 65ms — prevents AudioNode explosion
   const _now=Date.now();
-  if(_now-_sndShootLast<65){return;}
+  const _shootCooldown=GS&&GS.killerWaveActive?120:65;
+  if(_now-_sndShootLast<_shootCooldown){return;}
   _sndShootLast=_now;
   const t=AC.currentTime;
   // Crack
@@ -1727,8 +1743,10 @@ playNoise(0.018,0.06,0,400,1200);  }
 let _sndEShootLast=0;
 function sndEShoot(){
   if(muted||!AC)return;
+  // During killer wave throttle heavily — too many calls kills AudioContext
+  const _esCooldown=GS&&GS.killerWaveActive?180:45;
   const _now2=Date.now();
-  if(_now2-_sndEShootLast<45)return;
+  if(_now2-_sndEShootLast<_esCooldown)return;
   _sndEShootLast=_now2;
   const t=AC.currentTime;
   const b=AC.createBuffer(1,Math.floor(AC.sampleRate*.025),AC.sampleRate);
@@ -3434,8 +3452,8 @@ function updateEnemy(e){
       }
     }
 
-    // ── SPECIAL POWERS ──
-    if(e.hasPower && !e.dead && !e.sleeping){
+// ── SPECIAL POWERS — skip for killers, they are already powerful enough ──
+    if(e.hasPower && !e.dead && !e.sleeping && !e._isKiller){
       e.powerCD--;
       if(e.powerCD<=0){
         e.powerCD=220+Math.floor(Math.random()*280);
@@ -3655,7 +3673,10 @@ case'berserk':{
       if(bTgt)mv(e,bTgt.x,bTgt.y,e.speed);
       else{e.x+=Math.cos(e.angle)*e.speed*0.5;e.y+=Math.sin(e.angle)*e.speed*0.5;}
       e.shootT--;
-if(e.shootT<=0&&bTgt&&d<700){e.shootT=4+Math.floor(Math.random()*6);eShoot(e,bTgt);}      break;} 
+      // Killers shoot slower — prevents eBullets flood
+      const _bsRate=e._isKiller?28+Math.floor(Math.random()*18):4+Math.floor(Math.random()*6);
+      if(e.shootT<=0&&bTgt&&d<700){e.shootT=_bsRate;eShoot(e,bTgt);}
+      break;}
       
       case'approach':{e.angle=ang;if(!hasTgt||(_invisActive&&target===P)){e.aiState='investigate';break;}
       const visible=canSee(e,target,e.sniper?720:e.heavy?380:480);
@@ -6738,8 +6759,10 @@ updateBossHUD();if(boss.hp<=0)killBoss();hit=true;}}}
   if(hit)continue;const bsx=b.x-camX+shakeX,bsy=b.y-camY+shakeY;if(bsx<-25||bsx>W+25||bsy<-25||bsy>H+25){keep.push(b);continue;}
 const col=isEnemy?(b.boss?curStage().bossCol:'#ff3300'):(b.owner==='remote'?(b.remoteColor||'#ff88ff'):b.owner==='squad'?'#44ffaa':(b.crit?'#ff4444':(berserkActive?'#ff8800':'#00ddff')));ctx.save();ctx.translate(bsx,bsy);ctx.rotate(Math.atan2(b.dy,b.dx));ctx.fillStyle=col;ctx.shadowColor=col;ctx.shadowBlur=0;
 ctx.shadowBlur=b.owner==='player'?12:0;ctx.beginPath();ctx.ellipse(0,0,b.crit?20:14,b.crit?7:5,0,0,Math.PI*2);ctx.fill();ctx.restore();keep.push(b);}return keep;}
-  bullets=proc(bullets,false);eBullets=proc(eBullets,true);
-}
+bullets=proc(bullets,false);eBullets=proc(eBullets,true);
+// Hard cap — killer wave can flood eBullets to 2000+ and freeze processBullets
+if(eBullets.length>55)eBullets=eBullets.slice(-55);
+if(bullets.length>80)bullets=bullets.slice(-80);}
 
 // ── REVIVE ──────────────────────────────────────────
 function tryRevive(){let best=null,bd=9999;SQ.forEach(m=>{if(!m.alive){const d=dist(P,m);if(d<bd){bd=d;best=m;}}});if(!best)return;if(_isMob){  best.alive=true;best.hp=Math.floor(best.maxHp*.5);best.deathT=0;  best.aiState='follow';best.sosPinged=false;  burst(best.x,best.y,'#39ff8a',14);sndRevive();shake(4,8);  addKillFeed('\u271a '+best.name+' REVIVED!','h');  updateSquadHUD();}else{  reviving=true;reviveTarget=best;reviveProg=0;  document.getElementById('medkitUI').style.display='block';  document.getElementById('medkitTarget').textContent=best.name;  document.getElementById('medkitFill').style.width='0%';}}
@@ -8772,7 +8795,9 @@ ctx.globalAlpha=e.sleeping?0.7:phantomA;
       drawEnemyVisual(e,sx2,sy2,ec);
       // Draw directional gun pointing at target — skip fullBody creature types
       const _noGunTypes=['serpent','dragon','gorilla','spider','spider_creature','lobster','wraith','alien','hellhound','ogre','imp','demon','shadow','brute','phantom','berserker'];
- if(!_noGunTypes.includes(e.type)&&sx2>-60&&sx2<W+60&&sy2>-60&&sy2<H+60){
+ // Skip gun draw for killers when too many on screen — saves GPU
+      const _killerCount=GS.killerWaveActive?enemies.filter(e2=>e2._isKiller&&!e2.dead).length:0;
+      if(!_noGunTypes.includes(e.type)&&sx2>-60&&sx2<W+60&&sy2>-60&&sy2<H+60&&(!e._isKiller||_killerCount<5||frameN%2===0)){
         ctx.globalAlpha=e.sleeping?0.5:(e.isPhantom?(e.phantomAlpha||0.22):1);
         drawDirectionalGun(sx2,sy2,e.angle,e.sz||18,true,e.flashT||0);
         ctx.globalAlpha=1;
