@@ -1050,18 +1050,31 @@ body.game-running #quickCmds{
 
 /* Mobile adjustments for quick commands */
 @media(max-width:900px),(pointer:coarse){
-  /* Quick commands: move to top-left below wave pill — completely off joystick/buttons */
+  /* Quick commands — bottom center, above joystick and fire button */
   #quickCmds{
-    left:6px!important;
+    left:50%!important;
     right:auto!important;
-    top:178px!important;
-    bottom:auto!important;
-    max-width:calc(55vw)!important;
-    gap:4px!important;
-    flex-wrap:wrap!important;
-    max-height:80px!important;
-    overflow:hidden!important;
-    transform:none!important;
+    transform:translateX(-50%)!important;
+    bottom:175px!important;
+    top:auto!important;
+    max-width:calc(100vw - 20px)!important;
+    gap:5px!important;
+    flex-wrap:nowrap!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    max-height:44px!important;
+    padding:0 4px!important;
+    -webkit-overflow-scrolling:touch!important;
+    scrollbar-width:none!important;
+    justify-content:center!important;
+  }
+  #quickCmds::-webkit-scrollbar{display:none!important;}
+  #quickCmds .qc{
+    font-size:9px!important;
+    padding:6px 10px!important;
+    border-radius:20px!important;
+    flex-shrink:0!important;
+    white-space:nowrap!important;
   }
   body.game-running #quickCmds{
     display:flex!important;
@@ -3368,10 +3381,22 @@ isCommander,commanderT:0,
 function updateEnemy(e){
   if(e.dead){e.deathT++;return;}
   if(e.flashT>0)e.flashT--;
-// Skip full AI for far-away non-alert enemies every 3rd frame (big CPU save)
+// Skip full AI for far-away non-alert enemies every 3rd frame
   if(P&&!P.dead&&!e.berserkMode&&e.aiState!=='berserk'&&frameN%3!==0){
     const _fd=dist(e,P);
     if(_fd>650&&e.aiState==='approach'&&e.alertT<50){e.aiT++;return;}
+  }
+  // Killers: throttle heavy AI — run full logic every 2nd frame only
+  if(e._isKiller&&frameN%2!==0){
+    // Still move toward player even on skipped frames
+    if(!e.dead&&!e.sleeping&&P&&!P.dead){
+      const _ktx=P.x,_kty=P.y;
+      const _ka=Math.atan2(_kty-e.y,_ktx-e.x);
+      e.x=clamp(e.x+Math.cos(_ka)*e.speed,16,WORLD_W-16);
+      e.y=clamp(e.y+Math.sin(_ka)*e.speed,16,WORLD_H-16);
+      e.angle=_ka;
+    }
+    return;
   }
   // CO-OP CLIENT: skip all AI, damage, and shooting — host controls everything  // Clients were running full enemy AI independently, causing double/triple damage
   if(mpCoopMode&&!isRoomHost){
@@ -3704,41 +3729,36 @@ if(!tgt||(tgt===P&&P.dead))return;
   let bulletCount=1;
   let dmgMul=1;
   // ── SWORDSMAN GUNMAN: tactical burst fire, high accuracy ──
-  if(e.type==='swordsman'){
-    const d=Math.sqrt((tgt.x-e.x)**2+(tgt.y-e.y)**2);
-    spd=38; dmgMul=0.95;
-    // Close range: 3-shot burst; mid range: 2-shot; far: single precise
-    bulletCount=d<160?3:d<320?2:1;
-    // Predict target movement — lead the shot
-    const leadX=tgt.x+(tgt.vx||0)*8;
-    const leadY=tgt.y+(tgt.vy||0)*8;
-    const _la=Math.atan2(leadY-e.y,leadX-e.x);
-    const _ls=_la+(Math.random()-.5)*(0.04+(1-e.intel)*0.08);
-    // Fire burst with tiny stagger
-    for(let _bi=0;_bi<bulletCount;_bi++){
-      const _bDelay=_bi*55;
-      setTimeout(()=>{
-        if(e.dead||!GS||!GS.running)return;
-        const _bSpread=_ls+(_bi-bulletCount/2+0.5)*0.05;
-        eBullets.push({
-          x:e.x+Math.cos(_la)*32,y:e.y+Math.sin(_la)*32,
-          dx:Math.cos(_bSpread)*spd,dy:Math.sin(_bSpread)*spd,
-          life:220,dmg:e.dmg*dmgMul,boss:false
-        });
-        sndEShoot();
-      },_bDelay);
+if(e.type==='swordsman'){
+    const _sd=Math.sqrt((tgt.x-e.x)**2+(tgt.y-e.y)**2);
+    spd=38;dmgMul=0.95;
+    // Lead the target
+    const _lx=tgt.x+(tgt.vx||0)*6;
+    const _ly=tgt.y+(tgt.vy||0)*6;
+    const _la=Math.atan2(_ly-e.y,_lx-e.x);
+    // Burst count based on distance — NO setTimeout, fire directly
+    const _bc=_sd<160?3:_sd<320?2:1;
+    const _sz2=e.sz||18;
+    const _mx=e.x+Math.cos(_la)*(_sz2*0.74+_sz2*1.28);
+    const _my=e.y+Math.sin(_la)*(_sz2*0.74+_sz2*1.28);
+    for(let _bi=0;_bi<_bc;_bi++){
+      const _bs=_la+(_bi-_bc/2+0.5)*0.06+(Math.random()-.5)*0.04;
+      eBullets.push({x:_mx,y:_my,dx:Math.cos(_bs)*spd,dy:Math.sin(_bs)*spd,life:220,dmg:e.dmg*dmgMul,boss:false});
     }
-    // Tactical repositioning after firing — duck to cover
-    if(Math.random()<0.65&&e.intel>0.5){
-      setTimeout(()=>{
-        if(!e.dead&&e.aiState!=='retreat'){
-          e.aiState='seek_cover';e.covPos=null;e.suppressedT=60;
-        }
-      },bulletCount*55+180);
+    // Muzzle flash
+    const _msp2=w2s(_mx,_my);
+    if(_msp2.x>-20&&_msp2.x<W+20){
+      for(let _mf=0;_mf<4;_mf++){
+        parts.push({x:_mx,y:_my,vx:Math.cos(_la+(Math.random()-.5))*(2+Math.random()*3),vy:Math.sin(_la+(Math.random()-.5))*(2+Math.random()*3),r:1.5+Math.random()*2,color:'#ffffaa',life:8,ml:8});
+      }
     }
-    return; // handled above — skip default push
-  }
-  if(e.type==='demon'){spd=15;bulletCount=2;dmgMul=1.2;}
+    sndEShoot();
+    // Reposition — direct state change, no timer
+    if(Math.random()<0.55&&!e.dead){
+      e.aiState='seek_cover';e.covPos=null;e.suppressedT=55;
+    }
+    return;
+  }  if(e.type==='demon'){spd=15;bulletCount=2;dmgMul=1.2;}
   else if(e.type==='gorilla'){spd=9;bulletCount=3;dmgMul=0.8;} // shotgun spread
   else if(e.type==='dragon'){spd=14;bulletCount=2;dmgMul=1.5;}
   else if(e.type==='necromancer'){spd=12;bulletCount=3;dmgMul=0.9;} // triple shot
@@ -8752,7 +8772,7 @@ ctx.globalAlpha=e.sleeping?0.7:phantomA;
       drawEnemyVisual(e,sx2,sy2,ec);
       // Draw directional gun pointing at target — skip fullBody creature types
       const _noGunTypes=['serpent','dragon','gorilla','spider','spider_creature','lobster','wraith','alien','hellhound','ogre','imp','demon','shadow','brute','phantom','berserker'];
-      if(!_noGunTypes.includes(e.type)){
+ if(!_noGunTypes.includes(e.type)&&sx2>-60&&sx2<W+60&&sy2>-60&&sy2<H+60){
         ctx.globalAlpha=e.sleeping?0.5:(e.isPhantom?(e.phantomAlpha||0.22):1);
         drawDirectionalGun(sx2,sy2,e.angle,e.sz||18,true,e.flashT||0);
         ctx.globalAlpha=1;
