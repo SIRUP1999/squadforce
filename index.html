@@ -1054,11 +1054,11 @@ body.game-running #quickCmds{
     left:50%!important;
     right:auto!important;
     transform:translateX(-50%)!important;
-    bottom:182px!important;
+    bottom:178px!important;
     top:auto!important;
-    width:calc(100vw - 170px)!important;
-    max-width:440px!important;
-    margin-left:20px!important;
+    width:calc(100vw - 20px)!important;
+    max-width:520px!important;
+    margin-left:0!important;
     gap:5px!important;
     flex-wrap:nowrap!important;
     overflow-x:auto!important;
@@ -1205,7 +1205,8 @@ body.game-running #quickCmds{
   <button class="qc" style="border-color:#ff8800;color:#ff8800;" onclick="qCmd('flank')">↗<span>FLANK</span></button>
   <button class="qc" style="border-color:#cc88ff;color:#cc88ff;" onclick="qCmd('surround')">⭕<span>SURROUND</span></button>
   <button class="qc" style="border-color:#ff4444;color:#ff4444;" onclick="qCmd('kill boss')">👑<span>BOSS</span></button>
-  <button class="qc" style="border-color:#39ffcc;color:#39ffcc;" onclick="qCmd('defend')">🛡<span>DEFEND</span></button>
+ <button class="qc" style="border-color:#39ffcc;color:#39ffcc;" onclick="qCmd('defend')">🛡<span>DEFEND</span></button>
+  <button class="qc" style="border-color:#ff4400;color:#ff4400;" onclick="squadRage()">⚡<span>S.RAGE</span></button>
 </div>
 <div id="mobileControls">
 
@@ -1221,15 +1222,16 @@ body.game-running #quickCmds{
   </div>
   <div id="mobileRightPanel">
     <!-- TOP ROW: FIRE (big) + RELOAD -->
+ <!-- TOP ROW: RELOAD + BERSERK (big, top right) -->
     <div id="mobileRow1" style="display:flex;gap:14px;align-items:center;justify-content:flex-end;">
       <div class="mBtn" id="mBtnReload" style="width:60px;height:60px;font-size:11px;">↺<br><span style="font-size:8px">RELOAD</span></div>
-      <div class="mBtn" id="mBtnFire" style="width:82px;height:82px;font-size:15px;border-width:3px;">🔫<br><span style="font-size:9px">FIRE</span></div>
+      <div class="mBtn" id="mBtnBerserk" style="width:82px;height:82px;font-size:15px;border-width:3px;background:rgba(255,34,0,0.25);border-color:#ff2200;color:#ff2200;box-shadow:0 0 28px rgba(255,34,0,0.5);">🔴<br><span style="font-size:9px">BERSRK</span></div>
     </div>
-    <!-- BOTTOM ROW: MELEE + BERSERK -->
-  <div id="mobileRow2" style="display:flex;gap:14px;align-items:center;justify-content:flex-end;">
+    <!-- BOTTOM ROW: PAUSE + MELEE + FIRE (big) -->
+    <div id="mobileRow2" style="display:flex;gap:14px;align-items:center;justify-content:flex-end;">
       <div class="mBtn" id="mBtnPause" style="width:52px;height:52px;font-size:13px;background:rgba(68,136,255,0.18);border-color:#4488ff;color:#4488ff;">⏸<br><span style="font-size:7px">PAUSE</span></div>
       <div class="mBtn" id="mBtnMelee" style="width:60px;height:60px;font-size:11px;">👊<br><span style="font-size:8px">MELEE</span></div>
-      <div class="mBtn" id="mBtnBerserk" style="width:60px;height:60px;font-size:11px;">🔴<br><span style="font-size:8px">BERSRK</span></div>
+      <div class="mBtn" id="mBtnFire" style="width:82px;height:82px;font-size:15px;border-width:3px;">🔫<br><span style="font-size:9px">FIRE</span></div>
     </div>
 <!-- HIDDEN BUTTONS — still functional, just not visible by default -->
     <div style="display:none">
@@ -3012,19 +3014,46 @@ function activateRage(){
   if(rageCharge<RAGE_MAX||rageActive||P.dead)return;
   rageActive=true;rageTimer=RAGE_DURATION;rageCharge=0;
   P.dmgMul=(P.dmgMul||1)*2.2;P.speed*=1.28;
+  // Rage now boosts the whole squad too
+  SQ.forEach(m=>{
+    if(!m.alive)return;
+    m.raging=true;m.rageBlinkT=0;
+    m.dmgBonus*=1.8;m.speed=Math.min(m.speed*1.4,7.5);
+    m.berserkMode=true;m.aiState='attack_order';
+    m.superCD=0;// supers instantly ready
+    burst(m.x,m.y,'#ff4400',22);burst(m.x,m.y,'#ffaa00',12);
+  });
   burst(P.x,P.y,'#ff4400',40);shake(12,28);sndBerserk();
-  showBanner('⚡ RAGE!','DOUBLE DAMAGE + SPEED!','#ff4400');
-  addKillFeed('⚡ PLAYER RAGE ACTIVATED!','b');
+  showBanner('⚡ SQUAD RAGE!','WHOLE TEAM — 2× DAMAGE + SPEED!','#ff4400');
+  addKillFeed('⚡ SQUAD RAGE — Whole team boosted!','b');
   updateRageMeter();
+}
+
+// Squad rage from button (charges rage first if not full)
+function squadRage(){
+  if(!GS||!GS.running||!P||P.dead)return;
+  if(rageCharge<RAGE_MAX){
+    // Force fill rage meter instantly when button pressed
+    rageCharge=RAGE_MAX;
+    updateRageMeter();
+    addKillFeed('⚡ RAGE CHARGED — activating!','b');
+  }
+  activateRage();
 }
 
 function updateRageTimer(){
   if(!rageActive)return;
   rageTimer--;
-  if(rageTimer<=0){
+if(rageTimer<=0){
     rageActive=false;
     P.dmgMul=(P.dmgMul||1)/2.2;P.speed/=1.28;
-    sndBerserkEnd();addKillFeed('⚡ Rage faded.','s');
+    // Revert squad rage boosts
+    SQ.forEach(m=>{
+      if(!m.alive)return;
+      m.dmgBonus/=1.8;m.speed=Math.max(m.speed/1.4,1.5);
+      m.berserkMode=false;m.raging=false;
+    });
+    sndBerserkEnd();addKillFeed('⚡ Squad rage faded.','s');
   }
   updateRageMeter();
 }
