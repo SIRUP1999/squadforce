@@ -1051,25 +1051,39 @@ body.game-running #quickCmds{
 /* Mobile adjustments for quick commands */
 @media(max-width:900px),(pointer:coarse){
   #quickCmds{
-    left:50%!important;
-    right:auto!important;
-    transform:translateX(-50%)!important;
-    bottom:178px!important;
+    left:160px!important;
+    right:215px!important;
+    transform:none!important;
+    bottom:22px!important;
     top:auto!important;
-    width:calc(100vw - 20px)!important;
-    max-width:520px!important;
+    width:auto!important;
+    max-width:none!important;
     margin-left:0!important;
-    gap:5px!important;
-    flex-wrap:nowrap!important;
-    overflow-x:auto!important;
+    gap:6px!important;
+    flex-wrap:wrap!important;
+    overflow-x:hidden!important;
     overflow-y:hidden!important;
-    max-height:46px!important;
-    padding:0 6px!important;
+    max-height:130px!important;
+    padding:0!important;
     -webkit-overflow-scrolling:touch!important;
     scrollbar-width:none!important;
-    justify-content:flex-start!important;
+    justify-content:center!important;
     align-items:center!important;
+    align-content:center!important;
   }
+  #quickCmds::-webkit-scrollbar{display:none!important;}
+  #quickCmds .qc{
+    font-size:10px!important;
+    padding:7px 10px!important;
+    border-radius:20px!important;
+    flex-shrink:0!important;
+    white-space:nowrap!important;
+    letter-spacing:0.3px!important;
+  }
+  body.game-running #quickCmds{
+    display:flex!important;
+  }
+}
   #quickCmds::-webkit-scrollbar{display:none!important;}
   #quickCmds .qc{
     font-size:8px!important;
@@ -1092,7 +1106,7 @@ body.game-running #quickCmds{
     letter-spacing:0.5px!important;
     border-radius:16px!important;
   }
-}
+
 
 /* Landscape compact mode for quick commands */
 @media screen and (orientation:landscape) and (pointer:coarse),
@@ -1200,8 +1214,7 @@ body.game-running #quickCmds{
   <button class="qc qc-green" onclick="qCmd('attack')">⚔<span>ATTACK</span></button>
   <button class="qc qc-blue"  onclick="qCmd('follow')">👥<span>FOLLOW</span></button>
   <button class="qc qc-teal"  onclick="qCmd('zara heal me')">✚<span>HEAL</span></button>
-  <button class="qc qc-gold"  onclick="qCmd('retreat')">⬅<span>RUN</span></button>
-  <button class="qc" style="border-color:#ff3333;color:#ff3333;" onclick="qCmd('heavy attack')">💥<span>HEAVY</span></button>
+<button class="qc" style="border-color:#00ccff;color:#00ccff;" onclick="qCmd('follow')">👁<span>FOLLOW</span></button>  <button class="qc" style="border-color:#ff3333;color:#ff3333;" onclick="qCmd('heavy attack')">💥<span>HEAVY</span></button>
   <button class="qc" style="border-color:#ff8800;color:#ff8800;" onclick="qCmd('flank')">↗<span>FLANK</span></button>
   <button class="qc" style="border-color:#cc88ff;color:#cc88ff;" onclick="qCmd('surround')">⭕<span>SURROUND</span></button>
   <button class="qc" style="border-color:#ff4444;color:#ff4444;" onclick="qCmd('kill boss')">👑<span>BOSS</span></button>
@@ -11034,7 +11047,7 @@ function showMultiplayerComingSoon(){
     <div style="display:flex;flex-direction:column;gap:6px;align-items:center;font-size:9px;color:#333;letter-spacing:1px;border:1px solid #1a1a1a;border-radius:8px;padding:12px 24px;">
       <span style="color:#2a4a2a;">PLANNED FEATURES</span>
       <span>👥 2–5 Player Co-op</span>
-      <span>⚔ Role-based team combat</span> 
+      <span>⚔ Role-based team combat</span>
       <span>🏆 Shared leaderboard rankings</span>
       <span>📡 Real-time enemy sync</span>
     </div>
